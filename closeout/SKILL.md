@@ -1,0 +1,93 @@
+---
+name: closeout
+description: Use at the end of an implementation, documentation, review, or phase task to make sure the work is actually finished: tests pass, human-facing behavior is checked, docs are consistent, git state is clean, and the next step is clear.
+---
+
+# Closeout
+
+Use this skill when a task is about to be called done.
+
+This is not a review protocol. It is the final engineering hygiene pass before handoff.
+
+## Trigger
+
+Expect the trigger to specify:
+
+- `Skill`: `closeout`
+- `Scope`: files, phase, feature, or plan being closed
+
+If scope is missing, infer it from the current task only when obvious. Otherwise ask.
+
+## Checklist
+
+### 1. Scope Reality
+
+- State what changed.
+- State what did not change.
+- Compare the result against the accepted PRD, phase map, or agent plan if one exists.
+- If implementation diverged from the plan, update the plan or record the divergence.
+
+### 2. Code Quality
+
+Check for:
+
+- new logic bugs, edge cases, type issues, and security issues;
+- unhandled errors;
+- redundant or dead code;
+- consistency with existing code style;
+- missing tests for changed behavior.
+
+### 3. Validation
+
+Run the relevant regression tests.
+
+For human-facing UI, dashboards, reports, notifications, CLI tables, or rendered docs:
+
+- open or render the output;
+- exercise visible controls, not just page load;
+- do not validate only the happy path; cover at least one normal path, one empty/no-match path, and one recovery/reset path when the surface has controls;
+- check empty states and placeholder states;
+- verify the artifact answers the reader's actual question;
+- save or describe the screenshot/rendered evidence.
+
+If a server is needed for human acceptance, say who owns that server process. Prefer the human running their own acceptance server unless the task explicitly asks the agent to keep one running.
+
+### 4. Documentation Consistency
+
+Check all affected docs, not only `README.md` or memory/instruction files.
+
+For repos with a docs index:
+
+- read the repo's single agent entry file, such as `AGENTS.md`;
+- read `docs/README.md`;
+- confirm new docs are in the right folder;
+- confirm dated docs use `YYYY-MM-DD_topic.md`;
+- confirm phase outputs are under the matching `phase*_outputs/` folder;
+- update phase status, next expected output, and acceptance notes;
+- search for stale references after renames.
+
+Do not create a separate lessons-learned document unless explicitly requested. Promote durable process changes into the relevant rule, skill, or repo instruction file.
+
+### 5. Secret and Safety Check
+
+- Do not commit credentials, tokens, cookies, private keys, or account secrets.
+- Check docs and sample payloads for accidental secrets.
+- If touching infrastructure or production data, state the source-of-truth and access boundary.
+
+### 6. Git and Process Hygiene
+
+- Run `git status`.
+- Inspect relevant diffs.
+- Commit only related changes when commit authorization exists.
+- Push if the current workflow expects remote handoff.
+- Stop dev servers or background sessions unless the human explicitly wants them left running.
+
+### 7. Final Handoff
+
+Report briefly:
+
+- what changed;
+- what passed;
+- what was not run and why;
+- any remaining risks;
+- the next expected step.
