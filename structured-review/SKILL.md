@@ -139,77 +139,16 @@ For UI implementation review specifically:
 - visible controls must be exercised, including search, filters, navigation, detail pages, and empty-result states
 - if a filter option has no matching sample data, verify that it returns an intentional empty state and that `all` or reset restores the data
 - placeholder stages must be understandable to a human reader
-- compare the implemented UI against any prototype only at the agreed fidelity level; do not treat an early skeleton as a failed high-fidelity design unless the plan promised fidelity
 - clarify who owns any dev server used for human acceptance, so the agent does not silently leave or kill a server the human depends on
-- if the artifact names a visual prototype, design reference, or design-tool output, review the rendered implementation against that reference at the fidelity promised by the artifact; do not require pixel-perfect reproduction unless the artifact explicitly requires it
+- when the artifact names a visual prototype or design reference, compare against it at the agreed fidelity level only; do not require pixel-perfect reproduction unless the artifact explicitly requires it
 - treat implementation source-of-truth data, schema, and API contracts as higher priority than prototype mock fields, placeholder labels, or design-tool sample data
 - reject UI that accidentally implements prototype-only actions or workflows that the artifact explicitly excludes
-- validate visual behavior with rendered screenshots, not code inspection alone; cover both a normal desktop viewport and a constrained/narrow viewport when the surface is responsive
+- validate visual behavior with rendered screenshots covering desktop and any responsive viewport the surface targets; code inspection supports a claim but does not replace rendered evidence
 - check layout containment with realistic long content: long titles, names, identifiers, URLs, messages, JSON, tags/chips, table cells, and multi-line body text should wrap, clamp, or scroll inside their intended containers instead of overflowing, overlapping, or causing unintended horizontal page scroll
 - check information hierarchy, not just presence: the reader should be able to distinguish primary content, secondary metadata, actions, errors, warnings, review states, and empty states without reading every line of text
 - verify data wiring against real or acceptance-grade data when the implementation claims to support it; synthetic fixture-only rendering is not enough for final implementation acceptance unless the artifact explicitly limits the scope to a mock prototype
 - check basic accessibility pragmatically: interactive elements have understandable labels, keyboard focus remains visible, color is not the only signal for critical state, and contrast is acceptable
-
-For high-touch product UI, especially dashboards, charts, data review tools, and
-operator consoles, the reviewer must also do a **visual state-matrix review**.
-This is stricter than checking that screenshots exist.
-
-The matrix should cover every UI state that the artifact claims or that the
-human explicitly discussed, for example:
-- compact and expanded chart states
-- filter panel open and collapsed states
-- show-more and show-less states
-- hover and click states for markers, rows, clusters, chips, and inspectors
-- enabled and disabled toggles
-- selected and unselected segmented controls
-- empty, sparse, normal, and dense data states where sample data allows
-- desktop and narrow/responsive viewport states
-
-For each reviewed state, inspect the rendered page or full-size screenshot and
-actively look for visible defects:
-- text overlapping borders, axes, grid lines, controls, chips, or other text
-- clipped labels, out-of-container text, unintended horizontal scroll, or hidden
-  important content
-- inconsistent alignment between states, such as a chart plot area changing
-  width when only height should change
-- axis, legend, lane, marker, or timeline misalignment
-- controls that are too visually heavy for their job, or labels that occupy more
-  space than the information they provide
-- ambiguous status copy, especially copy that blames "no data" when the user
-  merely disabled a layer
-- density failures where the primary reader surface has too little usable space
-  after headers, controls, charts, or sidebars consume the viewport
-
-Do not mark visual acceptance as complete if the screenshot itself visibly shows
-one of these defects. If a defect is accepted as a tradeoff, the artifact must
-name it as a known compromise or backlog item rather than treating it as passed.
-
-When design-tool output or a visual prototype is used:
-- compare against the prototype for the agreed layout direction and interaction
-  intent, not merely color or surface styling
-- do not let the prototype silently delete a previously accepted product
-  concept; call out missing concepts such as markers, filters, drilldowns,
-  status badges, or trace links
-- if the implementation intentionally diverges from the prototype, require a
-  short reason in the artifact
-
-When the same concept appears across multiple surfaces, review semantic and
-visual consistency:
-- filters with the same names should have the same meaning unless the artifact
-  explicitly scopes them differently
-- chips, badges, severity labels, direction labels, bucket labels, and fact-tag
-  labels should use the same product language across related pages
-- the same state should not be called `review`, `needs_review`, `LLM uncertain`,
-  and `attention` in different places unless those are intentionally different
-  layers and the artifact explains the distinction
-- if the UI exposes both a summary surface and a detail/trace surface, verify
-  that summary labels can be understood from the detail data and that the detail
-  page can explain the summary.
-
-Screenshot evidence must prove the exact claim being made. A screenshot that
-does not show the relevant state, does not include the affected rows, or is too
-cropped to confirm the behavior is weak evidence. Code inspection may support a
-claim, but it does not replace rendered evidence for visual behavior.
+- for high-touch product UI, dashboards, charts, data review tools, and operator consoles, also apply `structured-review/ui-review.md`: reviewers must run a visual state-matrix review, reject screenshots that visibly contain overlap/clipping/alignment/status-copy/density failures, and check cross-surface filter/chip/label consistency unless the artifact explicitly scopes the surfaces differently
 
 When grouping multiple outputs into one surface, justify the grouping by reader scenario:
 - who reads the combined surface
@@ -482,13 +421,7 @@ Actively look for:
 - for grouped plan items, inconsistent presentation of the same semantic role without justification
 - for human-facing outputs, missing reader question, empty-state behavior, or screenshot/rendered-output acceptance
 - for UI work, controls that are visible but not actually wired, filters with no sample coverage, unclear placeholder states, and mismatch between prototype fidelity and implementation scope
-- for UI work, screenshots that visibly contain overlap, clipping, cramped text,
-  inconsistent alignment, or misleading status copy but are still presented as
-  passing evidence
-- for UI work, missing state-matrix coverage: compact/expanded, open/collapsed,
-  hover/click, show-more/show-less, empty/normal/dense, desktop/narrow
-- for UI work, cross-surface inconsistencies in labels, chips, filters, severity
-  language, or direction/bucket/fact-tag presentation
+- for UI work, apply the visual state-matrix and cross-surface consistency rules in `structured-review/ui-review.md`
 - for external resources, confusion between provider-side truth and internal estimates
 - unsafe polling frequency, missing cost/rate-limit validation, or redundant pollers
 - time-series type/query mismatches such as `increase()` on a snapshot gauge
@@ -535,6 +468,12 @@ When replying to review:
 - do not use screenshots as decoration. If a screenshot is cited as evidence,
   state what it proves. If it reveals a visible defect, either fix the defect or
   record it as an accepted compromise / backlog item before handoff.
+- when iterating implementation across multiple review rounds, retire or
+  explicitly annotate superseded screenshots in the report body so current
+  evidence is distinguishable from historical screenshots.
+- do not relax a load-bearing acceptance criterion solely inside the
+  implementation report. If a measurable threshold changes, amend the plan via
+  an explicit review thread before treating the implementation as compliant.
 - if implementation changes product semantics across related surfaces, such as
   filter meaning, chip labels, direction labels, issue badges, or bucket display,
   document the semantic change and validate at least one cross-surface example.
