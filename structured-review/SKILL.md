@@ -148,7 +148,12 @@ For UI implementation review specifically:
 - check information hierarchy, not just presence: the reader should be able to distinguish primary content, secondary metadata, actions, errors, warnings, review states, and empty states without reading every line of text
 - verify data wiring against real or acceptance-grade data when the implementation claims to support it; synthetic fixture-only rendering is not enough for final implementation acceptance unless the artifact explicitly limits the scope to a mock prototype
 - check basic accessibility pragmatically: interactive elements have understandable labels, keyboard focus remains visible, color is not the only signal for critical state, and contrast is acceptable
-- for high-touch product UI, dashboards, charts, data review tools, and operator consoles, also apply `structured-review/ui-review.md`: reviewers must run a visual state-matrix review, reject screenshots that visibly contain overlap/clipping/alignment/status-copy/density failures, and check cross-surface filter/chip/label consistency unless the artifact explicitly scopes the surfaces differently
+
+For high-touch product UI, dashboards, charts, data review tools, and operator
+consoles, also apply `structured-review/ui-review.md`. That reference covers
+the visual state-matrix, visible-defect rejection, screenshot evidence including
+superseded-screenshot handling, no-hidden-acceptance-relaxation, design-reference
+handling, and cross-surface consistency.
 
 When grouping multiple outputs into one surface, justify the grouping by reader scenario:
 - who reads the combined surface
@@ -416,12 +421,16 @@ Actively look for:
 - wrong source-of-truth layer
 - claimed completion that only proves service health, not plan completion
 - planned work that disappeared into implicit deferral without human decision
+- previously agreed acceptance criteria silently relaxed inside an implementation
+  or closeout report rather than amended via a plan thread
+- stale or superseded evidence, such as screenshots, query outputs, or sample
+  payloads, presented in the artifact body without being marked historical
 - missing invariants, fallback behavior, or edge-case handling
 - reasoning that sounds plausible but has no evidence
 - for grouped plan items, inconsistent presentation of the same semantic role without justification
 - for human-facing outputs, missing reader question, empty-state behavior, or screenshot/rendered-output acceptance
 - for UI work, controls that are visible but not actually wired, filters with no sample coverage, unclear placeholder states, and mismatch between prototype fidelity and implementation scope
-- for UI work, apply the visual state-matrix and cross-surface consistency rules in `structured-review/ui-review.md`
+- for UI work, apply the visual state-matrix, visible-defect rejection, and cross-surface consistency rules in `structured-review/ui-review.md`
 - for external resources, confusion between provider-side truth and internal estimates
 - unsafe polling frequency, missing cost/rate-limit validation, or redundant pollers
 - time-series type/query mismatches such as `increase()` on a snapshot gauge
