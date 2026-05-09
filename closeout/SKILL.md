@@ -99,9 +99,10 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
 - Stop dev servers or background sessions unless the human explicitly wants them left running.
-- If the closeout changes a status document after deployment, sync that doc to
-  the same remote/production location as the implementation when the workflow
-  expects production docs to match git.
+- If the closeout changes a status document after deployment, first ensure the
+  document reflects the real traceability state. Then sync it to the same
+  remote/production location as the implementation when the workflow expects
+  production docs to match git.
 
 ### 7. Final Handoff
 
@@ -112,6 +113,11 @@ Report briefly:
 - what was not run and why;
 - any remaining risks;
 - the next expected step.
+
+Before reporting the phase closed, walk the traceability list once more. Every
+`Done` row must still point to reproducible evidence such as a query result,
+integrity check, screenshot, rendered output, log excerpt, commit, or explicit
+human observation. Downgrade any row that relies only on memory to `Partial`.
 
 If the task is only partially closed, say "partial" plainly and list the exact
 remaining blockers. Do not use ambiguous phrases such as "mostly done" when a
