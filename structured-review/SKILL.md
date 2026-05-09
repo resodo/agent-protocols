@@ -180,6 +180,24 @@ If both external truth and internal estimates exist, prefer a reconciliation des
 
 Do not endorse alert thresholds or budget projections based on internal counters alone unless the artifact explains why no external source exists or why the internal counter is equivalent.
 
+### Plan-to-Implementation Traceability Rule
+
+For `Type: impl` reviews, passing tests and healthy production smoke are not
+enough.
+
+The reviewer must compare the completed work against the accepted plan, PRD, or
+acceptance list item by item:
+- mark each in-scope item as `Done`, `Partial`, `Missing`, or `Deferred`
+- require concrete evidence for `Done`
+- treat an empty evidence cell, chat memory, or "looks fine" as insufficient
+- treat every planned-but-unimplemented item as `Missing` unless the human
+  explicitly defers it
+- call out any status doc that says or implies completion while rows are still
+  missing or partial
+
+If no accepted plan or acceptance list exists, say that directly and create a
+minimal traceability list before judging the implementation complete.
+
 ### Polling Safety Rule
 
 For any artifact that periodically calls an external API or service, check polling safety before accepting the interval.
@@ -388,6 +406,8 @@ Actively look for:
 - vague implementation rules that different agents could interpret differently
 - assumptions that were never validated
 - wrong source-of-truth layer
+- claimed completion that only proves service health, not plan completion
+- planned work that disappeared into implicit deferral without human decision
 - missing invariants, fallback behavior, or edge-case handling
 - reasoning that sounds plausible but has no evidence
 - for grouped plan items, inconsistent presentation of the same semantic role without justification
@@ -429,6 +449,8 @@ When replying to review:
 - if rejecting a point, explain why
 - if a reviewer found a real gap, fix the artifact instead of only defending it
 - if validation was weak, strengthen it in the artifact body
+- if implementation missed an accepted plan item, either implement it or record
+  it as `Missing` / `Partial` / `Deferred` with evidence and human decision
 - before handing off human-facing outputs, simulate the reader experience yourself: open the dashboard, read the report body, render the notification, or inspect the CLI/UI output; if you cannot simulate it, say so and ask the reviewer or human to do it
 
 ### Driver Output Shape

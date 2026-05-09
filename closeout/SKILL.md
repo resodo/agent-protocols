@@ -26,6 +26,15 @@ If scope is missing, infer it from the current task only when obvious. Otherwise
 - State what did not change.
 - Compare the result against the accepted PRD, phase map, or agent plan if one exists.
 - If implementation diverged from the plan, update the plan or record the divergence.
+- Build a short traceability list from the accepted plan or acceptance criteria:
+  - `Done` requires concrete evidence.
+  - `Partial` means implemented or observed only partly.
+  - `Missing` means planned but not implemented or not validated.
+  - `Deferred` requires explicit human decision.
+- Do not treat "tests pass", "service is active", "deployment succeeded", or
+  "production smoke is green" as proof that every planned item is complete.
+- If any in-scope item is `Missing` or `Partial`, do not call the phase fully
+  closed; report the remaining item and next owner.
 
 ### 2. Code Quality
 
@@ -40,6 +49,15 @@ Check for:
 ### 3. Validation
 
 Run the relevant regression tests.
+
+Validation must match the acceptance criteria, not only the code touched.
+
+For every in-scope acceptance item:
+- name the command, query, screenshot, rendered output, log excerpt, or human
+  observation that proves it
+- record the expected value or shape when practical
+- distinguish "not yet enough data" from "broken" and from "not checked"
+- never upgrade a row to `Done` based only on historical chat memory
 
 For human-facing UI, dashboards, reports, notifications, CLI tables, or rendered docs:
 
@@ -81,6 +99,9 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
 - Stop dev servers or background sessions unless the human explicitly wants them left running.
+- If the closeout changes a status document after deployment, sync that doc to
+  the same remote/production location as the implementation when the workflow
+  expects production docs to match git.
 
 ### 7. Final Handoff
 
@@ -91,3 +112,7 @@ Report briefly:
 - what was not run and why;
 - any remaining risks;
 - the next expected step.
+
+If the task is only partially closed, say "partial" plainly and list the exact
+remaining blockers. Do not use ambiguous phrases such as "mostly done" when a
+plan item is still missing, unvalidated, or waiting for human acceptance.
