@@ -84,6 +84,25 @@ For repos with a docs index:
 - update phase status, next expected output, and acceptance notes;
 - search for stale references after renames.
 
+### 4.1 Doc Lifecycle Check
+
+When the repo defines document lifecycle states, use them during closeout rather
+than leaving docs to drift.
+
+Check:
+
+- which docs were added or materially changed;
+- which docs are now active, superseded, historical, artifact, or private-run
+  output according to the repo's own taxonomy;
+- whether current-doc indexes, `AGENTS.md`, `README.md`, active plans, or phase
+  maps need updates so the next human/agent can find the right source of truth;
+- whether stale docs need a status or supersession note instead of silent edits;
+- whether generated artifacts, private model outputs, production/source-data
+  details, or bulk run outputs belong outside the repo;
+- whether stale links or references remain after moves, renames, or status
+  changes;
+- whether private/source/prod/model-run details accidentally entered repo docs.
+
 Do not create a separate lessons-learned document unless explicitly requested. Promote durable process changes into the relevant rule, skill, or repo instruction file.
 
 ### 5. Secret and Safety Check

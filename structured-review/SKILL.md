@@ -114,6 +114,36 @@ For artifacts involving external facts, data, metrics, dashboards, reports, APIs
 - whether the correct source-of-truth layer is being used
 - whether different representations are being confused
 
+### Persistent Schema Lifecycle Rule
+
+When an artifact touches persisted schemas, database models, migration plans,
+status/state fields, retry/rerun behavior, JSON payload columns, cache freshness,
+or source/target database boundaries, the review must check lifecycle semantics,
+not only create-time shape.
+
+For plans, require explicit coverage of:
+- owner service or writer;
+- create path and update path;
+- allowed states and state transitions;
+- retry, rerun, and idempotency behavior;
+- archive, delete, expiry, or retention behavior;
+- JSON inner contract vs intentionally opaque raw payload;
+- cache freshness, stale behavior, and refresh trigger;
+- source database vs target database role boundary;
+- validation strategy, including tests or explicit deferral.
+
+For implementation reviews, check:
+- code follows the accepted lifecycle contract;
+- string statuses and categorical fields have named allowed values or an
+  explicit deferral;
+- contract-bound JSON dicts are typed/validated, or the plan documents why they
+  remain opaque;
+- create-only code did not omit required update, rerun, archive, or cleanup
+  behavior;
+- migrations match the lifecycle contract when schema changes are in scope;
+- tests cover the relevant lifecycle path, or the missing path is explicitly
+  deferred with human approval.
+
 ### Human-Facing Output Rule
 
 For human-facing outputs, query/API success is not sufficient validation.
@@ -434,6 +464,9 @@ Actively look for:
 - for external resources, confusion between provider-side truth and internal estimates
 - unsafe polling frequency, missing cost/rate-limit validation, or redundant pollers
 - time-series type/query mismatches such as `increase()` on a snapshot gauge
+- for persisted schemas, missing lifecycle coverage for state transitions,
+  retry/rerun, archive/delete/retention, JSON contracts, cache freshness, or
+  source/target database boundaries
 
 ### Reviewer Output Shape
 
