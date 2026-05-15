@@ -114,6 +114,34 @@ For artifacts involving external facts, data, metrics, dashboards, reports, APIs
 - whether the correct source-of-truth layer is being used
 - whether different representations are being confused
 
+### Mechanism Lifecycle Rule
+
+When an artifact introduces or materially changes a durable mechanism, review
+its maintenance lifecycle, not only whether it works today.
+
+Durable mechanisms include:
+- hard-coded lists, allowlists, denylists, and path globs;
+- status/config tables and required-check lists;
+- CI jobs, hooks, scripts, generated-output rules, and cleanup rules;
+- protocol checklists and recurring review/closeout steps;
+- caches, archives, retention policies, and private-output handling.
+
+For plans, require explicit coverage of:
+- who maintains the mechanism;
+- when it is updated;
+- how stale entries, obsolete rules, or temporary exceptions are removed;
+- whether human participation is required;
+- what signal shows the mechanism is stale or incomplete;
+- whether a simpler default rule can replace a manually maintained list.
+
+For implementation reviews, check:
+- the implemented mechanism matches the accepted lifecycle contract;
+- broad allowlists are not hiding future maintenance work;
+- exceptions are narrow and documented with owner/update/removal expectations;
+- tests or validation prove both clean and negative cases where practical;
+- any unresolved lifecycle question is recorded as residual risk or deferred
+  work, not left as an invisible implementation detail.
+
 ### Persistent Schema Lifecycle Rule
 
 When an artifact touches persisted schemas, database models, migration plans,
@@ -240,6 +268,24 @@ acceptance list item by item:
 
 If no accepted plan or acceptance list exists, say that directly and create a
 minimal traceability list before judging the implementation complete.
+
+### Branch and PR Hygiene Rule
+
+When the artifact is meant to close a branch, worktree, feature, or PR, check
+the process gate as part of the review.
+
+Always verify or ask for:
+- branch/worktree status and whether unrelated dirty files exist;
+- PR or merge path, if the repo requires one;
+- required CI/check status and exact check names when branch protection depends
+  on them;
+- review-thread status, including unresolved blocking threads;
+- validation provenance: CI-backed, reviewer-rerun, driver-reported, or human
+  acceptance;
+- deferred work owner and backlog/plan link.
+
+Do not treat a pushed commit as equivalent to branch closeout when the repo's
+workflow requires PR, CI, review, or human acceptance.
 
 ### Polling Safety Rule
 

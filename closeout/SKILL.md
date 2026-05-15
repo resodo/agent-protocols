@@ -46,6 +46,27 @@ Check for:
 - consistency with existing code style;
 - missing tests for changed behavior.
 
+### 2.1 Mechanism Lifecycle
+
+If the work introduced or changed a durable mechanism, do a lifecycle pass
+before closeout.
+
+Durable mechanisms include hard-coded lists, allowlists, denylists, path globs,
+status/config tables, CI required-check lists, hooks, scripts, cleanup rules,
+protocol checklists, caches, archives, and retention policies.
+
+For each retained mechanism, record or verify:
+
+- who maintains it;
+- when it should be updated;
+- how stale entries, temporary exceptions, or obsolete rules are removed;
+- whether human participation is required;
+- what validation or operational signal shows it is stale;
+- whether a simpler default rule would avoid manual maintenance.
+
+If the lifecycle is unclear, do not silently close the task. Either update the
+owning doc/code/plan or list the unresolved lifecycle question as residual risk.
+
 ### 3. Validation
 
 Run the relevant regression tests.
@@ -56,6 +77,8 @@ For every in-scope acceptance item:
 - name the command, query, screenshot, rendered output, log excerpt, or human
   observation that proves it
 - record the expected value or shape when practical
+- label the provenance as CI-backed, reviewer-rerun, driver-reported, or human
+  acceptance
 - distinguish "not yet enough data" from "broken" and from "not checked"
 - never upgrade a row to `Done` based only on historical chat memory
 
@@ -109,6 +132,8 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 
 - Do not commit credentials, tokens, cookies, private keys, or account secrets.
 - Check docs and sample payloads for accidental secrets.
+- Check for local user-home absolute paths, generated artifacts, private run
+  outputs, and real environment files entering tracked content.
 - If touching infrastructure or production data, state the source-of-truth and access boundary.
 
 ### 6. Git and Process Hygiene
@@ -117,6 +142,11 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 - Inspect relevant diffs.
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
+- If the repo requires PR/CI/review for branch or worktree closeout, record PR
+  status, required check status, review-thread status, and branch protection or
+  merge-setting evidence before calling the branch closed.
+- Do not treat direct push to the default branch as closeout unless the repo's
+  workflow explicitly allows it.
 - Stop dev servers or background sessions unless the human explicitly wants them left running.
 - If the closeout changes a status document after deployment, first ensure the
   document reflects the real traceability state. Then sync it to the same
