@@ -91,6 +91,17 @@ For human-facing UI, dashboards, reports, notifications, CLI tables, or rendered
 - verify the artifact answers the reader's actual question;
 - save or describe the screenshot/rendered evidence.
 
+For large frontend/backend refactors in apps with an available full-stack smoke:
+
+- prefer a real backend + real frontend + browser smoke over mocked API-only
+  e2e;
+- seed repo-safe synthetic data unless the active plan permits production-derived
+  fixtures;
+- record the smoke report path, screenshot set, and whether visual review was
+  agent-generated, human-accepted, or explicitly skipped;
+- keep generated smoke artifacts in ignored local storage by default unless the
+  human explicitly promotes them into a durable output folder and manifest.
+
 If a server is needed for human acceptance, say who owns that server process. Prefer the human running their own acceptance server unless the task explicitly asks the agent to keep one running.
 
 ### 4. Documentation Consistency
@@ -125,6 +136,18 @@ Check:
 - whether stale links or references remain after moves, renames, or status
   changes;
 - whether private/source/prod/model-run details accidentally entered repo docs.
+
+For repos that use worktree/PR output folders:
+
+- keep branch/worktree artifacts under the repo's agreed output folder, such as
+  `docs/agent_plans/outputs/<YYYY-MM-DD_feature_slug>/`;
+- require a `MANIFEST.md` in each output folder;
+- verify every committed report, screenshot, smoke output, or other artifact in
+  that folder is listed in the manifest with owner, retention policy, and
+  reference;
+- keep generated smoke screenshots/reports in ignored local storage by default
+  unless the human explicitly promotes them to durable evidence;
+- run the repo's manifest checker when one exists.
 
 Do not create a separate lessons-learned document unless explicitly requested. Promote durable process changes into the relevant rule, skill, or repo instruction file.
 
