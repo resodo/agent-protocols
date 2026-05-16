@@ -99,6 +99,12 @@ For large frontend/backend refactors in apps with an available full-stack smoke:
   fixtures;
 - record the smoke report path, screenshot set, and whether visual review was
   agent-generated, human-accepted, or explicitly skipped;
+- do not treat "screenshots generated" as visual review. Record the screenshot
+  total, reviewed screenshot count, reviewer, and a per-screenshot verdict of
+  `pass`, `concern`, or `skipped`;
+- require a reason for every skipped screenshot. Do not call the visual review
+  complete if reviewed screenshot count is lower than the generated screenshot
+  total unless the human explicitly accepts the skips;
 - keep generated smoke artifacts in ignored local storage by default unless the
   human explicitly promotes them into a durable output folder and manifest.
 
