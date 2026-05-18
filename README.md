@@ -29,6 +29,10 @@ Overlays are loaded only for the protocol being used. Unknown overlay files are
 ignored. A project overlay may be more specific than the generic protocol, but
 must not override a generic `SAFETY` rule.
 
+`SAFETY` rules may appear at H2 or H3 depending on a protocol's internal
+structure. The heading text is the contract; overlays must not weaken those
+rules.
+
 ## Usage
 
 Point an agent at the relevant `SKILL.md` file and provide the requested role, artifact, and type.

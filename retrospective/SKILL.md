@@ -46,6 +46,11 @@ For Codex, v1 transcript discovery:
 
 If the current harness is not Codex and no transcript path is configured, proceed only with explicit memory-sourced labels. If Codex transcript files are expected but missing or unreadable, pause and ask the operator to locate them before making transcript-backed claims.
 
+v1 supports Codex transcript discovery only. Non-Codex transcript backends, such
+as Claude Code or other harnesses, are intentionally deferred to a future
+revision; when working in a project, track that as a project backlog item rather
+than re-deriving it here.
+
 ## SAFETY Rules
 
 - Label evidence sources. Do not present memory as transcript-backed evidence.
