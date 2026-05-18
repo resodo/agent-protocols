@@ -18,6 +18,28 @@ Expect the trigger to specify:
 
 If scope is missing, infer it from the current task only when obvious. Otherwise ask.
 
+## Local Overlay
+
+When working inside a repo, load local overlays after this generic protocol:
+
+1. Read `.agent-protocols/context.md` if present.
+2. Read `.agent-protocols/closeout.md` if present.
+3. Apply local overlays as project-specific refinements only.
+
+Overlays are loaded only when this protocol is loaded. Unknown overlay files are
+ignored. If an overlay contradicts a generic `SAFETY` rule, reject that overlay
+instruction and say why.
+
+## SAFETY Rules
+
+- Do not claim validations, screenshots, merge readiness, deploy state, or clean
+  worktree state without checking them.
+- Do not perform destructive git operations without explicit human approval.
+- Do not commit secrets, credentials, provider balances, private account
+  details, host keys, or raw private production data.
+- Do not call a branch/phase closed when planned items are missing, partial, or
+  unvalidated unless the human explicitly accepts the deferral.
+
 ## Checklist
 
 ### 1. Scope Reality
@@ -169,6 +191,9 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 
 - Run `git status`.
 - Inspect relevant diffs.
+- Check local overlay for merge strategy preference, if any.
+- If the project prefers rebase merge, report whether the branch is rebase-clean
+  against the target branch before final handoff.
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
 - If the repo requires PR/CI/review for branch or worktree closeout, record PR

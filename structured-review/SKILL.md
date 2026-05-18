@@ -63,6 +63,18 @@ Use the structured-review skill. You are the driver. The artifact is docs/some_a
 If `Artifact` or `Plan` is missing, ask for it. Do not guess.
 If `Role` is missing, ask for it. Do not guess.
 
+## Local Overlay
+
+When working inside a repo, load local overlays after this generic protocol:
+
+1. Read `.agent-protocols/context.md` if present.
+2. Read `.agent-protocols/structured-review.md` if present.
+3. Apply local overlays as project-specific refinements only.
+
+Overlays are loaded only when this protocol is loaded. Unknown overlay files are
+ignored. If an overlay contradicts a generic `SAFETY` rule, reject that overlay
+instruction and say why.
+
 ## Review Types
 
 Use the artifact type to choose the review lens.
@@ -76,6 +88,18 @@ When type is omitted, infer the likely lens from the file path and title, but st
 ## Shared Protocol
 
 These rules apply to both `reviewer` and `driver`.
+
+### SAFETY Rules
+
+- Do not fabricate rationale or evidence.
+- Preserve human final authority for scope, write-back, commit, push, and
+  done-enough decisions.
+- Report dirty worktree, draft artifact, and unpushed-review-target state
+  honestly.
+- Use the declared source-of-truth layer for external facts, provider/account
+  state, production data, and repo state.
+- Do not write secrets, credentials, provider balances, private account details,
+  host keys, or raw private production data into repo artifacts.
 
 ### Core Goal
 
@@ -395,6 +419,19 @@ Prefer summarized decisions such as:
 - an explicit approval or rejection of a proposal
 
 Do not preserve the human's raw chat text unless that exact wording is itself important.
+
+After completing a repo-backed review, do not stop at chat-only output. Offer a
+short numbered action menu. The recommended default should usually be:
+
+```text
+1. Write review comments into the artifact and commit (recommended)
+2. Write review comments into the artifact only
+3. Leave review in chat only
+```
+
+Execute write/commit only after the human chooses that action or explicitly
+requested it upfront. This extends the Human Input Rule; it is not a separate
+menu mechanism.
 
 ### Reviewed File Collaboration Protocol
 

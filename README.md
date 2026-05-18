@@ -6,6 +6,28 @@ Reusable local protocols for human-agent and multi-agent software work.
 
 - `structured-review/` - structured review for high-level plans, implementation plans, and completed implementation validation.
 - `closeout/` - final hygiene checklist before handing off completed work.
+- `planning/` - discussion-to-plan workflow before implementation starts.
+- `retrospective/` - evidence-based post-incident or post-closeout learning workflow.
+
+## Local Overlays
+
+Protocols are reusable. Project-specific policy belongs in the repo being worked
+on, under:
+
+```text
+.agent-protocols/context.md
+.agent-protocols/<protocol-name>.md
+```
+
+When a protocol is loaded inside a repo:
+
+1. Read the generic protocol from this directory.
+2. Read `.agent-protocols/context.md` if present.
+3. Read `.agent-protocols/<protocol-name>.md` if present.
+
+Overlays are loaded only for the protocol being used. Unknown overlay files are
+ignored. A project overlay may be more specific than the generic protocol, but
+must not override a generic `SAFETY` rule.
 
 ## Usage
 
