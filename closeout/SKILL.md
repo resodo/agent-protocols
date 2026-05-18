@@ -165,6 +165,18 @@ Check:
   changes;
 - whether private/source/prod/model-run details accidentally entered repo docs.
 
+For branch or PR closeout, do a final-state stale-status scan after the branch is
+known to be merge-clean or rebase-clean against the target branch. At that point
+the current worktree represents the post-merge file state. Do not wait until
+after merge to discover stale lifecycle language.
+
+Scan current source-of-truth docs, active plan indexes, backlog/status docs, and
+the closing plan for stale terms such as `active`, `in_progress`, `awaiting`,
+`ready for review`, `ready for merge`, `merge gated`, `next step`, and
+`current driver`. For every hit, decide whether the wording is still true after
+this branch lands. Fix stale wording before closeout; otherwise record why the
+term remains valid.
+
 For repos that use worktree/PR output folders:
 
 - keep branch/worktree artifacts under the repo's agreed output folder, such as
