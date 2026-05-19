@@ -35,6 +35,12 @@ instruction and say why.
 - Do not claim validations, screenshots, merge readiness, deploy state, or clean
   worktree state without checking them.
 - Do not perform destructive git operations without explicit human approval.
+- Do not merge PRs, close PRs, or delete remote branches during closeout unless
+  the human gives an explicit current-turn command to perform that exact action
+  for the named PR or branch. Closeout normally stops at reporting
+  `ready for human merge`. `Current-turn` means the user's most recent message,
+  not earlier messages in the same conversation. This rule narrows but does not
+  replace the destructive-git-operations rule above.
 - Do not commit secrets, credentials, provider balances, private account
   details, host keys, or raw private production data.
 - Do not call a branch/phase closed when planned items are missing, partial, or
@@ -206,6 +212,10 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 - Check local overlay for merge strategy preference, if any.
 - If the project prefers rebase merge, report whether the branch is rebase-clean
   against the target branch before final handoff.
+- Treat merge strategy preference as reporting guidance only. It does not
+  authorize the agent to merge. Without explicit current-turn human approval,
+  final handoff must say whether the PR is ready for human merge and confirm no
+  merge was executed.
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
 - If the repo requires PR/CI/review for branch or worktree closeout, record PR

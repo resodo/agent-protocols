@@ -97,3 +97,21 @@ Common owners:
 - code architecture or tests.
 
 If the right owner is unclear, say why and create a bounded follow-up instead of inventing a mechanism.
+
+## Rule Economy
+
+Prefer fixing the earliest violated rule over adding downstream recovery rules.
+Do not add protocol rules for one-off recovery paths unless the same failure is
+likely under normal workflow. Keep action items minimal and route them to the
+owner that would have prevented the first violation.
+
+## Action Feasibility
+
+Before recording an action item, check that the proposed control is executable
+in the current agent/tool environment. Do not record controls that require
+capabilities the agent does not have, such as reading later user input while a
+tool call is already running or interrupting an already-issued command after
+receiving that later input.
+
+If a proposed control is not executable, route prevention to the earliest
+upstream decision point that is executable.
