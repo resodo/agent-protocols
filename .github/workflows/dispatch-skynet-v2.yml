@@ -1,0 +1,42 @@
+name: Dispatch Skynet V2 Protocol Update
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    name: dispatch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Skynet V2 update
+        env:
+          GH_TOKEN: ${{ secrets.SKYNET_V2_DISPATCH_TOKEN }}
+          SKYNET_V2_REPO: MAGI-Systems-01/skynet-v2
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "SKYNET_V2_DISPATCH_TOKEN is not configured."
+            exit 1
+          fi
+
+          cat > /tmp/repository-dispatch.json <<EOF
+          {
+            "event_type": "agent-protocols-updated",
+            "client_payload": {
+              "repository": "${SOURCE_REPOSITORY}",
+              "sha": "${SOURCE_SHA}"
+            }
+          }
+          EOF
+
+          gh api \
+            --method POST \
+            "repos/${SKYNET_V2_REPO}/dispatches" \
+            --input /tmp/repository-dispatch.json
