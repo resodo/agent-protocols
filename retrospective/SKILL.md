@@ -116,6 +116,12 @@ Common owners:
 
 If the right owner is unclear, say why and create a bounded follow-up instead of inventing a mechanism.
 
+Retrospective outputs are not closed by the retrospective itself. When an
+accepted follow-up changes repo files, protocol files, docs, tests, runtime
+behavior, or source-of-truth process, route that follow-up into the relevant
+implementation or documentation workflow and close it through the closeout
+protocol.
+
 ## Rule Economy
 
 Prefer fixing the earliest violated rule over adding downstream recovery rules.

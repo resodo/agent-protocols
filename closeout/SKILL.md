@@ -198,6 +198,19 @@ For branch or PR closeout, also make post-merge lifecycle explicit:
   against the merged default branch, and either close the worktree or open a
   small post-merge docs PR if source-of-truth state is stale.
 
+For parent repos that update submodule pointers:
+
+- identify whether the parent PR points at a submodule source-repo feature
+  branch commit or at the source repo's default-branch commit;
+- if the intended source of truth is the submodule source repo's default
+  branch, do not call the parent PR ready for merge while it still points at a
+  temporary feature-branch submodule commit;
+- first land the submodule source PR, then update the parent repo submodule
+  pointer to the final source-repo default-branch commit, rerun parent repo
+  checks, and only then hand off the parent PR as ready for human merge;
+- if the human explicitly wants to pin a non-default submodule commit, record
+  that decision and its owner before closeout.
+
 For repos that use worktree/PR output folders:
 
 - keep branch/worktree artifacts under the repo's agreed output folder, such as
