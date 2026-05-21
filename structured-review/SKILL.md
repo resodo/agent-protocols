@@ -92,6 +92,8 @@ These rules apply to both `reviewer` and `driver`.
 ### SAFETY Rules
 
 - Do not fabricate rationale or evidence.
+- Do not claim a merge method, merge shape, or ancestry implication without
+  checking PR metadata and the commit graph.
 - Preserve human final authority for scope, write-back, commit, push, and
   done-enough decisions.
 - Report dirty worktree, draft artifact, and unpushed-review-target state

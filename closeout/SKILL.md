@@ -34,6 +34,10 @@ instruction and say why.
 
 - Do not claim validations, screenshots, merge readiness, deploy state, or clean
   worktree state without checking them.
+- Do not claim a GitHub merge method, merge shape, or ancestry implication
+  without checking the PR metadata and commit graph. For example, verify whether
+  a PR was merged via merge commit, squash merge, or rebase/linear merge before
+  explaining why branch commits are or are not ancestors of the target branch.
 - Do not perform destructive git operations without explicit human approval.
 - Do not merge PRs, close PRs, or delete remote branches during closeout unless
   the human gives an explicit current-turn command to perform that exact action
@@ -183,6 +187,17 @@ the closing plan for stale terms such as `active`, `in_progress`, `awaiting`,
 this branch lands. Fix stale wording before closeout; otherwise record why the
 term remains valid.
 
+For branch or PR closeout, also make post-merge lifecycle explicit:
+
+- identify any source-of-truth wording that will become false after the PR
+  merges, such as "PR pending", "ready for merge", or "human merge pending";
+- prefer wording that remains true after merge, or record a required
+  post-merge docs follow-up before handoff;
+- after the human reports the PR merged, sync the default branch, update
+  submodules if the repo uses protocol submodules, rerun the stale-status scan
+  against the merged default branch, and either close the worktree or open a
+  small post-merge docs PR if source-of-truth state is stale.
+
 For repos that use worktree/PR output folders:
 
 - keep branch/worktree artifacts under the repo's agreed output folder, such as
@@ -212,6 +227,12 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 - Check local overlay for merge strategy preference, if any.
 - If the project prefers rebase merge, report whether the branch is rebase-clean
   against the target branch before final handoff.
+- If the branch was rebased after conflict resolution and the conflicts touched
+  source-of-truth docs, deploy/runtime templates, tests, CI, or protocol files,
+  request or perform a full `impl` structured review before final PR handoff.
+  The re-review should cover the implementation normally and explicitly include
+  conflict correctness, status/doc lifecycle drift, deploy/test contract
+  preservation, and stale wording.
 - Treat merge strategy preference as reporting guidance only. It does not
   authorize the agent to merge. Without explicit current-turn human approval,
   final handoff must say whether the PR is ready for human merge and confirm no
