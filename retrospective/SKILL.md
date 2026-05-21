@@ -82,6 +82,24 @@ Action item:
 
 Keep the retrospective readable. The goal is operational memory, not a full transcript reconstruction.
 
+## Finding Triage
+
+Do not present every mistake as an equal action item. First group findings by
+severity and mechanism value:
+
+- `P0`: repeated or trust-breaking workflow failures that must change before
+  similar work continues.
+- `P1`: important quality failures worth routing to a skill, repo overlay,
+  backlog item, CI check, or runbook.
+- `P2`: local mistakes or one-off slips to acknowledge but not necessarily
+  mechanize.
+
+Before proposing a prevention mechanism, ask whether the failure can reasonably
+be prevented by a durable rule, check, or workflow. If not, record it as a
+learning note rather than adding another rule. Prefer a short ranked list over a
+long catalogue of minor issues; detailed evidence can remain in notes or be
+summarized only when the human asks for it.
+
 ## Action Routing
 
 Common owners:

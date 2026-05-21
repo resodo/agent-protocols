@@ -35,15 +35,18 @@ Overlays are loaded only when this protocol is loaded. Unknown overlay files are
 2. Read the repo entrypoint docs and active plan/backlog required by the local overlay.
 3. Scan recent decisions before asking the human to decide something again.
 4. State the current phase of work: brainstorming, discussion, plan writing, review, implementation, hotfix, or closeout.
-5. For each unresolved issue, first explain context in plain language, then list only reasonable options.
-6. Recommend one option when there is a clear recommendation, and explain the reason.
-7. Record accepted decisions in the plan or backlog, not only in chat.
-8. Define validation and human acceptance before implementation starts.
-9. If scope expands materially, update the plan and decide whether another review is needed before continuing.
+5. If the phase is brainstorming or discussion, do not write an executable plan yet. Build shared understanding first: list the open questions, explain the current mechanism or source-of-truth evidence, and converge one decision at a time until the human explicitly asks to write the plan.
+6. For each unresolved issue, first explain context in plain language, then list only reasonable options.
+7. Recommend one option when there is a clear recommendation, and explain the reason.
+8. Record accepted decisions in the plan or backlog, not only in chat.
+9. Define validation and human acceptance before implementation starts.
+10. If scope expands materially, update the plan and decide whether another review is needed before continuing.
 
 ## SAFETY Rules
 
 - Do not start production-facing, deploy-facing, runtime-facing, architecture-facing, paid-provider, or broad data work before scope, worktree, review path, and acceptance are explicit, unless the human explicitly accepts an emergency hotfix path.
+- Do not convert a discussion into a plan artifact just because a planning protocol is active. A plan artifact requires either explicit human approval to write it or enough converged decisions that the human's request clearly asks for the written plan.
+- Do not answer current-system mechanism questions from intuition. For questions such as "which API is called", "whether two paths share behavior", "how this schema is currently stored", or "what a provider endpoint returns", inspect the relevant code, docs, sample response, or provider documentation first, then label the evidence in the answer.
 - Do not invent options just to fill a menu. If only one option is reasonable, say that.
 - Do not re-ask settled decisions unless new evidence changes the decision.
 - Do not put secrets, credentials, provider balances, private account details, host keys, or raw private production data into repo artifacts.
