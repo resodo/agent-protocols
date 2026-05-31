@@ -21,9 +21,15 @@ defense.
 
 This repo defines the contract. Consumer repos own:
 
-- the local script, hook, or worktree setup step;
+- the local script, hook, or worktree setup step, usually under `scripts/` or
+  `tools/`;
 - the canonical required protocol list for that repo;
 - the point in their worktree creation flow where the guard runs.
+
+Do not use a `.agent-protocols/` overlay as the first-line guard. Overlays are
+loaded after an agent has already found the shared protocol workflow; they do
+not protect the earlier failure mode where the vendored protocol submodule is
+missing.
 
 Division of labor: the worktree guard proves required protocol files are
 available; the repo bootstrap receipt proves the agent has established repo
@@ -63,6 +69,16 @@ test -f external/agent-protocols/closeout/SKILL.md
 Consumer repos may require additional protocols, such as `retrospective`, when
 their own lifecycle requires them. Add those to the consumer repo's local guard
 list, not to scattered docs.
+
+Downstream adoption should be checked in the consumer repo. A typical consumer
+repo check should verify that:
+
+- the local guard script exists;
+- the worktree feature flow calls the guard after creating or entering a
+  feature worktree;
+- the repo entrypoint points agents to the guard instead of asking them to rely
+  on memory;
+- the guard uses one local required-protocol list.
 
 ## Failure Semantics
 
