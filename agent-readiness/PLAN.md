@@ -340,3 +340,60 @@ whether the plan avoids a second source of truth. Adding these to the Review
 Questions list keeps future reviewers covering the same ground.
 
 Driver response: added both questions to the plan's Review Questions section.
+
+## Implementation Review
+
+Reviewer pass on commit `bfa54fd` (type: impl). Verdict: approve — PR-ready.
+No blocking issues.
+
+Mechanical checks (re-run):
+
+- `git diff --name-status origin/main..HEAD` shows exactly the five planned
+  changes (README.md modified; BACKLOG.md, PLAN.md, agents-bootstrap-template.md,
+  worktree-guard.md added). Nothing extra.
+- `git diff --check origin/main..HEAD` is clean.
+- `agent-readiness/` contains no `SKILL.md`, matching the intentional non-goal.
+- Leakage scan over `agent-readiness/` and `README.md` (user-home paths, IPs,
+  token/key patterns) returns no hits.
+
+Traceability:
+
+- Plan steps 1-4 are Done with file evidence; step 5 (downstream companion PRs)
+  is intentionally deferred until the generic guidance is accepted.
+- All prior review threads RT-1 through RT-6 are verified as actually implemented
+  in the shipped files, not merely marked resolved.
+
+### IR-1 Division-of-labor placement (minor)
+
+Status: open — reviewer
+
+The "guard proves files available; receipt proves coordinates; neither covers
+for the other" framing currently lives only in this plan. Consumers read
+`worktree-guard.md` and `agents-bootstrap-template.md`, not `PLAN.md`. Consider
+echoing that one sentence into both shipped reference docs.
+
+### IR-2 Baseline list repeated within the guard doc (nit)
+
+Status: open — reviewer
+
+`worktree-guard.md` states the baseline protocol list three times (prose block,
+`test -f` block, and the `required_protocols` script array). The doc tells
+consumers not to duplicate the list; a one-line note that the script array is the
+canonical example would preempt drift within the file itself.
+
+### IR-3 Smoke-test provenance not captured (optional)
+
+Status: open — reviewer
+
+The Skynet V2 guard smoke (initialized pass case plus missing-submodule fail-loud
+case, with Skynet V2 main left clean) was human-reported, not recorded in any
+artifact. Optionally record "validated against Skynet V2 (pass + fail), <date>"
+in the Validation section for durable provenance.
+
+### IR-4 Status housekeeping (nit)
+
+Status: open — reviewer
+
+After this implementation review, move the plan Status from
+"implementation complete pending implementation review" to a closed/approved
+state.
