@@ -49,6 +49,9 @@ instruction and say why.
   as a request to run the final closeout/recheck pass, not as permission to
   merge. Merge permission must name the PR/branch and the merge action in the
   current turn.
+- These phrases are deliberately different: `ready to merge` is human input
+  shorthand for closeout/recheck, while `ready for human merge` is the agent's
+  verified handoff state after closeout/recheck.
 - Do not commit secrets, credentials, provider balances, private account
   details, host keys, or raw private production data.
 - Do not call a branch/phase closed when planned items are missing, partial, or
@@ -260,8 +263,10 @@ Do not create a separate lessons-learned document unless explicitly requested. P
   merge was executed.
 - Say `ready for human merge` only after final rechecks are complete, pushed CI
   is in the expected state when applicable, and tracked source-of-truth docs do
-  not require a known pre-merge status fix. If a recheck creates another commit,
-  wait for the new remote/CI state before repeating the handoff.
+  not require a known pre-merge status fix. If a recheck finds such a fix, make
+  it before handoff or report the PR is not yet ready and name the required
+  pre-merge follow-up. If the fix creates another commit, wait for the new
+  remote/CI state before repeating the handoff.
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
 - If the repo requires PR/CI/review for branch or worktree closeout, record PR
