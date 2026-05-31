@@ -25,6 +25,11 @@ This repo defines the contract. Consumer repos own:
 - the canonical required protocol list for that repo;
 - the point in their worktree creation flow where the guard runs.
 
+Division of labor: the worktree guard proves required protocol files are
+available; the repo bootstrap receipt proves the agent has established repo
+coordinates, ownership, and production/access posture. Neither should silently
+cover for the other.
+
 ## Declaration
 
 A consumer repo declares that it vendors shared protocols by either:
@@ -100,7 +105,9 @@ done
 
 The consumer repo should treat `required_protocols` as the executable source of
 truth for that repo. Other docs should point to the guard instead of repeating
-the list.
+the list. In the script sketch above, the `required_protocols` array is the
+canonical example source; the prose and `test -f` lines illustrate the same
+baseline, not a separate list to maintain.
 
 ## Validation
 

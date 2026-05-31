@@ -11,6 +11,11 @@ This is not a shared `SKILL.md`. The repo's own `AGENTS.md` remains the startup
 source of truth because each repo has different entrypoints, ownership,
 production posture, and current-state anchors.
 
+Division of labor: the worktree guard proves required protocol files are
+available; the bootstrap receipt proves the agent has established repo
+coordinates, ownership, and production/access posture. Neither should silently
+cover for the other.
+
 ## Template Block
 
 Project repos may adapt this block into their own `AGENTS.md`:
