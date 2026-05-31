@@ -45,6 +45,10 @@ instruction and say why.
   `ready for human merge`. `Current-turn` means the user's most recent message,
   not earlier messages in the same conversation. This rule narrows but does not
   replace the destructive-git-operations rule above.
+- Treat a human statement such as `ready to merge`, `looks ready`, or `ready`
+  as a request to run the final closeout/recheck pass, not as permission to
+  merge. Merge permission must name the PR/branch and the merge action in the
+  current turn.
 - Do not commit secrets, credentials, provider balances, private account
   details, host keys, or raw private production data.
 - Do not call a branch/phase closed when planned items are missing, partial, or
@@ -190,9 +194,13 @@ term remains valid.
 For branch or PR closeout, also make post-merge lifecycle explicit:
 
 - identify any source-of-truth wording that will become false after the PR
-  merges, such as "PR pending", "ready for merge", or "human merge pending";
+  merges, such as "PR pending", "ready for merge", "ready for human merge",
+  "ready to merge", or "human merge pending";
 - prefer wording that remains true after merge, or record a required
   post-merge docs follow-up before handoff;
+- keep merge-readiness phrases in chat, PR descriptions, or closeout reports
+  instead of long-lived tracked source-of-truth docs unless the wording will
+  remain true after merge;
 - after the human reports the PR merged, sync the default branch, update
   submodules if the repo uses protocol submodules, rerun the stale-status scan
   against the merged default branch, and either close the worktree or open a
@@ -250,6 +258,10 @@ Do not create a separate lessons-learned document unless explicitly requested. P
   authorize the agent to merge. Without explicit current-turn human approval,
   final handoff must say whether the PR is ready for human merge and confirm no
   merge was executed.
+- Say `ready for human merge` only after final rechecks are complete, pushed CI
+  is in the expected state when applicable, and tracked source-of-truth docs do
+  not require a known pre-merge status fix. If a recheck creates another commit,
+  wait for the new remote/CI state before repeating the handoff.
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
 - If the repo requires PR/CI/review for branch or worktree closeout, record PR
