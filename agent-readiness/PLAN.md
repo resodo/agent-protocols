@@ -217,3 +217,78 @@ Implementation validation:
 2. Is it acceptable that this branch does not create an `agent-readiness/SKILL.md`?
 3. Is the deferred cold-start testing item recorded clearly enough without
    expanding this branch's scope?
+
+## Review Threads
+
+Reviewer pass on commit `3f04b1d` (type: other-plan). No blocking issues.
+Overall judgment: ready to proceed to implementation; threads below are
+non-blocking comments, most important first.
+
+### RT-1 Production-access posture is under-served (priority)
+
+Status: open — reviewer
+
+The human concern explicitly includes "wrong production-access assumptions,"
+but nothing in the plan surfaces prod posture to the agent. The guard's only
+prod-related rule ("avoid changing production state") constrains the guard's own
+behavior, not what the agent is told. The Component 2 receipt reports
+repo/branch, entrypoints, protocol availability, and ownership — but not whether
+the current repo/worktree is production-touching.
+
+Suggested change: add a prod-posture line to the receipt shape, sourced from
+repo-declared metadata (e.g. `.skynet/catalog.yml`), so the concern most likely
+to cause damage is explicit at startup.
+
+### RT-2 Required-protocol-files list is a latent second list
+
+Status: open — reviewer
+
+The minimum-required-files list hard-codes `planning`, `structured-review`, and
+`closeout`. Two concerns:
+
+- each consumer's guard will also hard-code this list, so adding/renaming a
+  protocol means editing the contract and every downstream guard — a drift
+  surface with no stated owner/update story (Mechanism Lifecycle);
+- the repo already ships a `retrospective/` protocol that this list omits — is
+  that intentional, or a gap?
+
+Suggested change: state where the canonical required-list lives and how it is
+maintained, so a consumer is not silently checking a stale set.
+
+### RT-3 State the guard-vs-receipt division of labor explicitly
+
+Status: open — reviewer
+
+The guard checks protocol presence; the receipt checks repo-coordinate
+correctness (ownership, posture). Reasonable split, but it is implicit — and it
+is exactly where prod-posture and repo-ownership can fall between the two and be
+checked by neither. Also, "initialize/update ... when the project declares it"
+has no declared mechanism for how a repo signals that it vendors
+`external/agent-protocols`. One sentence each resolves both.
+
+### RT-4 No concrete smoke test for the guard contract
+
+Status: open — reviewer
+
+Validation is all file-level inspection plus subjective checks. With cold-start
+testing deferred, the contract's only proof is a read-through. A cheap, in-scope
+check: dry-run the "Expected downstream shape" snippet against a real consumer
+(Skynet V2) — confirm it passes when initialized and fails loudly when the
+submodule is removed. This validates the contract without building the deferred
+harness.
+
+### RT-5 BACKLOG AR-001 has no promotion criterion
+
+Status: open — reviewer
+
+AR-001 records what is deferred and why, but not what signal promotes it; without
+one it parks indefinitely. Suggested line: "promote once at least one consumer
+repo has adopted the guard + template and a cold-start regression is observed."
+
+### RT-6 Plan's own Review Questions omit two the human asked (nit)
+
+Status: open — reviewer
+
+The human's review focus also asked about guard-boundary concreteness and
+whether the plan avoids a second source of truth. Adding these to the Review
+Questions list keeps future reviewers covering the same ground.
