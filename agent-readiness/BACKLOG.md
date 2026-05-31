@@ -12,3 +12,8 @@ eval case set, an operator-run harness, or a CI/nightly integration.
 
 Do not turn normal session startup into a heavy eval run. Normal startup should
 remain a lightweight `AGENTS.md` bootstrap owned by the project repo.
+
+Promotion criterion: promote this item when at least one consumer repo has
+adopted the worktree guard and bootstrap template, and a real cold-start
+regression or repeated human-observed startup failure shows that lightweight
+bootstrap guidance is not enough.

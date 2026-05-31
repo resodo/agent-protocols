@@ -78,6 +78,11 @@ The guard must:
 - avoid falling back to user-home absolute paths;
 - avoid changing production state.
 
+Declaration mechanism: a project declares vendored shared protocols by tracking
+`external/agent-protocols` in `.gitmodules` or by explicitly naming that path in
+its repo entrypoint. The guard should use that project-local declaration instead
+of assuming every repo vendors the same submodule.
+
 Minimum required files for Skynet-style repos:
 
 ```text
@@ -85,6 +90,13 @@ external/agent-protocols/planning/SKILL.md
 external/agent-protocols/structured-review/SKILL.md
 external/agent-protocols/closeout/SKILL.md
 ```
+
+The executable source of truth for a consumer repo's required protocol set
+should be the project-local guard script or guard config. That guard should list
+required protocols once, and other repo docs should point to the guard rather
+than duplicate the list. The shared contract above is the baseline for
+Skynet-style repos; consumers may add protocols such as `retrospective` when
+their own lifecycle requires them.
 
 Expected downstream shape:
 
@@ -124,11 +136,14 @@ to:
 2. Read the repo `AGENTS.md`.
 3. Follow only the repo's minimal startup routing.
 4. Confirm shared protocols are available when the repo declares them.
-5. Read repo identity metadata, such as `.skynet/catalog.yml`, when present.
-6. Read the repo's current-status anchor, such as `docs/CURRENT.md`, when the
+5. Read repo identity and production-posture metadata, such as
+   `.skynet/catalog.yml`, when present.
+6. If production posture is not declared, say it is unknown and do not infer
+   private access details.
+7. Read the repo's current-status anchor, such as `docs/CURRENT.md`, when the
    repo entrypoint requires it.
-7. Emit a short project receipt.
-8. Stop and wait for the concrete task.
+8. Emit a short project receipt.
+9. Stop and wait for the concrete task.
 
 The agent must not:
 
@@ -147,7 +162,13 @@ answer:
 - which entrypoint files were read;
 - whether shared protocols are available;
 - where repo identity and companion ownership are declared;
+- production/access posture from repo-declared metadata, or `unknown`;
 - what the next task boundary is.
+
+Division of labor: the worktree guard proves required protocol files are
+available. The bootstrap receipt proves the agent has established repo
+coordinates, ownership, and production/access posture. Neither should silently
+cover for the other.
 
 ## Deferred Backlog Item
 
@@ -204,6 +225,9 @@ Implementation validation:
   `README.md`;
 - worktree guard guidance explains why the executable guard must live in the
   project repo, not only in the submodule;
+- guard smoke validation is performed against at least one real consumer repo in
+  a temporary or non-destructive setup: one initialized pass case and one
+  missing-submodule fail-loud case;
 - bootstrap template stays concise and does not require loading all project
   history;
 - deferred cold-start testing item is recorded but not implemented;
@@ -217,6 +241,10 @@ Implementation validation:
 2. Is it acceptable that this branch does not create an `agent-readiness/SKILL.md`?
 3. Is the deferred cold-start testing item recorded clearly enough without
    expanding this branch's scope?
+4. Is the guard boundary concrete enough to prevent agents from skipping missing
+   shared protocols?
+5. Does the plan avoid creating a second source of truth for repo state,
+   production posture, or required protocol checks?
 
 ## Review Threads
 
@@ -226,7 +254,7 @@ non-blocking comments, most important first.
 
 ### RT-1 Production-access posture is under-served (priority)
 
-Status: open — reviewer
+Status: resolved — driver
 
 The human concern explicitly includes "wrong production-access assumptions,"
 but nothing in the plan surfaces prod posture to the agent. The guard's only
@@ -239,9 +267,13 @@ Suggested change: add a prod-posture line to the receipt shape, sourced from
 repo-declared metadata (e.g. `.skynet/catalog.yml`), so the concern most likely
 to cause damage is explicit at startup.
 
+Driver response: added production-posture metadata to the template behavior and
+receipt shape, with an explicit `unknown` posture fallback that forbids private
+access inference.
+
 ### RT-2 Required-protocol-files list is a latent second list
 
-Status: open — reviewer
+Status: resolved — driver
 
 The minimum-required-files list hard-codes `planning`, `structured-review`, and
 `closeout`. Two concerns:
@@ -255,9 +287,15 @@ The minimum-required-files list hard-codes `planning`, `structured-review`, and
 Suggested change: state where the canonical required-list lives and how it is
 maintained, so a consumer is not silently checking a stale set.
 
+Driver response: clarified that the executable source of truth for a consumer
+repo is the project-local guard script or config, and repo docs should point to
+that guard rather than duplicate the list. The shared contract remains baseline
+guidance for Skynet-style repos. `retrospective` is additive when a consumer's
+lifecycle requires it, not a baseline worktree gate.
+
 ### RT-3 State the guard-vs-receipt division of labor explicitly
 
-Status: open — reviewer
+Status: resolved — driver
 
 The guard checks protocol presence; the receipt checks repo-coordinate
 correctness (ownership, posture). Reasonable split, but it is implicit — and it
@@ -266,9 +304,12 @@ checked by neither. Also, "initialize/update ... when the project declares it"
 has no declared mechanism for how a repo signals that it vendors
 `external/agent-protocols`. One sentence each resolves both.
 
+Driver response: added declaration mechanism and explicit guard-vs-receipt
+division of labor.
+
 ### RT-4 No concrete smoke test for the guard contract
 
-Status: open — reviewer
+Status: resolved — driver
 
 Validation is all file-level inspection plus subjective checks. With cold-start
 testing deferred, the contract's only proof is a read-through. A cheap, in-scope
@@ -277,18 +318,25 @@ check: dry-run the "Expected downstream shape" snippet against a real consumer
 submodule is removed. This validates the contract without building the deferred
 harness.
 
+Driver response: added non-destructive guard smoke validation to implementation
+validation.
+
 ### RT-5 BACKLOG AR-001 has no promotion criterion
 
-Status: open — reviewer
+Status: resolved — driver
 
 AR-001 records what is deferred and why, but not what signal promotes it; without
 one it parks indefinitely. Suggested line: "promote once at least one consumer
 repo has adopted the guard + template and a cold-start regression is observed."
 
+Driver response: added promotion criterion to `agent-readiness/BACKLOG.md`.
+
 ### RT-6 Plan's own Review Questions omit two the human asked (nit)
 
-Status: open — reviewer
+Status: resolved — driver
 
 The human's review focus also asked about guard-boundary concreteness and
 whether the plan avoids a second source of truth. Adding these to the Review
 Questions list keeps future reviewers covering the same ground.
+
+Driver response: added both questions to the plan's Review Questions section.
