@@ -9,6 +9,10 @@ Reusable local protocols for human-agent and multi-agent software work.
 - `planning/` - discussion-to-plan workflow before implementation starts.
 - `retrospective/` - evidence-based post-incident or post-closeout learning workflow.
 
+## Guidance
+
+- `agent-readiness/` - worktree guard contract and `AGENTS.md` bootstrap template for keeping project coordinates and shared protocol availability explicit.
+
 ## Local Overlays
 
 Protocols are reusable. Project-specific policy belongs in the repo being worked
