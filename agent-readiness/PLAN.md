@@ -1,7 +1,7 @@
 # Agent Readiness System Plan
 
 Date: 2026-05-31
-Status: reviewed; implementation complete pending implementation review
+Status: implementation reviewed; ready for PR
 
 ## Human Concern
 
@@ -227,12 +227,20 @@ Implementation validation:
   project repo, not only in the submodule;
 - guard smoke validation is performed against at least one real consumer repo in
   a temporary or non-destructive setup: one initialized pass case and one
-  missing-submodule fail-loud case;
+  protocol-unavailable or missing-required-file fail-loud case;
 - bootstrap template stays concise and does not require loading all project
   history;
 - deferred cold-start testing item is recorded but not implemented;
 - no user-home absolute paths, private hostnames, private IPs, tokens, or env
   values appear in tracked protocol files.
+
+Validation provenance:
+
+- 2026-05-31: validated the guard contract against Skynet V2 as a real consumer.
+  The initialized pass case verified `external/agent-protocols` and the baseline
+  required `SKILL.md` files. The fail-loud case used a temporary worktree with a
+  required protocol file removed and exited non-zero. The Skynet V2 main
+  worktree remained clean.
 
 ## Review Questions
 
@@ -365,35 +373,47 @@ Traceability:
 
 ### IR-1 Division-of-labor placement (minor)
 
-Status: open — reviewer
+Status: resolved — driver
 
 The "guard proves files available; receipt proves coordinates; neither covers
 for the other" framing currently lives only in this plan. Consumers read
 `worktree-guard.md` and `agents-bootstrap-template.md`, not `PLAN.md`. Consider
 echoing that one sentence into both shipped reference docs.
 
+Driver response: echoed the division-of-labor sentence into both shipped
+reference docs.
+
 ### IR-2 Baseline list repeated within the guard doc (nit)
 
-Status: open — reviewer
+Status: resolved — driver
 
 `worktree-guard.md` states the baseline protocol list three times (prose block,
 `test -f` block, and the `required_protocols` script array). The doc tells
 consumers not to duplicate the list; a one-line note that the script array is the
 canonical example would preempt drift within the file itself.
 
+Driver response: added a note that the `required_protocols` array is the
+canonical example source within the script sketch.
+
 ### IR-3 Smoke-test provenance not captured (optional)
 
-Status: open — reviewer
+Status: resolved — driver
 
 The Skynet V2 guard smoke (initialized pass case plus missing-submodule fail-loud
 case, with Skynet V2 main left clean) was human-reported, not recorded in any
 artifact. Optionally record "validated against Skynet V2 (pass + fail), <date>"
 in the Validation section for durable provenance.
 
+Driver response: recorded validation provenance in the plan. The fail-loud case
+is described precisely as a temporary worktree with a required protocol file
+removed.
+
 ### IR-4 Status housekeeping (nit)
 
-Status: open — reviewer
+Status: resolved — driver
 
 After this implementation review, move the plan Status from
 "implementation complete pending implementation review" to a closed/approved
 state.
+
+Driver response: updated plan status to `implementation reviewed; ready for PR`.
