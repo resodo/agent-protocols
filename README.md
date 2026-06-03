@@ -8,6 +8,7 @@ Reusable local protocols for human-agent and multi-agent software work.
 - `closeout/` - final hygiene checklist before handing off completed work.
 - `planning/` - discussion-to-plan workflow before implementation starts.
 - `retrospective/` - evidence-based post-incident or post-closeout learning workflow.
+- `backlog-maintenance/` - YAML backlog registry maintenance for deferred work, including add/update/close/read operations and CI schema expectations.
 
 ## Guidance
 
