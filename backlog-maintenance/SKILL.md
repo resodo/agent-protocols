@@ -96,6 +96,34 @@ items:
       - docs/example_plan.md
 ```
 
+Open item with staged active work:
+
+```yaml
+items:
+  - id: EXAMPLE-BL-0003
+    status: open
+    priority: P1
+    kind: debt
+    title: Retire legacy deployment assumptions from docs
+    why: >
+      Some active docs still describe an older deployment model and can mislead
+      agents during production work.
+    next: >
+      Continue from the active documentation cleanup PR, then rescan entrypoint
+      docs for stale deployment assumptions.
+    done_when: >
+      Active entrypoint docs describe the current deployment model, and any
+      historical notes are clearly marked historical.
+    active_refs:
+      - docs/2026-06-03_docs_cleanup_plan.md
+      - https://github.com/example-org/example-repo/pull/12
+    progress:
+      - 2026-06-03: README and agent entrypoint updated; runbook scan remains.
+    cross_repo:
+      - repo: example-org/platform-repo
+        note: Update only if shared deployment runtime wording changes.
+```
+
 Closed item:
 
 ```yaml
@@ -197,12 +225,13 @@ Open item fields:
 
 Optional open item fields:
 
-- `refs`
-- `cross_repo`
-- `trigger`
-- `blocked_by`
-- `active_refs`
-- `progress`
+- `refs`: list of related plans, PRs, docs, issues, or reports.
+- `cross_repo`: list of `{repo, note}` objects for dependent repo pointers.
+- `trigger`: plain-language condition for when to revisit the item.
+- `blocked_by`: list of blockers, each as a string or `{ref, note}` object.
+- `active_refs`: list of active plans, PRs, or branches currently carrying part
+  of the work.
+- `progress`: dated plain-language milestone strings for staged work.
 
 Closed item fields:
 
@@ -268,6 +297,7 @@ Repos adopting this protocol should run a backlog check in CI. Hard checks:
 - closed items have required closed fields.
 - `kind` is in `kinds`.
 - `resolution` is one of `completed`, `cancelled`, or `transferred`.
+- `closed_at` is an ISO date (`YYYY-MM-DD`).
 - no active `docs/backlog.md` exists.
 
 Semantic quality remains review-owned, not CI-owned: priority choice, kind
