@@ -57,3 +57,19 @@ For implementation closeout:
 Please read ~/.agent-protocols/closeout/SKILL.md
 Scope: current implementation task
 ```
+
+For Claude Code structured-review reviewer passes, use the bundled runner:
+
+```bash
+python structured-review/scripts/claude_structured_review.py \
+  --worktree /path/to/target-repo \
+  --mode write-commit-to-plan \
+  --type impl-plan \
+  --thread-file docs/some_plan.md \
+  --artifact docs/some_plan.md \
+  --focus "Review acceptance, validation, scope, and role boundaries." \
+  --topic "some plan"
+```
+
+The runner loads the shared skill from this repo and target-repo overlays from
+the explicit `--worktree`.

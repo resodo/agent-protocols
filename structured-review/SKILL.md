@@ -63,6 +63,27 @@ Use the structured-review skill. You are the driver. The artifact is docs/some_a
 If `Artifact` or `Plan` is missing, ask for it. Do not guess.
 If `Role` is missing, ask for it. Do not guess.
 
+## Claude Runner
+
+For Claude Code reviewer passes, this protocol includes a bundled runner:
+
+```bash
+python structured-review/scripts/claude_structured_review.py \
+  --worktree /path/to/target-repo \
+  --mode write-commit-to-plan \
+  --type impl-plan \
+  --thread-file docs/example_plan.md \
+  --artifact docs/example_plan.md \
+  --focus "Review acceptance, validation, scope, and role boundaries." \
+  --topic "example plan"
+```
+
+Use `print-review` when writing review threads into the reviewed artifact would
+pollute that artifact. The runner loads this shared skill from its own
+directory, then loads target-repo overlays from the explicit `--worktree`.
+Claude runs in true auto mode; the runner verifies final role boundaries and
+records non-tracked run evidence under the target repo's git dir.
+
 ## Local Overlay
 
 When working inside a repo, load local overlays after this generic protocol:
