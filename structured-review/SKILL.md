@@ -84,6 +84,10 @@ directory, then loads target-repo overlays from the explicit `--worktree`.
 Claude runs in true auto mode; the runner verifies final role boundaries and
 records non-tracked run evidence under the target repo's git dir.
 
+Use `--protocol-dir` only when testing or intentionally running against a
+different checkout of this protocol; by default the runner uses the
+`structured-review` directory that contains the script.
+
 ## Local Overlay
 
 When working inside a repo, load local overlays after this generic protocol:

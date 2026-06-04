@@ -183,6 +183,17 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertNotIn(str(repo), prompt)
         self.assertIn("docs/plan.md", prompt)
 
+    def test_prompt_rejects_local_path_from_overlay(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+        overlay = repo / ".agent-protocols/structured-review.md"
+        overlay.parent.mkdir()
+        overlay.write_text(f"Leaked path: {config.worktree}\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(csr.RunnerError, "local absolute path"):
+            csr.build_prompt(config)
+
     def test_claude_argv_uses_auto_mode_without_outer_tool_restrictions(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
@@ -197,6 +208,21 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertNotIn("--allowedTools", argv)
         self.assertNotIn("--allowed-tools", argv)
         self.assertNotIn("--disallowed-tools", argv)
+
+    def test_default_claude_bin_uses_path_lookup(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+
+        self.assertEqual(csr.claude_argv(config)[0], "claude")
+
+    def test_claude_version_timeout_is_recorded_as_unknown(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+
+        with mock.patch.object(csr.subprocess, "run", side_effect=subprocess.TimeoutExpired("claude", 10)):
+            self.assertEqual(csr.claude_version(config), "unknown: claude --version timed out")
 
     def test_stream_line_command_content_is_not_classified(self) -> None:
         result = csr.process_stream_line('{"event":{"input":{"command":"git push origin HEAD"}}}')
@@ -491,6 +517,22 @@ print('stderr path', file=sys.stderr, flush=True)
         metadata = json.loads((self.root / "timeout-logs/metadata.json").read_text(encoding="utf-8"))
         self.assertTrue(metadata["dirty_after"])
         self.assertEqual(metadata["outcome"], "timeout")
+
+    def test_run_records_metadata_for_unexpected_errors(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol, mode=csr.MODE_PRINT, topic=None, extra=["--run-log-dir", str(self.root / "error-logs")])
+
+        def fake_run_claude(config: csr.RunConfig, prompt: str, logs: csr.RunLogs, redactor: csr.Redactor) -> csr.ClaudeRunResult:
+            raise ValueError("boom")
+
+        with mock.patch.object(csr, "run_claude", fake_run_claude):
+            with self.assertRaisesRegex(csr.RunnerError, "errored"):
+                csr.run(config)
+
+        metadata = json.loads((self.root / "error-logs/metadata.json").read_text(encoding="utf-8"))
+        self.assertEqual(metadata["outcome"], "error")
+        self.assertEqual(metadata["error"], "boom")
 
     def result(
         self,

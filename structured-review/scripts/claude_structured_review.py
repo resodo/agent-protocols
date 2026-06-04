@@ -282,8 +282,11 @@ def build_prompt(config: RunConfig) -> str:
     for label, content in load_protocol_sections(config):
         lines.extend(["", f"--- BEGIN {label} ---", content.rstrip(), f"--- END {label} ---"])
     prompt = "\n".join(lines) + "\n"
-    if str(config.worktree) in prompt:
-        raise RunnerError("prompt contains the real worktree path")
+    extra_paths = [config.worktree, *(artifact.abs for artifact in config.artifacts)]
+    if config.thread_file is not None:
+        extra_paths.append(config.thread_file.abs)
+    if contains_local_path(prompt, extra_paths=extra_paths):
+        raise RunnerError("prompt contains a local absolute path")
     return prompt
 
 
@@ -551,7 +554,17 @@ def prepare_run_logs(config: RunConfig) -> RunLogs:
 
 
 def claude_version(config: RunConfig) -> str:
-    result = subprocess.run([config.claude_bin, "--version"], cwd=config.worktree, capture_output=True, text=True, check=False)
+    try:
+        result = subprocess.run(
+            [config.claude_bin, "--version"],
+            cwd=config.worktree,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        return "unknown: claude --version timed out"
     value = (result.stdout or result.stderr).strip()
     return value or f"unknown returncode={result.returncode}"
 
@@ -786,6 +799,10 @@ def run(config: RunConfig) -> None:
                 after = git_snapshot(config.worktree)
             write_metadata(config, logs, result, outcome="failed", error=str(exc), before=before, after=after)
         raise
+    except Exception as exc:
+        after = git_snapshot(config.worktree)
+        write_metadata(config, logs, result, outcome="error", error=str(exc), before=before, after=after)
+        raise RunnerError(f"claude review errored: {exc}") from exc
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -87,6 +87,8 @@ Required:
 
 Configurable:
 
+- `--protocol-dir`, optional; default is the `structured-review` directory
+  containing the runner script;
 - `--model`, default `opus`;
 - `--effort`, default `xhigh`;
 - `--timeout-sec`, default `1800`;
