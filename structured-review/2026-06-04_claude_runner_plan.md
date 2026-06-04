@@ -728,7 +728,7 @@ acceptable for v1 because they protect the review workflow boundary; they are
 not a replacement for semantic reviewer judgment or repository-level secret
 scanning.
 
-### Reviewer Resolution — 2026-06-04
+### Reviewer Resolution — 2026-06-04 (plan)
 
 All five blocking threads (1-5) and all ten non-blocking threads (6-15) are
 resolved. No new blockers introduced. The plan is ready for implementation.
@@ -776,3 +776,164 @@ first pass. Implementer may want to clarify the precedence in either a code
 comment or a one-line plan tweak during implementation. Not a blocker.
 
 No blockers remain.
+
+### Reviewer Pass — 2026-06-04 (implementation)
+
+Implementation review of the shared Claude structured-review runner against the
+accepted plan and the prior reviewer resolution. Artifacts inspected:
+`structured-review/scripts/claude_structured_review.py`,
+`structured-review/tests/test_claude_structured_review.py`,
+`structured-review/SKILL.md`, `README.md`, `.github/workflows/ci.yml`, and
+`.gitignore`. Ran `python -m unittest discover -s structured-review/tests`
+locally — 32 tests pass.
+
+Per the Plan-to-Implementation Traceability rule, here is the item-by-item map
+of the plan's Acceptance Criteria to evidence in the implementation:
+
+| Acceptance item | Status | Evidence |
+| --- | --- | --- |
+| Runner lives in `agent-protocols`, not in a project repo | Done | `structured-review/scripts/claude_structured_review.py` is the only runner; no `skynet-data` overlay or submodule pointer is touched. |
+| Generic skill loaded from shared `structured-review` directory | Done | `default_protocol_dir` resolves `<script>/../SKILL.md`; `resolve_protocol_dir` enforces presence; covered by `test_missing_generic_skill_fails`. |
+| Target repo overlays loaded from explicit `--worktree` | Done | `load_protocol_sections` reads `<worktree>/.agent-protocols/context.md` and `.agent-protocols/structured-review.md`; covered by `test_target_overlays_load_from_target_worktree`. |
+| `write-commit-to-plan` and `print-review` explicit and verified | Done | argparse `choices=(MODE_WRITE, MODE_PRINT)`; `verify_write_mode` / `verify_print_mode`; print mode forbids `--thread-file`. |
+| True Claude auto mode, no outer allow/deny, no command classification | Done | `claude_argv` emits `--permission-mode auto` and nothing else; `process_stream_line` ignores tool-call content; `test_claude_argv_uses_auto_mode_without_outer_tool_restrictions` and `test_stream_line_command_content_is_not_classified` confirm. |
+| Progress observable and redacted | Done | stderr "start", "event", and "heartbeat" lines via `run_claude`; `Redactor` covers paths and home prefixes; `test_redactor_covers_paths_and_home_prefixes`. |
+| Prompt, stdout stream, stderr, metadata, and rendered review evidence under non-tracked run logs | Done | `prepare_run_logs` + `write_metadata` write five files under `git_dir(...)/structured-review-runs/<ts>-<pid>-<rand>-<mode>-<type>/`; `test_run_claude_writes_logs_metadata_and_review_text` exercises the round-trip. |
+| Unit tests cover safety and role-boundary | Done | Plan's test list is fully implemented (see mapping below). |
+| CI validates tests and compileability | Done | `.github/workflows/ci.yml` pins Python 3.12 and runs `unittest discover` plus `compileall -q`. |
+| No downstream project overlay or submodule pointer update | Done | Diff touches only `structured-review/`, `README.md`, `.gitignore`, and `.github/workflows/ci.yml`. |
+
+Test-list traceability: every item from the plan's `## Tests` section maps to
+a named test. Sampled mapping:
+
+| Planned test | Implementing test |
+| --- | --- |
+| missing generic skill fails | `test_missing_generic_skill_fails` |
+| target overlay loading | `test_target_overlays_load_from_target_worktree` |
+| path escape rejection | `test_path_escape_is_rejected` |
+| explicit mode validation | `test_unknown_mode_is_rejected` |
+| `--focus` / `--focus-file` mutually exclusive, exactly one required | `test_focus_and_focus_file_are_exactly_one` |
+| multiple artifacts in prompt | `test_multiple_artifacts_are_preserved_in_prompt` |
+| prompt excludes real worktree root | `test_prompt_excludes_real_worktree_root` |
+| auto mode, no outer allow/deny | `test_claude_argv_uses_auto_mode_without_outer_tool_restrictions` |
+| stream `command` field not classified | `test_stream_line_command_content_is_not_classified` |
+| malformed stream line counted | `test_malformed_stream_line_is_recorded` |
+| assistant text delta and final message extraction | `test_stream_line_extracts_assistant_text_delta`, `test_stream_line_extracts_final_message_text` |
+| redactor covers worktree, artifacts, thread file, home, and prefix classes | `test_redactor_covers_paths_and_home_prefixes` |
+| `print-review` rejects HEAD changes | `test_print_mode_rejects_head_change` |
+| `print-review` rejects empty review text | `test_print_mode_rejects_empty_review_text` |
+| `print-review` renders to stdout after verification | `test_print_mode_run_outputs_rendered_review_text` |
+| dirty pre-run worktree rejection | `test_require_clean_rejects_dirty_worktree` |
+| missing anchor rejects before Claude | `test_missing_review_threads_anchor_rejects_before_claude` |
+| write mode accepts exactly one review-thread commit | `test_write_mode_accepts_exact_single_review_commit` |
+| rejects no commit / multiple commits / amended parent / wrong file / wrong prefix / deleted content / outside section / not review-like / local paths / secrets | nine `test_write_mode_rejects_*` cases |
+| timeout reports whether dirty residue remains | `test_run_reports_timeout_with_dirty_state` |
+| run loop writes prompt, stdout, stderr, metadata, review | `test_run_claude_writes_logs_metadata_and_review_text` |
+| `claude --version` recorded in metadata | `test_run_claude_writes_logs_metadata_and_review_text` asserts `metadata["claude_version"]`. |
+
+The implementation also adds a bonus
+`test_write_mode_accepts_nested_thread_heading_inside_review_section` that
+matches the plan's "Nested headings such as `### Reviewer Pass` or
+`#### Thread A` are allowed inside the section and must not become new
+anchors." A nice fit.
+
+Targeted spot-checks against the deterministic heuristics in the plan:
+
+- **Path detection** — `LOCAL_HOME_RE` enumerates macOS `/Users/<name>/`,
+  Linux `/home/<name>/` with the documented `(?!ubuntu(?:/|$))` carveout, and
+  Windows drive-letter `*:\Users\<name>\` exactly as specified. Replacements
+  use `<LOCAL_HOME>/` and Redactor instance markers (`<PATH>`, `<HOME>`).
+- **Secret detection** — `SECRET_RE` enumerates the five plan patterns
+  (private key block, AWS `AKIA`/`ASIA`, GitHub `ghp_`, Slack `xox[baprs]-`,
+  assignment-style `(secret|password|token|api[_-]?key)\s*[:=]\s*…`).
+- **Review Thread anchor** — `REVIEW_THREADS_RE` is
+  `^##\s+Review Threads\s*$` with `IGNORECASE | MULTILINE`; section bounds
+  end at the next top-level `^##\s+` heading or EOF via
+  `TOP_LEVEL_HEADING_RE`. Pre-flight `require_review_threads_anchor` rejects
+  before invoking Claude as specified.
+- **Review-like content** — `REVIEW_HEADING_RE` matches an `^###\s+.*` heading
+  whose text contains `review|reviewer|thread` case-insensitively, plus at
+  least one non-blank body line that is not a heading. Matches the plan
+  verbatim.
+- **Stream JSON** — only the two named shapes
+  (`content_block_delta` + `text_delta`, and `assistant`/`message.content[].text`)
+  feed `review_text`; everything else is ignored. Malformed lines are counted
+  in metadata, not promoted to failure, per the plan.
+- **Run logs** — `default_run_log_dir` builds
+  `git_dir(worktree)/structured-review-runs/<microsecond-ts>-<pid>-<2-byte-hex>-<mode>-<type>/`
+  and `git_dir` correctly resolves both string and file-style `.git` (linked
+  worktrees) via `git rev-parse --git-dir`.
+
+No blocking issues.
+
+A small set of non-blocking observations, none of which gate the implementation:
+
+1. Prompt-side path pre-check is narrower than `Deterministic Heuristics`
+   says. `build_prompt` rejects only `str(config.worktree) in prompt`; it does
+   not apply `LOCAL_HOME_RE` or the artifact / thread-file absolute paths to
+   the assembled prompt. In practice the prompt only contains relative
+   artifact paths plus the focus text (already pre-checked for the worktree
+   root) plus the protocol/overlay sections, so a leak is unlikely. But the
+   plan's wording ("rejects matched paths in prompts, print-review rendered
+   text, and write-mode commit diffs") implies the full LOCAL_HOME_RE + extra
+   paths set should be applied at the prompt boundary too, the way
+   `contains_local_path(...)` is applied to the rendered review text and the
+   commit diff. A one-line `contains_local_path(prompt, extra_paths=…)` would
+   make the three boundary checks symmetrical. Non-blocking; deferring to a
+   later tightening pass is reasonable.
+
+2. `claude_version()` calls `subprocess.run([...])` without a `timeout` kwarg.
+   If `claude --version` hangs at startup, the runner blocks before the main
+   timer in `run_claude` starts. Edge case in practice; worth a small
+   `timeout=10` defensive cap in a follow-up.
+
+3. `--protocol-dir` is implemented (handy for tests) but is not mentioned in
+   the plan, the SKILL.md "Claude Runner" subsection, or the README example.
+   It is helpful for self-testing this repo against an overridden skill
+   location, but a future implementer reading the plan will not know it
+   exists. A one-line note in `## Inputs` (or argparse help text) would close
+   the documentation gap. Non-blocking.
+
+4. The plan's test list says `--claude-bin` "override is honored and the
+   default uses `PATH`". The override path is directly asserted
+   (`test_claude_argv_uses_auto_mode_without_outer_tool_restrictions`); the
+   `claude`-on-`PATH` default is only indirectly proven by argparse's
+   `default="claude"`. A one-line assertion that the default `argv[0]` is the
+   bare string `"claude"` would make the second half of that bullet
+   explicitly tested. Non-blocking.
+
+5. On `run_claude` raising an exception that is not a `RunnerError` (for
+   example, a `subprocess` failure mid-stream), `result` stays `None`, the
+   `except RunnerError` branch is skipped, and `metadata.json` is never
+   written. The run-log directory still contains the prompt and any partial
+   `stdout.stream.jsonl` / `stderr.log`, so evidence is not lost entirely,
+   but the `outcome="failed"` record is missing. Could be tightened to write
+   an `outcome="error"` record on any exception. Non-blocking.
+
+6. `proc.stdin.write(prompt)` writes the full prompt before any stdout/stderr
+   pump begins. For megabyte-scale prompts this could deadlock if Claude
+   buffers stdout before draining stdin. Typical prompt size for this runner
+   (skill + overlays + focus + artifact list) is well under that risk, so
+   this is theoretical. Not a blocker.
+
+### Overall Judgment
+
+The implementation matches the accepted plan and the prior reviewer
+resolution end-to-end. Placement (`structured-review/scripts/`), overlay
+loading from the target worktree, true Claude Code auto mode with no outer
+allow/deny or stream command classifier, run-log evidence under the resolved
+`git --git-dir` (including linked-worktree handling), print-review stdout
+rendering after verification, write-commit-to-plan final-state verification
+(single commit, parent identity, file restriction, prefix, anchor
+containment, review-like content, path hygiene, secret hygiene), and the
+deterministic path / secret / Review Threads anchor / review-like heuristics
+are all faithful to the plan's wording. The plan-defined stream-json event
+shapes are the only sources of rendered review text. The `__pycache__/` and
+`*.py[cod]` rules in `.gitignore` are appropriate hygiene for a
+stdlib-only Python script that CI will compile.
+
+The non-blocking items above are small tightenings that can be folded into a
+later maintenance pass or deferred to repo-level scanning, and none of them
+weakens the role-boundary contract the runner is built to enforce.
+
+No blockers remain. Implementation is ready for closeout.
