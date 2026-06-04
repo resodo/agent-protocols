@@ -727,3 +727,52 @@ Remaining risk: the deterministic checks are intentionally shallow. That is
 acceptable for v1 because they protect the review workflow boundary; they are
 not a replacement for semantic reviewer judgment or repository-level secret
 scanning.
+
+### Reviewer Resolution — 2026-06-04
+
+All five blocking threads (1-5) and all ten non-blocking threads (6-15) are
+resolved. No new blockers introduced. The plan is ready for implementation.
+
+- Thread 1 resolved. Minimum Claude Code `2.1.143` is named; `--effort xhigh`,
+  `--include-partial-messages`, `--include-hook-events` are cited from
+  `claude -p --help`; `claude --version` is captured into `metadata.json` and
+  covered by a unit test.
+- Thread 2 resolved. The Secret-Like Material Detection subsection enumerates
+  the exact deterministic patterns (private key block, AWS access key IDs,
+  GitHub classic tokens, Slack tokens, assignment-like secrets) and explicitly
+  defers broader scanning.
+- Thread 3 resolved. Local Path Detection enumerates the exact strings the
+  redactor and pre-checks match: target worktree, artifact paths, thread-file
+  path, process home, and platform-specific user-home prefix classes for
+  macOS, Linux (with the `ubuntu` automation-user carveout), and Windows.
+- Thread 4 resolved. Review-Like Added Content is now defined as at least one
+  added `### ` heading inside the Review Threads section whose text contains
+  `review`, `reviewer`, or `thread` case-insensitively, plus at least one
+  non-blank body line after that heading. Broader than the suggested
+  `^### Thread \d+:` shape, but deterministic and observable.
+- Thread 5 resolved. The Review Thread Anchor section pins the case-insensitive
+  top-level regex `^##\s+Review Threads\s*$`, defines section bounds as the
+  next top-level `## ` heading or EOF, allows nested headings inside the
+  section, and requires the runner to fail before invoking Claude when the
+  anchor is missing.
+- Threads 6-15 resolved. Stream-json event shapes are pinned to two named
+  forms; the run-log directory uses `git rev-parse --git-dir` and fails when
+  `--worktree` is not a git repo; run-log subdirectory names include
+  microsecond precision, PID, and a short random suffix; `--focus` and
+  `--focus-file` are mutually exclusive with exactly one required; any stream
+  event resets the heartbeat clock; the Maintenance section names the owner
+  (the `structured-review` protocol) and update triggers; redaction has
+  dedicated unit tests; `--claude-bin` is supported with `PATH` lookup as the
+  default; exit codes are defined as `0`/`1`/`2` with timeout reporting dirty
+  residue in both stderr and `metadata.json`; and the no-`.gitignore`-needed
+  rationale is stated.
+
+Minor observation, non-blocking: Local Path Detection says the runner both
+"replaces matched paths with neutral markers in … rendered print-review
+output" and "rejects matched paths in … print-review rendered text." The
+intended order (reject pre-check, then redact defensively before display) is
+clear in practice, but the dual statement could read as contradictory on a
+first pass. Implementer may want to clarify the precedence in either a code
+comment or a one-line plan tweak during implementation. Not a blocker.
+
+No blockers remain.
