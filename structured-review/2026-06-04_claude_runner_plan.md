@@ -778,3 +778,140 @@ first pass. Implementer may want to clarify the precedence in either a code
 comment or a one-line plan tweak during implementation. Not a blocker.
 
 No blockers remain.
+
+### Reviewer Pass — Implementation Review 2026-06-04
+
+Scope: impl review of the merged runner against the accepted plan and the
+earlier reviewer resolution. Type: impl. Artifacts inspected:
+`structured-review/scripts/claude_structured_review.py`,
+`structured-review/tests/test_claude_structured_review.py`,
+`structured-review/SKILL.md`, `README.md`, `.github/workflows/ci.yml`,
+`.gitignore`, this plan file.
+
+Local validation run: `python -m unittest discover -s structured-review/tests`
+passes with 36 tests; `python -m compileall -q structured-review` succeeds.
+
+#### Plan-to-Implementation Traceability
+
+Each Acceptance Criterion mapped to concrete evidence in the merged code.
+
+- Runner lives in `agent-protocols`, not a project repo — Done. Script at
+  `structured-review/scripts/claude_structured_review.py`; no skynet-data
+  path or assumption in the runner.
+- Generic skill loaded from the shared `structured-review` directory — Done.
+  `default_protocol_dir()` resolves `Path(__file__).resolve().parents[1]` and
+  `resolve_protocol_dir` asserts `SKILL.md` exists under it.
+- Target repo overlays loaded from the explicit target worktree — Done.
+  `load_protocol_sections` reads `config.worktree/.agent-protocols/context.md`
+  and `.agent-protocols/structured-review.md` only when present. Covered by
+  `test_target_overlays_load_from_target_worktree`.
+- `write-commit-to-plan` and `print-review` explicit and verified — Done.
+  `--mode` is required with restricted choices; `verify_write_mode` and
+  `verify_print_mode` enforce the final-state contracts. Mode-specific input
+  requirements (`--thread-file`, `--topic`) are checked in `config_from_args`,
+  and `print-review` rejects `--thread-file`.
+- True Claude auto mode, no outer allow/deny or stream command classifier —
+  Done. `claude_argv` passes only `--permission-mode auto` plus model,
+  effort, stream-json, partial-messages, hook-events, and verbose. The stream
+  parser (`process_stream_line`, `stream_text_delta`, `stream_message_text`)
+  only counts malformed JSON and extracts assistant text; tool-call payloads
+  are never inspected by command text. Covered by
+  `test_claude_argv_uses_auto_mode_without_outer_tool_restrictions` and
+  `test_stream_line_command_content_is_not_classified`.
+- Progress observable and redacted — Done. `run_claude` writes a start line
+  to stderr, emits `claude review event` per stdout stream line, and emits
+  heartbeat lines when no stdout/stderr event has arrived for
+  `--heartbeat-sec` seconds (any stream event resets `last_event`). All
+  stderr passthrough is funneled through `Redactor.redact` before printing.
+- Prompt/stdout/stderr/metadata/review evidence recorded under non-tracked
+  run logs — Done. `default_run_log_dir` resolves the path under
+  `git rev-parse --git-dir` (handles linked worktrees and `.git`-as-file).
+  Subdirectory name uses microsecond timestamp, PID, 2-byte hex suffix, mode,
+  and type, mitigating concurrent-run collisions. `prepare_run_logs` uses
+  `exist_ok=False`. All five files are written by `run_claude` and
+  `write_metadata`. Verified by
+  `test_run_claude_writes_logs_metadata_and_review_text`.
+- Unit tests cover safety and role-boundary behavior — Done. 36 tests cover
+  the test list in §Tests including overlay loading, path escape, mode
+  validation, focus mutual exclusion, prompt local-path rejection, auto-mode
+  argv, default `claude` binary, `claude --version` timeout, stream
+  shape/malformed/text extraction, redactor pattern coverage, print-mode
+  HEAD change and empty review rejection, print-mode stdout rendering,
+  dirty pre-run rejection, missing anchor rejection, single-commit
+  acceptance, nested-heading acceptance under the anchor, and the full
+  write-mode rejection matrix (no commit, multiple commits, amended parent,
+  wrong file, wrong subject prefix, deleted content, additions outside
+  `## Review Threads`, non-review-like additions, local paths, secret-like
+  material), plus timeout dirty-state reporting and unexpected-error
+  metadata capture.
+- CI validates tests and compileability — Done. `.github/workflows/ci.yml`
+  runs `unittest discover` and `compileall -q` on Python 3.12 for PRs and
+  pushes to `main`, with `permissions: {}`.
+- No downstream project overlay or submodule pointer update — Done. The
+  branch touches only the shared protocol; no skynet-data overlay or
+  submodule pointer is added.
+
+#### Recent Tightening Fixes (commit 09551d5)
+
+Each addresses a narrow but real hole left in the v1 implementation.
+
+- Prompt local-path check broadened — `build_prompt` no longer checks only
+  `str(config.worktree) in prompt`; it now calls `contains_local_path` with
+  worktree, every artifact absolute path, and thread-file absolute path as
+  extra paths and additionally runs the user-home regex. This closes a
+  scenario where an overlay file leaks a user-home path without naming the
+  worktree root. `test_prompt_rejects_local_path_from_overlay` covers it.
+- `claude --version` capture is bounded — `claude_version` now passes
+  `timeout=10` and catches `subprocess.TimeoutExpired`, returning a
+  diagnostic sentinel instead of hanging the runner before the review
+  starts. Covered by `test_claude_version_timeout_is_recorded_as_unknown`.
+- `--protocol-dir` framed as the test or alternate-checkout knob — README
+  and `SKILL.md` now both state that `--protocol-dir` is optional and that
+  the default is the script's own `structured-review` directory. This aligns
+  with the plan's Configurable section and reduces the chance of a
+  downstream caller wiring up an unnecessary path.
+- Default `--claude-bin` is asserted —
+  `test_default_claude_bin_uses_path_lookup` pins
+  `claude_argv(config)[0] == "claude"` so a future refactor that changes
+  the default cannot land silently.
+- Error metadata is written for unexpected exceptions — `run()` now wraps
+  the Claude execution in a final `except Exception` block that records
+  `outcome="error"` with the message before re-raising as `RunnerError`.
+  This means a Python-side crash inside the run path still produces durable
+  evidence under the run-log dir, not just a stack trace.
+  `test_run_records_metadata_for_unexpected_errors` confirms the metadata
+  shape.
+
+#### Non-Blocking Observations
+
+- `--dry-run` is present in the CLI but not documented in the plan, README,
+  or SKILL.md. It only prints the redacted prompt and returns, so it is a
+  diagnostic aid rather than a contract surface; mentioning it in one line
+  of README or in the argparse help would close the loop. Not a blocker.
+- `run_claude` prints `claude review event` once per stdout stream line. In
+  print mode with many small text deltas this can be chatty on stderr. The
+  current behavior is consistent with the plan's wording. If quieter
+  progress becomes desirable later, a coalescing tweak would be safe.
+- `--include-hook-events` is requested but the parser intentionally ignores
+  every event type other than assistant text deltas and final messages. The
+  plan explicitly accepts this. If a future debug session wants to surface
+  hook events, the parser can grow narrowly without changing the contract.
+
+#### Overall Judgment
+
+The implementation follows the resolved plan item by item, with no silent
+relaxation of accepted criteria. Deterministic heuristics (`LOCAL_HOME_RE`,
+`SECRET_RE`, `REVIEW_THREADS_RE`, review-like-content shape) match the
+specifications in §Deterministic Heuristics, including the `ubuntu`
+automation-user carveout and the case-insensitive anchor with the next-`## `
+bound. Run-log evidence resolution uses `git rev-parse --git-dir`,
+satisfying the worktree-aware acceptance from Thread 7. The recent
+tightening fixes do not change any accepted contract; they harden code
+paths that were already in scope.
+
+#### Resolution
+
+Resolved by reviewer. Implementation matches the accepted plan; the
+tightening fixes in commit 09551d5 close the narrow gaps without altering
+contract surface. No blockers remain. Three non-blocking observations are
+captured above for future iteration if useful.
