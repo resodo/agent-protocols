@@ -73,3 +73,7 @@ python structured-review/scripts/claude_structured_review.py \
 
 The runner loads the shared skill from this repo and target-repo overlays from
 the explicit `--worktree`.
+
+`--protocol-dir` is optional and mainly for tests or intentional alternate
+checkouts; normal usage relies on the script's own `structured-review`
+directory.
