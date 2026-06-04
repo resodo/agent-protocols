@@ -91,17 +91,28 @@ Configurable:
 - `--effort`, default `xhigh`;
 - `--timeout-sec`, default `1800`;
 - `--heartbeat-sec`, default `30`;
+- `--claude-bin`, optional; default `claude` resolved from `PATH`;
 - `--run-log-dir`, optional; default is a timestamped directory under the
-  target repo's `.git/structured-review-runs/`.
+  target repo's resolved git dir.
 
 The runner must reject paths that escape the target worktree.
 
+`--focus` and `--focus-file` are mutually exclusive and exactly one is
+required.
+
 ## Claude Invocation
+
+The runner targets Claude Code `2.1.143` or newer. This plan was checked
+against `claude -p --help` from Claude Code `2.1.143`, which documents:
+
+- `--effort <level>` with `xhigh` as an accepted value;
+- `--include-partial-messages`, valid with `--print` and stream-json output;
+- `--include-hook-events`, valid with stream-json output.
 
 The runner invokes:
 
 ```text
-claude -p --permission-mode auto --model <model> --effort <effort> \
+<claude-bin> -p --permission-mode auto --model <model> --effort <effort> \
   --output-format stream-json --include-partial-messages \
   --include-hook-events --verbose
 ```
@@ -135,6 +146,87 @@ The prompt must not contain local user-home absolute paths. If focus text or
 generated prompt contains the real worktree root, the runner fails before
 calling Claude.
 
+## Deterministic Heuristics
+
+The runner intentionally uses small deterministic checks instead of broad
+security scanning or stream command policing.
+
+### Local Path Detection
+
+The redactor and repo-visible-output checks match:
+
+- the exact resolved target worktree root;
+- every resolved artifact path;
+- the resolved thread-file path when provided;
+- the current process home directory;
+- macOS-style user-home prefixes expressed as slash, `Users`, slash,
+  non-separator username, slash;
+- Linux-style user-home prefixes expressed as slash, `home`, slash,
+  non-separator username, slash, except the literal automation user `ubuntu`;
+- Windows-style drive user-home prefixes expressed as drive letter, colon,
+  separator, `Users`, separator, non-separator username, separator.
+
+The runner replaces matched paths with neutral markers in progress and rendered
+print-review output. It rejects matched paths in prompts, print-review rendered
+text, and write-mode commit diffs.
+
+### Secret-Like Material Detection
+
+Write-mode commit diffs are rejected if they match any of these deterministic
+patterns:
+
+- case-insensitive private key block marker: `BEGIN [A-Z ]*PRIVATE KEY`;
+- AWS access key IDs: `AKIA[0-9A-Z]{16}` or `ASIA[0-9A-Z]{16}`;
+- GitHub classic tokens: `ghp_[A-Za-z0-9]{36}`;
+- Slack tokens: `xox[baprs]-[A-Za-z0-9-]+`;
+- generic assignment-like secrets:
+  `(secret|password|token|api[_-]?key)\s*[:=]\s*['"]?[A-Za-z0-9_./+=-]{12,}`.
+
+This is not a full secret scanner. Broader entropy checks and provider-specific
+token inventories are deferred to repository-level secret scanning.
+
+### Review Thread Anchor
+
+For `write-commit-to-plan`, the thread file must already contain a top-level
+review section before Claude is invoked:
+
+```text
+^##\s+Review Threads\s*$
+```
+
+The match is case-insensitive and must be a top-level `##` heading. The section
+ends at the next top-level `## ` heading or at end of file. If the anchor is
+missing, the runner fails before invoking Claude.
+
+Post-commit verification requires every added line to land inside that section.
+Nested headings such as `### Reviewer Pass` or `#### Thread A` are allowed
+inside the section and must not become new anchors.
+
+### Review-Like Added Content
+
+Write-mode added content must include:
+
+- at least one added `### ` heading inside the Review Threads section whose
+  text contains `review`, `reviewer`, or `thread` case-insensitively; and
+- at least one non-blank added body line after that heading.
+
+This check is intentionally shallow. It proves Claude wrote a review-thread
+shaped block, not that the review is semantically strong.
+
+### Stream JSON Shapes
+
+The stream parser only does two things: count malformed JSON lines and extract
+assistant review text. It ignores tool-call content.
+
+Accepted assistant text shapes:
+
+- incremental text deltas:
+  `{"type":"content_block_delta","delta":{"type":"text_delta","text":"..."}}`;
+- final assistant message text blocks:
+  `{"type":"assistant","message":{"content":[{"type":"text","text":"..."}]}}`.
+
+Other valid JSON events are ignored for rendering and do not fail the run.
+
 ## Progress And Evidence
 
 Progress:
@@ -149,18 +241,30 @@ Progress:
 Durable evidence:
 
 - create a run-log directory outside tracked files by default:
-  `.git/structured-review-runs/<timestamp>-<mode>-<type>/`;
+  `<resolved-git-dir>/structured-review-runs/<timestamp>-<pid>-<suffix>-<mode>-<type>/`;
 - write `prompt.md`;
 - write `stdout.stream.jsonl`;
 - write `stderr.log`;
 - write `metadata.json` with argv, mode, type, relative artifacts, model,
   effort, timeout, heartbeat, start/end timestamps, exit code, timeout flag,
-  malformed stream count, and run outcome;
+  malformed stream count, `claude --version` output, and run outcome;
 - write `review.md` containing rendered assistant text when available.
 
-The run-log path may be printed redacted or relative to `.git`. The run-log
-files are diagnostic evidence, not reviewed artifacts, and must not be
+Resolve `<resolved-git-dir>` with `git rev-parse --git-dir` in the target
+worktree; if the result is relative, resolve it against the target worktree.
+This handles linked git worktrees where `.git` is a file. If `--worktree` is
+not a git repo, fail before invoking Claude.
+
+Use microsecond timestamp precision plus process ID and a short random suffix
+to avoid concurrent-run collisions. No `.gitignore` entry is required because
+the default log directory is outside the working tree.
+
+The run-log path may be printed redacted or relative to the git dir. The
+run-log files are diagnostic evidence, not reviewed artifacts, and must not be
 committed.
+
+Any stream event resets the heartbeat clock. Heartbeats are emitted only after
+no stdout or stderr event has arrived for `--heartbeat-sec` seconds.
 
 ## Print Review Contract
 
@@ -181,6 +285,8 @@ Progress remains on stderr so callers can capture stdout as review content.
 In `write-commit-to-plan` mode:
 
 - target worktree must be clean before running;
+- `--thread-file` must contain the top-level `## Review Threads` anchor before
+  invoking Claude;
 - final Claude exit code must be zero;
 - target worktree must be clean after running;
 - exactly one new commit must exist;
@@ -190,8 +296,8 @@ In `write-commit-to-plan` mode:
 - commit subject must start with `structured-review: `;
 - commit diff must add non-empty review-thread content;
 - commit diff must not delete existing thread-file content;
-- added lines must be under the target file's top-level `## Review Threads`
-  section;
+- added lines must be inside the target file's top-level `## Review Threads`
+  section and satisfy the review-like content heuristic;
 - commit diff must not contain local user-home absolute paths;
 - commit diff must not contain obvious secret material.
 
@@ -212,6 +318,35 @@ The runner is not the driver. After Claude review:
 - the driver should summarize which decisions came from Claude, which were
   accepted, and which risks remain.
 
+## Exit Codes
+
+- `0`: success.
+- `1`: runner usage error, contract verification failure, git failure, missing
+  anchor, path-hygiene failure, or Claude non-timeout failure.
+- `2`: timeout. The runner records timeout and dirty-residue fields in
+  `metadata.json` and prints a redacted stderr error that says whether the
+  target worktree has uncommitted changes after timeout.
+
+Malformed stream-json lines do not change the exit code by themselves; they
+are counted in metadata.
+
+## Maintenance
+
+The runner's durable mechanisms are owned by the `structured-review` protocol:
+
+- Claude CLI flags and minimum version;
+- accepted stream-json event shapes;
+- local path detection patterns;
+- secret-like material patterns;
+- Review Threads anchor and review-like content heuristics.
+
+Any future change to those mechanisms must update this plan's successor,
+`structured-review/SKILL.md` or runner help text as applicable, and the unit
+tests in the same PR. Triggers for updates include a Claude Code version bump
+that changes stream output, a real false positive or false negative in
+redaction/secret/thread placement checks, or a new project repo overlay that
+needs a different reviewed-file structure.
+
 ## Tests
 
 Use Python standard library only. Add unit tests under
@@ -221,16 +356,23 @@ Use Python standard library only. Add unit tests under
 - target overlay loading from the target worktree;
 - path escape rejection;
 - explicit mode validation;
+- `--focus` and `--focus-file` are mutually exclusive and exactly one is
+  required;
 - multiple artifacts in prompt;
 - prompt excludes real local worktree root;
 - `claude_argv` uses auto mode and no outer allow/deny tool arguments;
+- `--claude-bin` override is honored and the default uses `PATH`;
+- `claude --version` is recorded in metadata;
 - stream line with a `command` field is not classified;
 - malformed stream line is counted;
 - assistant text delta and final message text extraction;
+- redaction covers target worktree, artifact path, thread-file path, process
+  home, and the specified user-home prefix patterns;
 - `print-review` rejects `HEAD` changes;
 - `print-review` rejects empty review text;
 - `print-review` renders review text to stdout after verification;
 - dirty pre-run worktree rejection;
+- missing `## Review Threads` anchor rejects before Claude invocation;
 - write mode accepts exactly one review-thread commit;
 - write mode rejects no commit, multiple commits, amended parent, wrong file,
   wrong prefix, deleted thread content, additions outside `## Review Threads`,
@@ -250,6 +392,8 @@ python -m compileall -q structured-review
 
 Keep the runner standard-library-only so the shared protocol repo does not
 need package management to validate the script.
+
+Use Python 3.12 in CI. The runner should avoid non-standard dependencies.
 
 ## Validation
 
@@ -537,3 +681,49 @@ Five blocking threads (1, 2, 3, 4, 5). With those addressed, the plan is
 ready for implementation. Non-blocking items can be folded into the same
 revision pass or tracked as implementer follow-ups.
 
+### Driver Response — 2026-06-04
+
+Accepted Thread 1. I checked the local Claude Code CLI before revising the
+plan: `claude --version` reports `2.1.143`, and `claude -p --help` documents
+`--effort` with `xhigh`, plus `--include-partial-messages` and
+`--include-hook-events`. The plan now targets Claude Code `2.1.143` or newer
+and requires recording `claude --version` in metadata.
+
+Accepted Thread 2. The plan now defines deterministic secret-like patterns:
+private key block markers, AWS key IDs, GitHub classic tokens, Slack tokens,
+and assignment-like secret/password/token/API-key values. Broader entropy
+scanning is explicitly out of scope for v1 and left to repo-level scanners.
+
+Accepted Thread 3. The plan now specifies exactly what the redactor and
+repo-visible-output checks match: target worktree, artifact paths, thread-file
+path, process home, and concrete macOS/Linux/Windows user-home prefix classes.
+
+Accepted Thread 4. The plan now defines "review-like" added content as at
+least one added `### ` heading inside the Review Threads section containing
+`review`, `reviewer`, or `thread`, plus at least one non-blank body line after
+that heading.
+
+Accepted Thread 5. The plan now defines the Review Threads anchor as a
+case-insensitive top-level `^##\s+Review Threads\s*$`, requires it to exist
+before Claude is invoked, defines the section end as the next top-level
+heading or EOF, and explicitly allows nested headings inside the section.
+
+Accepted and folded in the non-blocking items:
+
+- stream-json accepted shapes are specified;
+- run logs use `git rev-parse --git-dir` instead of assuming `.git` is a
+  directory;
+- run-log names use microsecond timestamp plus process ID and random suffix;
+- `--focus` and `--focus-file` are exactly-one mutually exclusive inputs;
+- any stream event resets the heartbeat clock;
+- mechanism lifecycle ownership and update triggers are documented;
+- redaction-function tests are added to the test plan;
+- `--claude-bin` is added, with `PATH` lookup as default;
+- timeout exit code and dirty-residue metadata/stderr behavior are defined;
+- no `.gitignore` entry is required because default run logs live outside the
+  working tree.
+
+Remaining risk: the deterministic checks are intentionally shallow. That is
+acceptable for v1 because they protect the review workflow boundary; they are
+not a replacement for semantic reviewer judgment or repository-level secret
+scanning.
