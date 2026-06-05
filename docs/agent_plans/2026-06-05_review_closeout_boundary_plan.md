@@ -1354,3 +1354,107 @@ stray `docs/backlog.md`, invalid ID prefix, and positive valid-backlog case.
 No human escalation was needed. These edits tighten checker diagnostics and
 coverage without changing backlog schema, live docs, CI scope, or the
 review/closeout boundary.
+
+### Reviewer Pass — agent protocols backlog yaml dogfood implementation re-review (impl)
+
+Restated concern: confirm the driver response resolved Thread 18 (malformed-YAML
+diagnostics) and Thread 19 (checker negative-case coverage), that no new blocker
+was introduced, and that the backlog YAML dogfood work is ready for closeout.
+
+Re-review scope (multi-round): inspected the driver-response commit
+`d800290 docs: respond to backlog yaml implementation review`, which `git show
+--name-only` confirms touched exactly three files — this thread file,
+`scripts/check_backlog.py`, and `tests/test_check_backlog.py`. No executable
+protocol material (the runner, `structured-review/tests`), no CI, no live docs,
+and no `docs/backlog.yml` entries were edited, so the prior `ready for closeout`
+findings on the migration, live-doc pointers, and CI wiring stand unchanged.
+Reran the full validation suite.
+
+#### Blocking
+
+None. No prior thread was blocking, and the driver response introduces no new
+blocker. The change is scoped to checker diagnostics and test coverage; the real
+backlog still validates (`python scripts/check_backlog.py` -> exit 0) and the
+review/closeout boundary is untouched (`ready for human merge` remains confined
+to `closeout/SKILL.md` among live files).
+
+#### Thread resolutions
+
+**Thread 18 — Resolved. `scripts/check_backlog.py` body updated.** `_load_yaml`
+now wraps `yaml.safe_load` in a `try/except yaml.YAMLError` that re-raises a
+`ValidationError("YAML parse failed: ...")`. Because `main()` already catches
+`ValidationError` and prints `check_backlog.py: <message>`, a malformed backlog
+now surfaces the same tidy one-line diagnostic as every other failure instead of
+a raw stack trace. Verified directly: feeding `version: 1\nitems: [\n` to the
+checker prints `check_backlog.py: YAML parse failed: ...`, exits 1, and emits
+zero `Traceback` lines, so CI still fails on malformed YAML but the operator sees
+a clean message. `test_malformed_yaml_fails_cleanly` pins this path
+(`assertRaisesRegex` on `YAML parse failed`). The hard check "YAML parses" stays
+enforced; only the diagnostic shape improved.
+
+**Thread 19 — Resolved. `tests/test_check_backlog.py` extended.** The suite grew
+from 6 to 11 tests, adding the branches the prior pass flagged as dark:
+`test_missing_top_level_field_fails` (top-level presence), `test_unknown_kind_fails`
+(`kind` not in `kinds`), `test_closed_item_invalid_resolution_fails`
+(`resolution` not in the allowed set), and `test_closed_item_quoted_date_fails`
+(closed-item `closed_at` typing), plus the Thread 18 malformed-YAML test. The
+closed-item helper `closed_item()` exercises the previously-dark closed-item
+path even though the real backlog has no closed items yet. The driver also
+tightened the date check from `not isinstance(..., date)` to
+`type(...) is not date`, which I verified resolves the exact ambiguity the prior
+Thread 19 raised: a bare `2026-06-05` (YAML `date`) passes, while a `datetime`
+and a quoted string are both rejected — pinning the YYYY-MM-DD contract without
+any false-rejection risk for well-formed entries. Reran `python -m unittest
+discover -s tests` -> OK, 11 tests.
+
+#### Non-blocking
+
+**Thread 20 — The `closed_at` datetime-rejection branch is not directly pinned
+by a test (informational; no action this PR).** `test_closed_item_quoted_date_fails`
+exercises the quoted-*string* case, which the prior `isinstance` check already
+caught; the specific behavior the `type(...) is not date` tightening adds —
+rejecting a YAML `datetime` while accepting a `date` — has no dedicated test. I
+confirmed the semantics hold by direct evaluation, and there is no false-rejection
+risk (a bare `2026-06-05` still passes). A few peripheral branches also remain
+dark (missing closed-required fields, the non-mapping / empty-file guards, empty
+`outcome`/non-list `refs`), all on the closed-item path the real backlog does not
+exercise. Consistent with the prior Thread 19 framing, these are fine to leave for
+the checker's skill-self-evolution maintenance, e.g. when the backlog acquires its
+first closed item or `backlog-maintenance` CI Expectations change. Minor.
+
+#### Overall judgment
+
+Ready for closeout. Both implementation-review threads are resolved: Thread 18 by
+a checker fix that makes malformed YAML fail cleanly (verified: clean one-line
+diagnostic, no traceback, still exit 1), and Thread 19 by five added negative
+cases plus a tightened, correct `closed_at` type check. The driver response was
+scoped to the checker and its tests — no live docs, CI, `docs/backlog.yml`, or
+executable protocol material changed — so the prior pass's `ready for closeout`
+traceability on the migration, the AP-BL fidelity, the live-doc pointers, and the
+CI wiring all stand. Per the review/closeout boundary, this is an `impl` pass
+concluding `ready for closeout`, not a merge-readiness handoff; final merge
+readiness belongs to closeout after its own rechecks.
+
+Validation rerun (reviewer-rerun provenance):
+- `python scripts/check_backlog.py` -> exit 0.
+- `python -m unittest discover -s tests` -> OK, 11 tests.
+- `python -m unittest discover -s structured-review/tests` -> OK, 41 tests.
+- `python -m compileall -q scripts structured-review` -> exit 0.
+- `git diff --check` -> clean; worktree clean.
+- Malformed-YAML probe -> `check_backlog.py: YAML parse failed: ...`, exit 1, 0
+  `Traceback` lines.
+
+#### Residual risks / validation gaps
+
+- Priority, kind, and `why`/`next`/`done_when` prose for each AP-BL item remain
+  reviewer/human-judged for semantic faithfulness; CI validates shape only. They
+  read faithfully against the recovered Markdown source, but final acceptance of
+  the wording is human judgment.
+- The closed-item and a few structural checker branches stay dark (Thread 20),
+  since no closed items exist; the `closed_at` datetime-vs-date distinction is
+  verified-by-inspection rather than test-pinned. Add closed-item negative tests
+  when the backlog gains its first closed item or the hard-check list changes.
+- The checker, its CI steps, and the hard-check list it mirrors remain a durable
+  mechanism whose stated owner is `backlog-maintenance` skill self-evolution /
+  the closeout doc-consistency check; that tie must actually be exercised when
+  `backlog-maintenance/SKILL.md` CI Expectations change, or the checker drifts.
