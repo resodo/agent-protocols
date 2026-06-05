@@ -110,6 +110,59 @@ After this shared protocol PR merges:
 2. Update `skynet-data` external submodule pointer and overlay wording if needed.
 3. Do not update `skynet-ops` unless a real incompatibility appears.
 
+## Documentation Organization Amendment
+
+Human follow-up: agent-protocols documentation is now hard to navigate. Skynet
+V2 has a cleaner pattern: root agent entrypoint, docs index, current source map,
+and dated agent plans kept outside executable protocol directories.
+
+Extend this PR before merge:
+
+1. Add repo entry and docs navigation:
+   - `AGENTS.md` as the agent entrypoint.
+   - `docs/README.md` for documentation structure, naming, and lifecycle.
+   - `docs/CURRENT.md` for the active protocol/source-of-truth map.
+   - `docs/agent_plans/README.md` for dated plan/review artifacts.
+
+2. Move non-executable artifacts out of protocol directories:
+   - move dated structured-review plan artifacts into `docs/agent_plans/`;
+   - move `structured-review/BACKLOG.md` to `docs/protocol_backlog.md`;
+   - update links and indexes.
+
+3. Keep protocol directories focused on executable and reusable protocol
+   material:
+   - `SKILL.md`;
+   - `scripts/`;
+   - `tests/`;
+   - `references/`;
+   - protocol templates or guard documents where applicable.
+
+4. Move `structured-review/ui-review.md` into
+   `structured-review/references/ui-review.md`, and update references to the
+   new path.
+
+5. Update `README.md` to stay a concise repo overview and point agents to
+   `AGENTS.md` plus `docs/`.
+
+Additional acceptance:
+
+- `find structured-review -maxdepth 1 -type f` shows only long-lived protocol
+  entry files, not dated plans or backlog artifacts.
+- `README.md`, `AGENTS.md`, `docs/README.md`, and `docs/CURRENT.md` agree on
+  where plans, backlog, and protocol material live.
+- No references to the moved active files remain stale.
+- The original review/closeout boundary behavior remains unchanged.
+
+Additional validation:
+
+```bash
+find structured-review -maxdepth 1 -type f | sort
+rg -n "structured-review/(2026-|BACKLOG.md|ui-review.md)|docs/agent_plans|docs/protocol_backlog|references/ui-review.md" README.md AGENTS.md docs structured-review
+python -m unittest discover -s structured-review/tests
+python -m compileall -q structured-review
+git diff --check
+```
+
 ## Review Threads
 
 ### Driver response — 2026-06-05 plan review
