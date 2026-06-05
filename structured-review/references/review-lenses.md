@@ -103,7 +103,7 @@ For UI implementation review specifically:
   explicitly limits the scope to a mock prototype.
 
 For high-touch product UI, dashboards, charts, data review tools, and operator
-consoles, also apply `structured-review/ui-review.md`.
+consoles, also apply `structured-review/references/ui-review.md`.
 
 When grouping multiple outputs into one surface, justify the grouping by reader
 scenario: who reads it, when they read it, and what question it helps answer.

@@ -2,6 +2,10 @@
 
 Reusable local protocols for human-agent and multi-agent software work.
 
+Agents should start with `AGENTS.md`. Documentation placement and lifecycle
+rules live in `docs/README.md`; the current protocol map lives in
+`docs/CURRENT.md`.
+
 ## Protocols
 
 - `structured-review/` - structured review for high-level plans, implementation plans, and completed implementation validation.
@@ -13,6 +17,16 @@ Reusable local protocols for human-agent and multi-agent software work.
 ## Guidance
 
 - `agent-readiness/` - worktree guard contract and `AGENTS.md` bootstrap template for keeping project coordinates and shared protocol availability explicit.
+
+## Docs
+
+- `docs/agent_plans/` - dated plans, review-thread artifacts, and closeout
+  evidence for protocol changes.
+- `docs/protocol_backlog.md` - this repo's protocol-development backlog.
+
+Protocol directories should hold executable or reusable protocol material:
+`SKILL.md`, `scripts/`, `tests/`, `references/`, and templates. Do not put
+dated plans or one-off review artifacts in protocol directories.
 
 ## Local Overlays
 

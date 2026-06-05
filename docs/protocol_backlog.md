@@ -1,11 +1,16 @@
-# structured-review backlog
+# Protocol Backlog
 
 ## Purpose
 
-Track follow-up work for the `structured-review` protocol without bloating `SKILL.md`.
+Track follow-up work for this repo's shared protocols without bloating
+`SKILL.md` files.
 
-`SKILL.md` should stay focused on the current stable v1 protocol.
-This backlog captures work that is real, agreed, and not yet fully designed.
+`SKILL.md` should stay focused on current stable protocol behavior. This
+backlog captures work that is real, agreed, and not yet fully designed.
+
+This is not an adopting-repo `docs/backlog.yml` registry. Do not migrate it to
+YAML unless a future accepted plan explicitly adopts that workflow for this
+repo.
 
 ## Open items
 
