@@ -998,3 +998,164 @@ Validation rerun (reviewer-rerun provenance):
   future change adding `ui-review.md` (or any new `references/*.md`) to
   `REQUIRED_PROTOCOL_REFERENCES` and silently enlarging every reviewer prompt; it is
   documentation, not a test.
+
+### Reviewer Pass — agent protocols backlog yaml dogfood plan (impl-plan)
+
+Restated concern: because this repo owns `backlog-maintenance`, its own active
+backlog should stop being a parallel Markdown file and move to `docs/backlog.yml`
+under that protocol's schema, so the repo dogfoods the workflow it asks
+downstream repos to adopt — without rewriting frozen review threads and with a
+CI check strong enough that the next agent does not have to guess.
+
+Scope of this pass: the `## Backlog YAML Dogfood Amendment` (plan lines 190-268)
+after the `docs: revise backlog yaml dogfood plan` revision. Earlier amendments
+above are already resolved and are not reopened here.
+
+What I verified directly:
+- The migration is faithful to `backlog-maintenance/SKILL.md`. The amendment
+  targets the one canonical `docs/backlog.yml` registry, forbids a parallel
+  active Markdown backlog (Source Of Truth rule), and sets all five required
+  top-level keys: `version: 1` (added in the revision), `repo`, `id_prefix:
+  AP-BL`, `kinds` (the protocol's standard six), and `items`. The five existing
+  open Markdown items (`docs/protocol_backlog.md` sections 1-5) map cleanly to
+  `AP-BL-0001..0005`, so the ID allocation is exact, not approximate.
+- The negative stale-reference sweep is scoped to live surfaces only —
+  `README.md`, `AGENTS.md`, `docs/README.md`, `docs/CURRENT.md`,
+  `docs/agent_plans/README.md`, and `structured-review` — and does **not** scan
+  the dated plans under `docs/agent_plans/`. I confirmed the full live footprint
+  of `docs/protocol_backlog.md` is exactly those surfaces (README.md:25;
+  AGENTS.md:44 and the 45-46 anti-migration sentence; docs/CURRENT.md:16;
+  docs/README.md:14, :32 naming-exceptions list, :60 maintenance list), all of
+  which the scoped grep covers, while this plan's own body (lines 129/153/194…
+  and the frozen review threads) is correctly out of sweep scope. So the
+  historical-mention concern is handled: frozen threads are not rewritten, and
+  the earlier anti-migration non-goal is retired by supersession (line 197-198),
+  not by editing frozen text.
+- PyYAML is the right call: Python's stdlib has no YAML parser, so a third-party
+  dependency is required; PyYAML is the standard choice. The revision correctly
+  added "install `PyYAML` in CI" — necessary because the current
+  `.github/workflows/ci.yml` is stdlib-only with no dependency-install step.
+- The checker's stray-file negative case (`docs/backlog.md`) matches the
+  protocol's hard check verbatim (`backlog-maintenance/SKILL.md:301`), not the
+  repo's own `docs/protocol_backlog.md` name — correct, since that is the
+  protocol's canonical guard; `docs/protocol_backlog.md` absence is separately
+  asserted by the scoped negative grep.
+- Root `scripts/` and `tests/` are greenfield (neither exists yet), so the new
+  checker and its test suite create no overwrite or collision risk.
+  `docs/agent_plans/README.md` has no backlog mention, so the scope's "only if
+  needed" hedge for that index is correct.
+
+#### Blocking
+
+None. The migration dogfoods `backlog-maintenance` faithfully, the AP-BL items
+and live-doc updates are well scoped, PyYAML + `scripts/check_backlog.py` + CI +
+negative tests are an appropriate validation mechanism, and the stale-reference
+sweep handles historical mentions without touching frozen review threads. The
+threads below are tightenings, not gates.
+
+#### Non-blocking
+
+**Thread 13 — Make CI run the negative-case tests, not just the checker.** This
+is the one worth folding in. Scope item 4 says "add it to CI," where "it" reads
+as the checker, and lists the negative-case tests as a separate deliverable. But
+the current CI runs only `python -m unittest discover -s structured-review/tests`
+— a new root `tests/` suite is **not** discovered by that step. If an
+implementer wires only `python scripts/check_backlog.py` into CI and drops the
+negative tests in root `tests/`, those tests never run in CI and silently rot:
+exactly the durable-mechanism failure the mechanism-lifecycle lens warns about
+("tests prove both clean and negative cases"). The Additional validation block
+runs both locally (`python scripts/check_backlog.py` and `python -m unittest
+discover -s tests`), but a local command is not a CI guard. Recommend: state
+explicitly that CI runs both the checker and the new `tests/` suite (a dedicated
+CI step, or extend discovery), and add an acceptance line such as "CI runs the
+backlog checker and its negative-case tests." Low effort; it is what makes the
+negative tests an actual guard rather than decoration.
+
+**Thread 14 — The positive presence grep is satisfied by this plan file itself;
+it does not prove the live indexes were updated.** The Additional validation
+`rg -n "docs/backlog.yml|AP-BL|check_backlog" README.md AGENTS.md docs .github
+scripts` scans the whole `docs` tree, and this active plan (under
+`docs/agent_plans/`) already contains `docs/backlog.yml`, `AP-BL`, and
+`check_backlog` dozens of times. So that grep passes purely from the plan body
+even if `README.md`/`AGENTS.md`/`docs/CURRENT.md` were never touched. The
+negative grep is correctly scoped and strong; only the positive grep is weak.
+The amendment already marks "Live docs point to `docs/backlog.yml`" as
+reviewer-judged, so this is acceptable, but recommend either narrowing the
+positive grep to the live index files (exclude `docs/agent_plans/`) or labeling
+it informational, so it is not mistaken for proof that the live surfaces were
+edited. Minor.
+
+**Thread 15 — `docs/README.md` has two non-pointer mentions; the replacement
+must add `backlog.yml`, not just delete `protocol_backlog.md`.**
+`docs/protocol_backlog.md` appears in `docs/README.md` three times: the Structure
+pointer (line 14), the naming Exceptions list (line 32), and the Maintenance list
+(line 60). The negative grep enforces removal of all three, which is good, but a
+delete-only edit would leave gaps: `docs/backlog.yml` is a non-date-prefixed
+long-lived file, so it must be **added** to the naming Exceptions list (otherwise
+it nominally violates the `YYYY-MM-DD_topic.md` rule), and the Maintenance "when
+backlog ownership changes" line should point at `docs/backlog.yml`. Scope item 3
+("remove or replace all live pointers") covers this in spirit; calling out these
+two structural lists prevents an implementer from removing the old name without
+restoring the new one. Minor.
+
+**Thread 16 — Record maintenance ownership for the checker and the hard-check
+list (mechanism-lifecycle).** The checker, its CI job, and the hard-check list it
+mirrors are a durable mechanism that goes stale silently. The amendment does the
+right thing by pointing the checker at "the hard checks listed in
+`backlog-maintenance/SKILL.md`" (single source of truth, no re-enumeration), but
+it does not say who keeps the checker in sync when that list evolves, or what
+signal shows drift. This matches the repo's own established pattern (plan-review
+Thread 4 and Thread 10 both recorded maintenance ownership for durable
+checklists). Recommend one line: `scripts/check_backlog.py` implements
+`backlog-maintenance`'s CI Expectations and is maintained via skill
+self-evolution / the closeout doc-consistency check when those hard checks
+change. Minor.
+
+**Thread 17 — Two amendments in one plan carry contradictory backlog non-goals,
+reconciled only by the supersession sentence.** The Documentation Organization
+Amendment's non-goal (line 153, "Do not migrate this repo to `docs/backlog.yml`")
+directly contradicts this amendment and is now dead text, retired only by the
+supersession sentence at lines 197-198. For an impl-plan read top-to-bottom this
+is adequate and the supersession is explicit, so it is not a blocker. But an
+implementer scanning non-goals in isolation could be briefly misled. Optional:
+add a short "(superseded by the Backlog YAML Dogfood Amendment)" marker at line
+153. This plan is the active driver, not a frozen historical record, so adding
+that marker is a normal body edit and does not conflict with the frozen-thread
+non-goal. Minor.
+
+#### Overall judgment
+
+Ready to implement, with no blocking issues. The amendment correctly dogfoods
+`backlog-maintenance`: it moves this repo to the single `docs/backlog.yml`
+registry the protocol mandates, fills all required top-level keys (including the
+revision's added `version: 1`), maps the five open items to stable
+`AP-BL-0001..0005`, and keeps `kind`/`priority`/prose explicitly
+reviewer-judged while CI validates shape only — the right division between
+machine-checkable schema and human-judged semantics. PyYAML plus
+`scripts/check_backlog.py` plus a CI step plus negative-case tests is an
+appropriate and proportionate validation mechanism. The historical-mention
+handling is sound: the negative sweep is scoped to live surfaces and excludes the
+frozen dated plans, and the earlier anti-migration non-goal is retired by
+supersession rather than by rewriting frozen text. Thread 13 (wire the negative
+tests into CI) is the one tightening worth folding into a revision pass, because
+it is what turns the negative tests into a real CI guard; Threads 14-17 are
+polish. Per the review/closeout boundary, this is an `impl-plan` pass: it
+concludes `ready for implementation`, not a merge-readiness handoff.
+
+#### Residual risks / validation gaps
+
+- If Thread 13 is left implicit, the negative-case tests may ship in a root
+  `tests/` suite that CI never discovers, so the checker's hard-check coverage is
+  not actually guarded in CI even though the tests exist.
+- The positive presence grep cannot prove the live indexes were updated (Thread
+  14); final acceptance that live docs point to `docs/backlog.yml` is
+  reviewer/human judgment, as the amendment already states.
+- The `kind`, `priority`, and `why`/`next`/`done_when` content for each AP-BL
+  item is synthesized from terse Markdown and is reviewer/human-judged for
+  semantic faithfulness; CI validates only shape. The implementer should also use
+  `yaml.safe_load` (not `yaml.load`) in the checker, and note that local
+  `python scripts/check_backlog.py` runs now require PyYAML installed locally.
+- The checker and its hard-check list are a durable mechanism with no stated
+  maintenance owner yet (Thread 16); they will drift from
+  `backlog-maintenance/SKILL.md` unless tied to skill self-evolution / the
+  closeout doc-consistency check.
