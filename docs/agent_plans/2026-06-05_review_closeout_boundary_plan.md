@@ -152,7 +152,7 @@ Amendment non-goals:
   artifact format.
 - Do not migrate this repo to `docs/backlog.yml`; `docs/protocol_backlog.md` is
   this repo's protocol-development backlog, not an adopting repo backlog
-  registry.
+  registry. Superseded by the Backlog YAML Dogfood Amendment below.
 - Do not rewrite historical review-thread bodies inside moved dated plans just
   to update old path mentions. Moved dated plans are frozen historical records;
   preserve them with `git mv`.
@@ -232,7 +232,9 @@ Extend this PR before merge:
    - validate the hard checks listed in `backlog-maintenance/SKILL.md`;
    - add negative-case unit tests for the checker, such as duplicate IDs, bad
      priority, missing open required field, and stray `docs/backlog.md`;
-   - add it to CI.
+   - add both the checker and its negative-case tests to CI.
+   - maintain the checker through skill self-evolution when
+     `backlog-maintenance/SKILL.md` CI Expectations change.
 
 Amendment non-goals:
 
@@ -248,7 +250,9 @@ Additional acceptance:
 - `docs/protocol_backlog.md` is absent.
 - The YAML entries are semantically faithful to the five existing open items.
 - Live docs point to `docs/backlog.yml`, not `docs/protocol_backlog.md`.
-- CI runs the backlog checker.
+- `docs/README.md` adds `docs/backlog.yml` to its naming exceptions and
+  maintenance list.
+- CI runs the backlog checker and its negative-case tests.
 - Checker negative-case tests prove the hard checks fail when violated.
 - Existing review/closeout boundary and docs-organization behavior remains
   unchanged.
@@ -263,7 +267,7 @@ python -m unittest discover -s tests
 python -m unittest discover -s structured-review/tests
 python -m compileall -q structured-review
 rg -n 'docs/protocol_backlog|Do not migrate this repo to `docs/backlog.yml`' README.md AGENTS.md docs/README.md docs/CURRENT.md docs/agent_plans/README.md structured-review
-rg -n "docs/backlog.yml|AP-BL|check_backlog" README.md AGENTS.md docs .github scripts
+rg -n "docs/backlog.yml|AP-BL|check_backlog" README.md AGENTS.md docs/README.md docs/CURRENT.md docs/agent_plans/README.md .github scripts
 git diff --check
 ```
 
@@ -906,6 +910,25 @@ handling changes.
 No human escalation was needed. This is a narrow acceptance-tightening edit; it
 does not change runner behavior, protocol semantics, or the documentation
 organization scope.
+
+### Driver response — 2026-06-05 backlog YAML dogfood plan review
+
+Accepted Thread 13. The plan now states that CI must run both
+`scripts/check_backlog.py` and the checker negative-case tests.
+
+Accepted Thread 14. The positive presence grep is now scoped to live indexes,
+CI, and scripts instead of the full `docs/` tree, so the active plan file cannot
+satisfy it by itself.
+
+Accepted Thread 15. The plan now calls out that `docs/README.md` must add
+`docs/backlog.yml` to its naming exceptions and maintenance list, not merely
+delete `docs/protocol_backlog.md`.
+
+Accepted Thread 16. The plan now states that the checker is maintained through
+skill self-evolution when `backlog-maintenance/SKILL.md` CI Expectations change.
+
+Accepted Thread 17. The earlier Documentation Organization Amendment's
+anti-migration non-goal now carries an explicit supersession note.
 
 ### Reviewer Pass — agent protocols documentation organization implementation re-review (impl)
 
