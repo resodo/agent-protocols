@@ -1182,3 +1182,160 @@ concludes `ready for implementation`, not a merge-readiness handoff.
   maintenance owner yet (Thread 16); they will drift from
   `backlog-maintenance/SKILL.md` unless tied to skill self-evolution / the
   closeout doc-consistency check.
+
+### Reviewer Pass — agent protocols backlog yaml dogfood implementation (impl)
+
+Restated concern: because this repo owns `backlog-maintenance`, its own active
+backlog should dogfood `docs/backlog.yml` under that protocol's schema — retiring
+the parallel Markdown backlog and its anti-migration guidance, validated by a CI
+checker with safe YAML parsing plus negative-case tests — without rewriting
+frozen review threads.
+
+Scope of this pass: the implementation of the `## Backlog YAML Dogfood
+Amendment` (commits `0115633 docs: revise backlog yaml dogfood plan` →
+`c305f46 docs: dogfood backlog yaml registry`). Earlier amendments above are
+already resolved and are not reopened here; this pass confirms the dogfood work
+left them unchanged.
+
+Traceability against the amendment's Additional acceptance list (plan lines
+247-260) and the task focus:
+
+- AP-BL-0001..0005 semantically faithful to the five open Markdown items — Done.
+  Compared against the pre-removal `docs/protocol_backlog.md` (recovered from
+  git history): item 1 Self-evolution → `AP-BL-0001` (process); item 2 Global
+  canonical source → `AP-BL-0002` (process); item 3 Agent-specific wrappers →
+  `AP-BL-0003` (process), and the original "after the canonical source is
+  stable" dependency is faithfully encoded as `blocked_by: [AP-BL-0002]`; item 4
+  Real-plan dogfooding → `AP-BL-0004` (process); item 5 Optional examples/
+  evolution logs → `AP-BL-0005` (debt), with `refs:
+  structured-review/references/review-lenses.md` and the original "do not
+  duplicate `review-lenses.md`" caution preserved in `why`/`next`. All five are
+  `status: open`; no closed items invented and no new scope added (non-goals
+  honored). IDs are exact (`AP-BL-0001..0005`), not approximate. `version: 1`,
+  `repo: resodo/agent-protocols`, `id_prefix: AP-BL`, and the protocol's standard
+  six `kinds` are all present.
+- `docs/backlog.yml` is the only active backlog source of truth and
+  `docs/protocol_backlog.md` is absent — Done. The file is gone from disk; the
+  dogfood commit shows `docs/protocol_backlog.md | 62 ------` (delete) and
+  `docs/backlog.yml | 100 ++++` (add). Format conversion correctly uses
+  delete+add rather than `git mv`; the Markdown content survives in git history.
+- Live docs point to `docs/backlog.yml`, not `docs/protocol_backlog.md`, and the
+  anti-migration guidance is gone — Done. The scoped negative sweep
+  `rg 'docs/protocol_backlog|Do not migrate this repo to ``docs/backlog.yml```
+  README.md AGENTS.md docs/README.md docs/CURRENT.md docs/agent_plans/README.md
+  structured-review` returns no matches. The positive sweep confirms
+  `docs/backlog.yml` pointers in `README.md:25`, `AGENTS.md:44`,
+  `docs/CURRENT.md:16,30`, `docs/README.md:14,62`. A whole-repo `protocol_backlog`
+  sweep shows the only remaining mentions are inside this frozen plan's own thread
+  bodies — historical provenance, correctly left untouched.
+- `docs/README.md` adds `docs/backlog.yml` to its naming exceptions and
+  maintenance list — Done. `backlog.yml` is in the Exceptions list (line 33) and
+  the Maintenance list ("`docs/backlog.yml` when backlog ownership changes",
+  line 62), plus the Structure pointer (line 14).
+- `scripts/check_backlog.py` implements the `backlog-maintenance` hard checks
+  with safe YAML parsing — Done. Uses `yaml.safe_load` (line 43), not
+  `yaml.load`. Every hard check in `backlog-maintenance/SKILL.md:288-301` is
+  covered: top-level `version/repo/id_prefix/kinds/items` presence; ID regex
+  `^<id_prefix>-\d{4}$` + uniqueness; per-item `status/priority/kind/title/id`;
+  `status ∈ {open,closed}`; `priority ∈ {P0,P1,P2}`; open vs closed required
+  fields; `kind ∈ kinds`; `resolution ∈ {completed,cancelled,transferred}`;
+  `closed_at` is a date; and the stray-file guard checks `docs/backlog.md`
+  verbatim (the protocol's canonical name, not the repo's `docs/protocol_backlog.md`),
+  which is correct. Ran `python scripts/check_backlog.py` against the real
+  `docs/backlog.yml` → exit 0.
+- Negative tests cover checker failures — Done. `tests/test_check_backlog.py`
+  covers all four amendment-named cases — duplicate ID, bad priority, missing
+  open required field, stray `docs/backlog.md` — plus a positive case and a
+  bonus invalid-id-prefix case (6 tests). Reran `python -m unittest discover -s
+  tests` → OK, 6 tests. The tests prove the hard checks fail when violated
+  (`assertRaisesRegex` on `ValidationError`).
+- CI runs the checker and the tests with PyYAML installed — Done.
+  `.github/workflows/ci.yml` adds an "Install dependencies" step
+  (`python -m pip install PyYAML`) before a "Backlog check" step
+  (`python scripts/check_backlog.py`) and a "Backlog checker tests" step
+  (`python -m unittest discover -s tests`). This resolves plan-review Thread 13:
+  the new root `tests/` suite gets its own CI step and is not silently dropped by
+  the `structured-review/tests` discovery. `permissions: {}` keeps least
+  privilege.
+- Existing review/closeout boundary and docs-organization behavior unchanged —
+  Done. `git diff 095e7b7..HEAD -- structured-review/scripts structured-review/tests
+  closeout/SKILL.md` is empty; no commit since the reorg touched the runner,
+  its tests, or `closeout/SKILL.md`. `ready for human merge` remains confined to
+  `closeout/SKILL.md` among live files. Reran `python -m unittest discover -s
+  structured-review/tests` → OK, 41 tests; `python -m compileall -q
+  structured-review` → exit 0; `git diff --check` → clean; worktree clean.
+- Priority/kind/prose semantic faithfulness is reviewer-judged — Confirmed. The
+  P1/P1/P2/P2/P2 priorities and process/process/process/process/debt kinds are
+  reasonable readings of the terse Markdown source; CI validates shape only, as
+  the amendment intends.
+
+#### Blocking
+
+None. The dogfood is faithful to `backlog-maintenance`: a single
+`docs/backlog.yml` registry replaces the Markdown backlog, the five open items
+map exactly to `AP-BL-0001..0005`, the checker enforces every hard check with
+`yaml.safe_load`, the four required negative cases plus extras pass, CI runs both
+the checker and the tests with PyYAML installed, the anti-migration wording is
+retired by supersession rather than by editing frozen text, and the
+review/closeout boundary and docs-org behavior are byte-for-byte unchanged.
+
+#### Non-blocking
+
+**Thread 18 — Malformed-YAML failure surfaces as a raw traceback, not the clean
+`check_backlog.py: <message>` line.** `main()` catches only `ValidationError`,
+so a YAML syntax error from `yaml.safe_load` propagates as an unhandled
+`yaml.YAMLError`. The hard check "YAML parses" is still enforced — I fed the
+checker malformed YAML and it exited non-zero (so CI would correctly fail) — but
+the operator sees a stack trace instead of the tidy one-line error every other
+failure produces. Optional polish: wrap the `safe_load` call (or broaden the
+`except` to include `yaml.YAMLError`) and emit a `ValidationError`-style message.
+Minor; does not affect pass/fail behavior.
+
+**Thread 19 — The checker's closed-item and a few structural branches have no
+negative-test coverage.** The amendment named four negative cases and all four
+are covered. Untested branches remain: closed-item validation
+(`resolution`/`closed_at`/missing closed fields), `kind` not in `kinds`, missing
+top-level field, and the non-mapping/empty-file guards. Live risk is low because
+all five AP-BL items are `open`, so the closed-item paths are not exercised by
+the real backlog at all. Worth recording for the checker's maintenance: when
+`backlog-maintenance` CI Expectations evolve (the amendment's own
+skill-self-evolution clause), add closed-item negative cases so those branches
+stop being dark code. Relatedly, `closed_at` relies on YAML's native date typing
+— a quoted `"2026-06-03"` string would be rejected and a `datetime` would pass
+via the `date` subclass — acceptable while no closed items exist, but a closed-item
+test would pin the intended contract. Minor.
+
+#### Overall judgment
+
+Ready for closeout. The implementation matches every Additional-acceptance item
+for the Backlog YAML Dogfood Amendment: the AP-BL entries are semantically
+faithful to the five open Markdown items, the live docs and entrypoints point to
+`docs/backlog.yml` with the anti-migration guidance removed (and the earlier
+amendment's non-goal retired by supersession, not by rewriting frozen threads),
+`scripts/check_backlog.py` implements the `backlog-maintenance` hard checks with
+`yaml.safe_load`, the negative tests prove the checks fail when violated, and CI
+runs both the checker and the tests with PyYAML installed. Historical review
+threads are preserved; the only remaining `docs/protocol_backlog.md` mentions are
+in this plan's frozen thread bodies. The review/closeout boundary and
+documentation-organization behavior are unchanged (no runner/test/`closeout`
+edits; 41 structured-review tests pass). Threads 18-19 are minor polish/coverage
+notes for a later skill-evolution pass. Per the review/closeout boundary, this is
+an `impl` pass concluding `ready for closeout`, not a merge-readiness handoff;
+final merge readiness belongs to closeout after its own rechecks.
+
+#### Residual risks / validation gaps
+
+- Priority, kind, and `why`/`next`/`done_when` prose for each AP-BL item are
+  reviewer/human-judged for semantic faithfulness; CI validates shape only. They
+  read faithfully against the recovered Markdown source, but final acceptance of
+  the wording is human judgment.
+- The malformed-YAML path (Thread 18) still fails CI but with a traceback; if a
+  future caller depends on a clean error contract, tighten it then.
+- Closed-item and structural checker branches (Thread 19) are untested and
+  currently dark, since no closed items exist. They should gain negative tests
+  when the backlog acquires its first closed item or when the hard-check list
+  changes.
+- The checker, its CI steps, and the hard-check list it mirrors remain a durable
+  mechanism whose stated owner is `backlog-maintenance` skill self-evolution /
+  the closeout doc-consistency check; that tie must actually be exercised when
+  `backlog-maintenance/SKILL.md` CI Expectations change, or the checker drifts.
