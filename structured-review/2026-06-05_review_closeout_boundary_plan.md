@@ -139,7 +139,25 @@ Extend this PR before merge:
 
 4. Move `structured-review/ui-review.md` into
    `structured-review/references/ui-review.md`, and update references to the
-   new path.
+   new path. This is a relocation only: `ui-review.md` remains a conditional
+   UI reference and must not be added to `REQUIRED_PROTOCOL_REFERENCES`.
+
+5. Update the load-bearing UI reference pointers:
+   - `structured-review/SKILL.md`;
+   - `structured-review/references/review-lenses.md`.
+
+Amendment non-goals:
+
+- Do not change runner reference loading, runner flags, permissions, logging, or
+  artifact format.
+- Do not migrate this repo to `docs/backlog.yml`; `docs/protocol_backlog.md` is
+  this repo's protocol-development backlog, not an adopting repo backlog
+  registry.
+- Do not rewrite historical review-thread bodies inside moved dated plans just
+  to update old path mentions. Moved dated plans are frozen historical records;
+  preserve them with `git mv`.
+- Do not reorganize `agent-readiness/` or unrelated protocol directories beyond
+  the named moves.
 
 5. Update `README.md` to stay a concise repo overview and point agents to
    `AGENTS.md` plus `docs/`.
@@ -151,13 +169,19 @@ Additional acceptance:
 - `README.md`, `AGENTS.md`, `docs/README.md`, and `docs/CURRENT.md` agree on
   where plans, backlog, and protocol material live.
 - No references to the moved active files remain stale.
+- Historical mentions inside moved dated plan bodies are allowed when they
+  preserve what a reviewer or driver wrote at the time.
 - The original review/closeout boundary behavior remains unchanged.
+- `docs/CURRENT.md`, `docs/README.md`, and `docs/agent_plans/README.md` state
+  that they are maintained during closeout doc-consistency checks when
+  protocols are added, renamed, retired, or moved.
 
 Additional validation:
 
 ```bash
 find structured-review -maxdepth 1 -type f | sort
-rg -n "structured-review/(2026-|BACKLOG.md|ui-review.md)|docs/agent_plans|docs/protocol_backlog|references/ui-review.md" README.md AGENTS.md docs structured-review
+rg -n "structured-review/(2026-|BACKLOG.md|ui-review.md)" README.md AGENTS.md docs/README.md docs/CURRENT.md docs/agent_plans/README.md structured-review/SKILL.md structured-review/references
+rg -n "docs/agent_plans|docs/protocol_backlog|references/ui-review.md" README.md AGENTS.md docs structured-review/SKILL.md structured-review/references
 python -m unittest discover -s structured-review/tests
 python -m compileall -q structured-review
 git diff --check
@@ -182,6 +206,29 @@ should be extended for machine-checkable boundary claims where practical.
 Accepted Thread 4. The trigger list will live canonically in `closeout/SKILL.md`
 and be maintained through structured-review skill self-evolution when protocol
 rules change.
+
+### Driver response — 2026-06-05 documentation organization plan review
+
+Accepted Thread 7. The amendment now says moving `ui-review.md` into
+`references/` is only a relocation. It remains a conditional UI reference and
+must not be added to `REQUIRED_PROTOCOL_REFERENCES`.
+
+Accepted Thread 8. The amendment now names the load-bearing pointer updates in
+`structured-review/SKILL.md` and
+`structured-review/references/review-lenses.md`.
+
+Accepted Thread 9. The amendment now says moved dated plans are frozen
+historical records; old path mentions inside review-thread bodies should not be
+rewritten merely to satisfy a grep. Validation now scopes stale-reference checks
+to live indexes and protocol references, and the move will use `git mv`.
+
+Accepted Thread 10. The amendment now requires the new docs indexes to state
+their closeout maintenance responsibility and to distinguish
+`docs/protocol_backlog.md` from adopting-repo `docs/backlog.yml` registries.
+
+Accepted Thread 11. The amendment now has explicit non-goals for runner loading,
+backlog migration, historical thread rewriting, and unrelated protocol
+reorganization.
 
 ### Reviewer Pass — review closeout boundary plan (impl-plan)
 
