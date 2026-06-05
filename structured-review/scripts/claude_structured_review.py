@@ -20,7 +20,7 @@ from typing import Any, TextIO, cast
 
 MODE_WRITE = "write-commit-to-plan"
 MODE_PRINT = "print-review"
-REVIEW_TYPES = ("other-plan", "impl-plan", "impl")
+REVIEW_TYPES = ("other-plan", "impl-plan", "impl", "closeout-review")
 DEFAULT_MODEL = "opus"
 DEFAULT_EFFORT = "xhigh"
 DEFAULT_TIMEOUT_SEC = 1800

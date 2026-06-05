@@ -18,6 +18,39 @@ Expect the trigger to specify:
 
 If scope is missing, infer it from the current task only when obvious. Otherwise ask.
 
+## Review Boundary
+
+Closeout is driver-owned by default. Do not invoke Claude or another reviewer
+just because closeout has started.
+
+Before final handoff, confirm that required plan or implementation
+structured-review gates are resolved or explicitly escalated. Do not reopen
+artifact review during closeout unless new evidence appears, a blocker remains,
+or one of the Closeout Review triggers below applies.
+
+Run a `Closeout Review` only when:
+
+- the human explicitly asks for it;
+- the closeout artifact or report is durable or high-impact enough to need
+  independent checking;
+- a rebase or conflict resolution touched source-of-truth docs, protocol files,
+  tests, CI, deploy/runtime templates, or similar contracts;
+- the closeout spans a large phase, release, or multi-repo handoff;
+- validation provenance, PR/CI status, merge ancestry, or a final submodule
+  pointer is ambiguous;
+- the driver cannot classify residual risk without an independent reviewer.
+
+When Closeout Review is triggered, use the `structured-review` protocol with
+`Type: closeout-review`. For repo-backed Closeout Review, use the bundled
+Claude runner when available. Default to `print-review` for durable closeout
+reports or reference artifacts; use `write-commit-to-plan` only when the driver
+explicitly provides a thread file with `## Review Threads`.
+
+Closeout Review checks whether the closeout evidence or report is accurate and
+complete. It returns to closeout with `ready to resume closeout` or named
+blockers; it does not replace this checklist and does not grant merge
+permission.
+
 ## Local Overlay
 
 When working inside a repo, load local overlays after this generic protocol:
@@ -253,10 +286,11 @@ Do not create a separate lessons-learned document unless explicitly requested. P
   against the target branch before final handoff.
 - If the branch was rebased after conflict resolution and the conflicts touched
   source-of-truth docs, deploy/runtime templates, tests, CI, or protocol files,
-  request or perform a full `impl` structured review before final PR handoff.
-  The re-review should cover the implementation normally and explicitly include
-  conflict correctness, status/doc lifecycle drift, deploy/test contract
-  preservation, and stale wording.
+  request or perform the relevant structured review before final PR handoff.
+  Use a full `impl` review when conflict correctness or implementation contract
+  preservation is in question. Use Closeout Review when the question is whether
+  closeout evidence, status/doc lifecycle claims, or stale-wording decisions are
+  accurate.
 - Treat merge strategy preference as reporting guidance only. It does not
   authorize the agent to merge. Without explicit current-turn human approval,
   final handoff must say whether the PR is ready for human merge and confirm no
