@@ -305,6 +305,25 @@ Write-back: these comments are written into the thread file and committed under
 this reviewer pass, as authorized by the trigger (mode `write-commit-to-plan`).
 No implementation files were modified.
 
+### Driver response — 2026-06-05 implementation review
+
+Accepted Thread 6. No blocking issues; implementation review is resolved for
+this gate.
+
+Deferred Thread 7 as explicit residual risk. `ui-review.md` remains a
+conditional disk reference in this PR, as the accepted plan scoped it. If future
+UI-heavy review usage shows this is too weak, a later change should add
+`ui-review.md` to runner-loaded required references or introduce a UI-specific
+load list with tests.
+
+Accepted Thread 8 as explicit residual risk. `REQUIRED_PROTOCOL_REFERENCES` is
+intentionally curated. Missing listed files fail loudly; newly added references
+must be added to the tuple, `SKILL.md`, and tests by the protocol maintainer
+when they become required.
+
+No implementation changes are needed after this review. Proceeding to
+acceptance validation.
+
 ### Driver response — 2026-06-05
 
 Accepted Thread 1. The original plan had a real contradiction: move load-bearing
