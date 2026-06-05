@@ -22,7 +22,7 @@ Make the shared protocol explicit about:
 - closeout does not invoke Claude or another reviewer by default;
 - driver must decide after reviewer output whether to accept, reject, defer, or
   escalate before making changes;
-- Closeout Review is optional and triggered only by defined risk or explicit
+- `Closeout Review` is optional and triggered only by defined risk or explicit
   human request.
 
 ## Scope
@@ -35,8 +35,14 @@ Make the shared protocol explicit about:
      - closeout-report review: `ready to resume closeout` or report blockers.
    - Forbid ordinary plan/implementation reviews from claiming `ready for
      human merge`.
-   - Define `closeout-review` as an optional structured-review use case that
+   - Define `Closeout Review` as an optional structured-review use case that
      reviews closeout evidence/report accuracy, not merge authority.
+   - State that `Closeout Review` is not added to the Default Claude Runner
+     Rule's normal gate list. Once closeout explicitly triggers it, repo-backed
+     Closeout Review should use the bundled runner when available.
+   - State the runner mode rule: default to `print-review` for durable closeout
+     reports or reference artifacts; use `write-commit-to-plan` only when the
+     driver explicitly provides a thread file with `## Review Threads`.
 
 2. Update `closeout/SKILL.md`.
    - Add an explicit "Review Boundary" section.
@@ -77,10 +83,15 @@ Make the shared protocol explicit about:
   and only escalates to Closeout Review on defined triggers.
 - No normal structured-review wording instructs a reviewer to say `ready for
   human merge` for a plan or implementation artifact.
+- `Closeout Review` is not a default/mandatory structured-review gate and runs
+  only after an explicit closeout trigger.
 - Closeout remains the place that may report `ready for human merge` after
   final rechecks.
 - README, if changed, matches the same boundary.
 - The work uses relative repo paths only in tracked content.
+- The existing structured-review unit test coverage is extended to machine-check
+  the new boundary wording where practical; closeout wording remains
+  reviewer/human-judged and grep-checked.
 
 ## Validation Plan
 
@@ -100,6 +111,24 @@ After this shared protocol PR merges:
 3. Do not update `skynet-ops` unless a real incompatibility appears.
 
 ## Review Threads
+
+### Driver response — 2026-06-05 plan review
+
+Accepted Thread 1. The plan now states that `Closeout Review` is not part of
+the Default Claude Runner Rule's normal gate list. If closeout explicitly
+triggers a repo-backed Closeout Review, it should use the bundled runner when
+available; default mode is `print-review`, with `write-commit-to-plan` only when
+the driver explicitly provides a thread file with `## Review Threads`.
+
+Accepted Thread 2. The canonical term is `Closeout Review`.
+
+Accepted Thread 3. The plan now calls out that substantive closeout boundary
+acceptance is reviewer/human-judged, while the structured-review unit tests
+should be extended for machine-checkable boundary claims where practical.
+
+Accepted Thread 4. The trigger list will live canonically in `closeout/SKILL.md`
+and be maintained through structured-review skill self-evolution when protocol
+rules change.
 
 ### Reviewer Pass — review closeout boundary plan (impl-plan)
 
