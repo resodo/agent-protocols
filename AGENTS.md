@@ -41,9 +41,9 @@ chat-only review when the shared protocol says the runner is available.
 
 - Use `docs/README.md` for document placement and lifecycle rules.
 - Use `docs/CURRENT.md` for the current source-of-truth map.
-- Use `docs/protocol_backlog.md` for this repo's protocol-development backlog.
-- Do not migrate this repo to `docs/backlog.yml` unless a future accepted plan
-  explicitly adopts the backlog registry workflow for this repo.
+- Use `docs/backlog.yml` for this repo's protocol-development backlog.
+- Use `backlog-maintenance/SKILL.md` before adding, updating, closing, or
+  querying backlog items in this repo.
 - Do not commit local user-home absolute paths, secrets, credentials, private
   account details, or generated private run outputs.
 

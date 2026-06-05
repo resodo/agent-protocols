@@ -1,0 +1,100 @@
+version: 1
+repo: resodo/agent-protocols
+id_prefix: AP-BL
+kinds:
+  - bug
+  - feature
+  - ops
+  - debt
+  - research
+  - process
+items:
+  - id: AP-BL-0001
+    status: open
+    priority: P1
+    kind: process
+    title: Define protocol self-evolution workflow
+    why: >
+      Review misses and process lessons need a consistent path from observed
+      friction to durable protocol changes without bloating SKILL.md files.
+    next: >
+      Define when a missed review gap should be recorded, who records it, where
+      it lives, and when a lesson stays in a log versus being promoted into
+      SKILL.md or a required reference.
+    done_when: >
+      The shared protocols describe a self-evolution workflow with clear owner,
+      storage location, promotion criteria, and closeout expectations.
+
+  - id: AP-BL-0002
+    status: open
+    priority: P1
+    kind: process
+    title: Decide the global canonical source for structured review
+    why: >
+      Codex, Claude, and downstream repos need one reliable source for the
+      structured-review protocol to avoid drift between global skills, submodule
+      copies, wrappers, and local checkouts.
+    next: >
+      Decide where the canonical global structured-review project should live
+      and how Codex and Claude should read or synchronize the same source.
+    done_when: >
+      The canonical source, sync or wrapper strategy, and expected read path for
+      Codex and Claude are documented and no agent needs to infer which copy is
+      authoritative.
+
+  - id: AP-BL-0003
+    status: open
+    priority: P2
+    kind: process
+    title: Design agent-specific protocol wrappers
+    why: >
+      After the canonical source is stable, Codex and Claude may still need
+      small wrapper instructions or commands so each agent loads the shared
+      protocol consistently.
+    next: >
+      Define the Codex global skill wrapper shape, the Claude global skill or
+      command wrapper shape, and how much wrapper text is needed versus direct
+      file reading.
+    done_when: >
+      Codex and Claude wrapper guidance exists, stays thin, and points back to
+      the canonical protocol source without duplicating stable protocol content.
+    blocked_by:
+      - AP-BL-0002
+
+  - id: AP-BL-0004
+    status: open
+    priority: P2
+    kind: process
+    title: Dogfood structured review on real artifacts
+    why: >
+      Real plan and implementation reviews reveal friction that synthetic
+      examples miss, but those observations should not turn public protocol
+      files into project-specific incident logs.
+    next: >
+      Continue running structured-review on real artifacts and record recurring
+      friction points in the appropriate backlog or plan before promoting stable
+      lessons into protocol text.
+    done_when: >
+      Repeated real-artifact review friction has been either resolved in the
+      protocol, recorded as open backlog work, or intentionally left out with a
+      documented reason.
+
+  - id: AP-BL-0005
+    status: open
+    priority: P2
+    kind: debt
+    title: Add optional examples or evolution logs only if usage proves need
+    why: >
+      Required structured-review lenses now live in references loaded by the
+      Claude runner; optional examples or evolution logs may help later, but
+      adding them too early risks duplicating the checklist and bloating context.
+    next: >
+      Watch v1 usage for repeated cases where examples, evolution logs, or
+      unusual review-case notes would materially improve review quality without
+      duplicating references/review-lenses.md.
+    done_when: >
+      Optional reference files are added only for proven recurring needs, or the
+      backlog item is closed because the current required references remain
+      sufficient.
+    refs:
+      - structured-review/references/review-lenses.md
