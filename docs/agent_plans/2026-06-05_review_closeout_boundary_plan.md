@@ -685,3 +685,134 @@ merge-readiness handoff.
   review/closeout boundary behavior are expected to remain byte-for-byte
   unchanged. The validation reruns `unittest` + `compileall`, which guards that
   the moves did not touch executable protocol material — a good check to keep.
+
+### Reviewer Pass — agent protocols documentation organization implementation (impl)
+
+Restated concern: confirm the reorg gives this repo the cleaner Skynet V2-style
+entry/docs layout (root `AGENTS.md`, `docs/` index + source map + dated plans)
+without breaking runner-loaded references, the runner's behavior, or the
+review/closeout boundary, with the dated plans / backlog / `ui-review.md` moved
+safely (history and frozen review threads preserved) and validation strong
+enough that nothing live points at a moved path.
+
+Scope of this pass: the implementation of the `## Documentation Organization
+Amendment` (commit `095e7b7 docs: organize agent protocol documentation`). The
+review/closeout boundary work above is already `ready for closeout`; this pass
+does not reopen it, only confirms the reorg left it unchanged.
+
+Traceability against the Additional acceptance list (amendment lines 165-177)
+and the accepted plan-review Threads 7-11:
+
+- `find structured-review -maxdepth 1 -type f` shows only long-lived entry
+  files — Done. Output is exactly `structured-review/SKILL.md`; `scripts/`,
+  `tests/`, `references/` remain as subdirectories. No dated plan or backlog at
+  the protocol-dir top level.
+- `README.md`, `AGENTS.md`, `docs/README.md`, `docs/CURRENT.md` agree on where
+  plans, backlog, and protocol material live — Done. All four route plans to
+  `docs/agent_plans/`, backlog to `docs/protocol_backlog.md`, and protocol
+  packages to `SKILL.md` + `scripts/` + `tests/` + `references/` + templates.
+- No references to moved active files remain stale — Done. The amendment's
+  scoped live-surface sweep returns no matches, and a broader repo-wide sweep
+  (`structured-review/BACKLOG.md|ui-review.md|2026-`, excluding the frozen
+  `docs/agent_plans/2026-*.md`) is also clean. Old paths are gone from disk.
+- Historical mentions inside moved dated plan bodies preserved — Done. The moves
+  used `git mv`: `git log --follow` traces all three dated plans and
+  `docs/protocol_backlog.md` through the rename, and the whole-commit `--stat`
+  shows the three dated plans with `| 0` content change. The refactor plan still
+  carries its ~4 frozen `structured-review/ui-review.md` mentions untouched
+  (Thread 9 honored).
+- Original review/closeout boundary behavior unchanged — Done. The reorg commit
+  does not touch `structured-review/scripts/claude_structured_review.py` or
+  `structured-review/tests/`. The only edits to executable-package files are the
+  two `ui-review.md` pointer lines (`structured-review/SKILL.md:49`,
+  `structured-review/references/review-lenses.md:106`); the boundary wording
+  (`## Boundary With Closeout`, `ready for human merge` confined to
+  `closeout/SKILL.md`) is unchanged. 41 tests pass.
+- `ui-review.md` relocation only, not added to `REQUIRED_PROTOCOL_REFERENCES`
+  (Thread 7) — Done. The tuple is still `(references/review-lenses.md,
+  references/collaboration.md)`; `ui-review.md` is not in it. `docs/CURRENT.md`
+  also documents the file as a conditional, non-runner-loaded reference, which
+  hardens against the future "everything in `references/` is required" trap the
+  plan-review flagged.
+- Load-bearing pointer updates (Thread 8) — Done. `SKILL.md:49` uses the
+  dir-relative `references/ui-review.md`; the runner-loaded
+  `references/review-lenses.md:106` uses the repo-relative
+  `structured-review/references/ui-review.md`, which is the correct form for
+  text injected verbatim into every reviewer prompt.
+- Backlog disambiguation (Thread 10) — Done. `docs/protocol_backlog.md` (the
+  rename target, 76% similarity) gains the "this is not an adopting-repo
+  `docs/backlog.yml` registry" paragraph, and `README.md`, `AGENTS.md`,
+  `docs/README.md`, `docs/CURRENT.md` all repeat the distinction. Generalizing
+  the title from "structured-review backlog" to repo-wide "Protocol Backlog" is
+  in-scope for a repo-level `docs/` artifact and is internally consistent.
+- Amendment non-goals (Thread 11) — Done. The amendment carries its own
+  non-goals (lines 149-160); the implementation honors them (runner loading,
+  backlog migration, historical-thread rewriting, and unrelated protocol dirs
+  all untouched).
+
+Validation rerun (reviewer-rerun provenance):
+- `python -m unittest discover -s structured-review/tests` -> OK, 41 tests.
+- `python -m compileall -q structured-review` -> exit 0.
+- `git diff --check` -> clean.
+- Amendment sweeps A/B/C -> A lists only `SKILL.md`; B (stale live refs) empty;
+  C confirms new paths present.
+
+#### Blocking
+
+None. The reorg is mechanically safe and the central invariants hold: the
+runner's reference set is hard-coded so the `ui-review.md` relocation does not
+alter prompt assembly; the tests do not depend on any moved path and still pass;
+the new `AGENTS.md`/`docs/` files are greenfield and harmonize with conventions
+`closeout/SKILL.md` already assumed; and no live surface points at a moved path.
+
+#### Non-blocking
+
+**Thread 12 — `docs/agent_plans/README.md` does not state its own closeout
+doc-consistency maintenance tie (Partial on additional-acceptance line
+175-177).** That acceptance names three files —`docs/CURRENT.md`,
+`docs/README.md`, and `docs/agent_plans/README.md` — that should "state that
+they are maintained during closeout doc-consistency checks." `docs/CURRENT.md`
+(`Update this map during closeout when ...`) and `docs/README.md` (`These index
+checks are part of closeout documentation consistency.`) satisfy it. But
+`docs/agent_plans/README.md` only instructs updating the *other* live indexes
+when a plan changes durable organization; it never states that it itself is
+maintained at closeout. Why this is non-blocking rather than a clean miss: the
+lifecycle ownership is covered transitively — `docs/README.md`'s Maintenance
+section explicitly lists `docs/agent_plans/README.md` "when plan/artifact
+handling changes" and ties the whole list to closeout doc consistency, so the
+index is not actually orphaned per the mechanism-lifecycle lens. The gap is only
+against the literal "all three state it" wording. A one-line addition to
+`docs/agent_plans/README.md` (e.g. "These rules are reviewed during closeout
+documentation-consistency checks.") would make the acceptance pass exactly.
+Driver's call whether to tighten now or accept the transitive coverage.
+
+#### Overall judgment
+
+Ready for closeout. The implementation delivers the intended Skynet V2-style
+layout, and the layout is coherent and mutually consistent across `AGENTS.md`,
+`README.md`, `docs/README.md`, `docs/CURRENT.md`, and `docs/agent_plans/README.md`.
+The dated plans, backlog, and `ui-review.md` were moved with `git mv` (history
+and frozen review threads preserved), live references are updated while
+historical thread bodies are left untouched, `ui-review.md` stays a conditional
+reference outside `REQUIRED_PROTOCOL_REFERENCES`, and the runner and the
+review/closeout boundary behavior are unchanged (no runner/test edits; 41 tests
+pass; boundary wording intact). The single open item is the minor, transitively
+covered Thread 12. Per the review/closeout boundary, this is an `impl` pass
+concluding `ready for closeout`, not a merge-readiness handoff; final merge
+readiness belongs to closeout after its own rechecks, including the
+doc-consistency check that should pick up Thread 12 if it is deferred.
+
+#### Residual risks / validation gaps
+
+- Validation proves path presence/absence and that executable material was not
+  touched, not the prose quality of the new indexes; final acceptance of the
+  navigation wording is reviewer/human judgment.
+- The new `docs/` indexes (`CURRENT.md`, `README.md`, `agent_plans/README.md`)
+  are durable mechanisms that drift silently; their stated owner is the closeout
+  doc-consistency check, so that check must actually run when protocols are
+  added, renamed, retired, or moved. Thread 12 is the one place that ownership
+  is implicit rather than self-stated.
+- If a future change adds `ui-review.md` (or any new `references/*.md`) to
+  `REQUIRED_PROTOCOL_REFERENCES`, every reviewer prompt grows silently; the
+  `docs/CURRENT.md` conditional-reference note is the current guard against that,
+  not a test.
