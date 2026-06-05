@@ -1340,6 +1340,17 @@ final merge readiness belongs to closeout after its own rechecks.
   the closeout doc-consistency check; that tie must actually be exercised when
   `backlog-maintenance/SKILL.md` CI Expectations change, or the checker drifts.
 
+### Driver response — 2026-06-05 backlog YAML implementation re-review
+
+Deferred Thread 20. The real backlog has no closed items yet, and the current
+tests cover the closed-item resolution and quoted-date failure paths. Add
+datetime-vs-date and additional closed-item structural tests when the first
+closed backlog item is added or when `backlog-maintenance/SKILL.md` CI
+Expectations change.
+
+No implementation changes are needed after this re-review. Proceeding to
+closeout.
+
 ### Driver response — 2026-06-05 backlog YAML implementation review
 
 Accepted Thread 18. `scripts/check_backlog.py` now wraps PyYAML parse failures
