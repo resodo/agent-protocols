@@ -40,6 +40,9 @@ Run a `Closeout Review` only when:
   pointer is ambiguous;
 - the driver cannot classify residual risk without an independent reviewer.
 
+This trigger list is the canonical Closeout Review trigger list. Maintain it
+through structured-review skill self-evolution when protocol rules change.
+
 When Closeout Review is triggered, use the `structured-review` protocol with
 `Type: closeout-review`. For repo-backed Closeout Review, use the bundled
 Claude runner when available. Default to `print-review` for durable closeout
@@ -284,9 +287,8 @@ Do not create a separate lessons-learned document unless explicitly requested. P
 - Check local overlay for merge strategy preference, if any.
 - If the project prefers rebase merge, report whether the branch is rebase-clean
   against the target branch before final handoff.
-- If the branch was rebased after conflict resolution and the conflicts touched
-  source-of-truth docs, deploy/runtime templates, tests, CI, or protocol files,
-  request or perform the relevant structured review before final PR handoff.
+- If the rebase/conflict Closeout Review trigger applies, request or perform
+  the relevant structured review before final PR handoff.
   Use a full `impl` review when conflict correctness or implementation contract
   preservation is in question. Use Closeout Review when the question is whether
   closeout evidence, status/doc lifecycle claims, or stale-wording decisions are
