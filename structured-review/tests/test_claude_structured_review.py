@@ -132,6 +132,16 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertIn("STRUCTURED REVIEW REFERENCE references/collaboration.md", prompt)
         self.assertIn("Driver checkpoint sentinel.", prompt)
 
+    def test_closeout_review_type_loads_into_prompt(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol, extra=["--type", "closeout-review"])
+
+        prompt = csr.build_prompt(config)
+
+        self.assertEqual(config.review_type, "closeout-review")
+        self.assertIn("Type: closeout-review", prompt)
+
     def test_missing_required_protocol_reference_fails(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
@@ -256,6 +266,21 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertIn("rejected", skill)
         self.assertIn("deferred", skill)
         self.assertIn("escalation-needed", skill)
+
+    def test_skill_separates_review_readiness_from_closeout_handoff(self) -> None:
+        skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Boundary With Closeout", skill)
+        self.assertIn("closeout-review", skill)
+        self.assertIn("is not part of this default gate list", skill)
+        self.assertIn("ready for implementation", skill)
+        self.assertIn("ready for closeout", skill)
+        self.assertIn("ready to resume closeout", skill)
+        self.assertIn(
+            "Plan and implementation reviews must not make final merge-readiness handoffs",
+            skill,
+        )
+        self.assertNotIn("ready for human merge", skill)
 
     def test_default_claude_bin_uses_path_lookup(self) -> None:
         repo = self.init_target_repo()

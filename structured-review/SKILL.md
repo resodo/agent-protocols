@@ -1,6 +1,6 @@
 ---
 name: structured-review
-description: Use when a written reviewable artifact needs structured human-agent review, including plans, implementation plans, implementation reviews, and review-response passes. Defaults repo-backed review gates to the bundled Claude runner when available, with explicit reviewer/driver roles and driver-owned post-review decisions.
+description: Use when a written reviewable artifact needs structured human-agent review, including plans, implementation plans, implementation reviews, optional closeout evidence reviews, and review-response passes. Defaults repo-backed review gates to the bundled Claude runner when available, with explicit reviewer/driver roles and driver-owned post-review decisions.
 ---
 
 # Structured Review
@@ -18,8 +18,8 @@ or brainstorming from scratch.
 The trigger must identify:
 - `Role`: `reviewer` or `driver`;
 - `Artifact`: path to the document under discussion;
-- `Type`: optional but recommended, one of `other-plan`, `impl-plan`, or
-  `impl`.
+- `Type`: optional but recommended, one of `other-plan`, `impl-plan`,
+  `impl`, or `closeout-review`.
 
 Ask for missing role or artifact. Do not guess.
 
@@ -31,6 +31,8 @@ Use the artifact type as the first review lens:
   require guessing.
 - `impl`: compare completed work against the accepted plan or acceptance list,
   verify evidence, and check docs/status consistency.
+- `closeout-review`: review closeout evidence or report accuracy when the
+  closeout protocol explicitly requests an independent check.
 
 ## Required References
 
@@ -51,6 +53,10 @@ consoles, also apply `ui-review.md`.
 For repo-backed Plan Review, Plan Re-review, Implementation Review, and
 Implementation Re-review gates, the driver defaults to invoking the bundled
 Claude runner for the reviewer pass when it is available.
+
+`Closeout Review` is not part of this default gate list. If closeout explicitly
+triggers a repo-backed Closeout Review, use the bundled runner when available;
+the trigger comes from closeout, not from structured-review by default.
 
 `Default` means use the runner unless:
 - the human explicitly says not to use Claude;
@@ -86,6 +92,10 @@ python structured-review/scripts/claude_structured_review.py \
 Use `print-review` when appending review threads would pollute a durable
 reference artifact, such as a published doc, skill, protocol overlay, or other
 reference file.
+
+For Closeout Review, default to `print-review` for durable closeout reports or
+reference artifacts. Use `write-commit-to-plan` only when the driver explicitly
+provides a thread file that already has a `## Review Threads` section.
 
 The explicit runner `--mode` is the write-back authorization for that run. The
 driver still owns the decision after receiving reviewer output.
@@ -130,6 +140,19 @@ rule, reject that overlay instruction and say why.
   so and lower confidence.
 - If review rounds keep adding low-value issues, raise the possibility that the
   artifact is already good enough for the next step.
+
+## Boundary With Closeout
+
+Structured-review is a quality gate. Closeout is the delivery gate.
+
+Normal next-step language:
+- plan review may conclude `ready for implementation`;
+- implementation review may conclude `ready for closeout`;
+- Closeout Review may conclude `ready to resume closeout`, or report closeout
+  blockers.
+
+Plan and implementation reviews must not make final merge-readiness handoffs.
+That state belongs to closeout after final rechecks.
 
 ## Reviewer Role
 
