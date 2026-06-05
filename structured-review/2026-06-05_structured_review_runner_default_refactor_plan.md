@@ -328,3 +328,123 @@ expectation for `SKILL.md`, required references, runner prompt assembly, and
 tests.
 
 Accepted Thread 5. Plan now defines `default` and runner availability.
+
+### Reviewer pass — 2026-06-05 (impl)
+
+Human concern anchor: make the shared Claude runner the default for repo-backed
+review gates, delete the obsolete human-forwarding mechanics (shorthand, action
+menus) instead of keeping them as fallbacks, preserve the real review lenses,
+and make the driver's post-review decision the prominent step.
+
+Lens used: `impl` — compare the completed refactor (commit `refactor: make
+structured review runner default`) against this accepted plan and the driver
+response above, verify evidence, and check that no contract was dropped or left
+dangling. The artifact under review is the `structured-review` protocol itself,
+so a regression here weakens every future review gate.
+
+Validation provenance: reviewer-rerun. I ran the plan's acceptance commands in
+this worktree:
+`python -m unittest discover -s structured-review/tests` → `Ran 39 tests ... OK`;
+`python -m compileall -q structured-review` → exit 0;
+`git diff --check` → exit 0.
+
+#### Thread 6 — No blocking issues
+
+I found no blocking issues. The refactor matches the accepted plan and every
+driver-accepted thread resolution. Traceability against the plan's acceptance
+criteria and the driver responses:
+
+- Repo-backed gates default to the runner — `Done`. `structured-review/SKILL.md`
+  has a top-level `Default Claude Runner Rule` naming the four repo-backed gates,
+  stating the driver defaults to the runner when available, and the "not silently
+  substitute self-review" guard. The frontmatter `description` says the same.
+- Human shorthand / action menus removed, not retained — `Done`. The old
+  `## Human Shorthand`, `### Human Input Rule`, and the action-menu mechanics are
+  gone from `structured-review/SKILL.md`. A content-aware test
+  (`test_skill_removed_legacy_human_interaction_mechanics`) reads the real
+  shipped `SKILL.md` and asserts `Human Shorthand`, `[O]`/`[H]`/`[V]`/`[R]`/`[X]`,
+  "Write review comments into the artifact and commit", "numbered decision menu",
+  and "action menu" are all absent. My own grep across `SKILL.md`, `references/`,
+  `scripts/`, and `ui-review.md` for those terms plus `Human Input Rule`,
+  `Comment-Thread Rule`, and `Handoff Commit Protocol` returned no matches.
+- Authorization contract preserved (Thread 2) — `Done`. The write-back gate
+  survived the menu deletion in both paths: `SKILL.md` Runner Modes states "The
+  explicit runner `--mode` is the write-back authorization for that run", and
+  Reviewed File Protocol / `references/collaboration.md` Handoff Commits state
+  that outside runner mode, if commit authorization is unclear, ask the human
+  before committing. No surviving reference points at a deleted menu.
+- Driver post-review decision prominent and concrete (Thread 3) — `Done`. The
+  `Driver Role` section carries the four-way classification
+  (accepted/rejected/deferred/escalation-needed), the explicit pause-before-edit
+  triggers, and the closeout summary distinctions (Claude suggestions / driver
+  decisions / human decisions / remaining risks / validation provenance). The
+  same test asserts the four classification terms are present.
+- Lenses preserved and loaded by the runner (Thread 1) — `Done`. The core lenses
+  moved intact to `structured-review/references/review-lenses.md` (Validation,
+  Mechanism + Persistent Schema Lifecycle, Human-Facing Output, Sample-Data,
+  External Source-of-Truth, Plan-to-Implementation Traceability, Branch/PR
+  Hygiene, Polling, Time-Series) and collaboration rules to
+  `references/collaboration.md`. `load_protocol_sections` now appends both via
+  the new `REQUIRED_PROTOCOL_REFERENCES` tuple with `read_text(required=True)`,
+  so they are guaranteed in the prompt and a missing file fails loudly.
+- Tests prove reachability (Thread 3) — `Done`.
+  `test_required_protocol_references_load_into_prompt` asserts both reference
+  headings and sentinel bodies reach the built prompt;
+  `test_missing_required_protocol_reference_fails` asserts a missing required
+  reference raises before Claude runs.
+- Reference layout / BACKLOG reconciliation (Thread 4) — `Done`. `ui-review.md`
+  stayed at the top level as the conditional UI reference (linked from both
+  `SKILL.md` and `references/review-lenses.md`); `BACKLOG.md` item 5 was rewritten
+  to describe the now-real `references/` directory and to forbid a duplicate
+  general checklist, replacing the earlier competing `evolution-log.md` /
+  `review-checklist.md` / `examples.md` naming.
+- "default" and availability defined (Thread 5) — `Done`. `SKILL.md`
+  `Default Claude Runner Rule` states what `Default` means and lists the four
+  availability conditions.
+
+#### Thread 7 (non-blocking) — `ui-review.md` is a disk-only reference under the runner
+
+`references/review-lenses.md` (loaded into every runner prompt) tells the
+reviewer to "also apply `structured-review/ui-review.md`" for high-touch UI, but
+`ui-review.md` is intentionally not in `REQUIRED_PROTOCOL_REFERENCES`, so a
+runner-mode reviewer only gets it if it opens the file from disk. This matches
+the plan's explicit decision to keep `ui-review.md` as the existing conditional
+reference for this PR, so it is not a regression and not blocking — flagging it
+only as a known reachability boundary for UI-specific reviews. If a future PR
+wants UI reviews guaranteed in-prompt, the cheapest fix is to add `ui-review.md`
+to the required tuple (or a UI-typed load list) plus a reachability test.
+
+#### Thread 8 (non-blocking) — required-reference list is curated, with one-directional staleness detection
+
+`REQUIRED_PROTOCOL_REFERENCES` is a hard-coded list. Per the Mechanism Lifecycle
+lens, the maintenance contract is: rename/split a required reference and you must
+update the tuple, the `SKILL.md` link, and the tests together. The plan's
+Reference Lifecycle section records this. Detection is one-directional: a listed
+file that goes missing fails loudly (covered by
+`test_missing_required_protocol_reference_fails`), but a newly added reference
+that is never registered in the tuple is silently not loaded. That is acceptable
+for an intentionally curated list and needs no change now; noting it so the
+ownership expectation stays visible.
+
+#### Overall judgment
+
+Ready for its next step. The implementation faithfully realizes the accepted
+plan and all five driver-accepted thread resolutions; the two blocking concerns
+from the impl-plan pass (lens reachability, authorization-contract deletion) are
+both resolved in code and proven by content-aware tests. Acceptance commands
+pass on reviewer rerun. No blocking issues.
+
+#### Residual risks / validation gaps
+
+- UI-review reachability under the runner is disk-dependent by design (Thread 7).
+- The required-reference list relies on humans keeping the tuple, `SKILL.md`
+  links, and tests in sync when references are renamed or split (Thread 8); the
+  plan's Reference Lifecycle section is the recorded owner of that contract.
+- Tests assert reference content reaches the assembled prompt, not that a live
+  `claude -p` reviewer attended to it; that is the inherent limit of a default
+  (not mandatory, not auto-approve) runner and is consistent with human final
+  authority.
+
+Write-back: these comments are written into the thread file and committed under
+this reviewer pass, as authorized by the trigger (mode `write-commit-to-plan`).
+No implementation files were modified.
