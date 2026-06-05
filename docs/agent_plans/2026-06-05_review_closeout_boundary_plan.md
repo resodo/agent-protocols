@@ -1339,3 +1339,18 @@ final merge readiness belongs to closeout after its own rechecks.
   mechanism whose stated owner is `backlog-maintenance` skill self-evolution /
   the closeout doc-consistency check; that tie must actually be exercised when
   `backlog-maintenance/SKILL.md` CI Expectations change, or the checker drifts.
+
+### Driver response — 2026-06-05 backlog YAML implementation review
+
+Accepted Thread 18. `scripts/check_backlog.py` now wraps PyYAML parse failures
+as `ValidationError`, producing the same concise `check_backlog.py: ...` failure
+style as other validation errors. A malformed-YAML unit test covers this path.
+
+Accepted Thread 19. Added negative-case tests for missing top-level fields,
+unknown kind, invalid closed-item resolution, and quoted `closed_at`, in
+addition to the already-covered duplicate ID, bad priority, missing open field,
+stray `docs/backlog.md`, invalid ID prefix, and positive valid-backlog case.
+
+No human escalation was needed. These edits tighten checker diagnostics and
+coverage without changing backlog schema, live docs, CI scope, or the
+review/closeout boundary.

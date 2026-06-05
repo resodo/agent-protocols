@@ -40,6 +40,20 @@ def valid_backlog() -> dict[str, Any]:
     }
 
 
+def closed_item() -> dict[str, Any]:
+    return {
+        "id": "AP-BL-0002",
+        "status": "closed",
+        "priority": "P2",
+        "kind": "process",
+        "title": "Closed example",
+        "resolution": "completed",
+        "closed_at": "2026-06-05",
+        "outcome": "The work is complete.",
+        "refs": ["docs/example.md"],
+    }
+
+
 class BacklogCheckerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -95,6 +109,41 @@ class BacklogCheckerTests(unittest.TestCase):
         self.write_backlog(data)
 
         self.assert_invalid("does not match")
+
+    def test_malformed_yaml_fails_cleanly(self) -> None:
+        path = self.root / "docs/backlog.yml"
+        path.write_text("version: 1\nitems: [\n", encoding="utf-8")
+
+        self.assert_invalid("YAML parse failed")
+
+    def test_missing_top_level_field_fails(self) -> None:
+        data = valid_backlog()
+        del data["id_prefix"]
+        self.write_backlog(data)
+
+        self.assert_invalid("missing top-level fields")
+
+    def test_unknown_kind_fails(self) -> None:
+        data = valid_backlog()
+        data["items"][0]["kind"] = "unknown"
+        self.write_backlog(data)
+
+        self.assert_invalid("kind")
+
+    def test_closed_item_invalid_resolution_fails(self) -> None:
+        data = valid_backlog()
+        data["items"] = [closed_item()]
+        data["items"][0]["resolution"] = "done"
+        self.write_backlog(data)
+
+        self.assert_invalid("resolution")
+
+    def test_closed_item_quoted_date_fails(self) -> None:
+        data = valid_backlog()
+        data["items"] = [closed_item()]
+        self.write_backlog(data)
+
+        self.assert_invalid("closed_at")
 
 
 if __name__ == "__main__":
