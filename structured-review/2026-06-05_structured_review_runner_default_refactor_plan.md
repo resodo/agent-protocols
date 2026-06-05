@@ -29,7 +29,9 @@ Refactor `structured-review` so the shared protocol clearly says:
 
 ## Non-Goals
 
-- Do not change runner mechanics or Claude CLI flags in this PR.
+- Do not change Claude CLI flags or reviewer permission mode in this PR.
+- Do not change runner role-boundary verification except where needed to load
+  required protocol reference files into the review prompt.
 - Do not update downstream `skynet-data` or `skynet-v2` submodule pointers in
   this PR.
 - Do not add project-specific overlay policy to the shared protocol.
@@ -49,12 +51,20 @@ Refactor `structured-review` so the shared protocol clearly says:
 2. Move detailed review lenses out of `SKILL.md` into direct references:
    - `structured-review/references/review-lenses.md`
    - `structured-review/references/collaboration.md`
+   - Keep `structured-review/ui-review.md` in place for this PR; it remains the
+     existing specialized UI reference.
+   - Update the runner prompt assembly so required protocol references are
+     loaded along with `SKILL.md`. A lens that is required for normal review
+     gates must not depend on the reviewer deciding to discover it from disk.
 
 3. Remove obsolete interaction mechanics from `SKILL.md`.
    - Delete `Human Shorthand` entirely.
    - Delete the post-review "offer action menu" rule entirely.
    - Remove the generic `Human Input Rule` menu mechanics from this skill unless
      a concise final-authority statement is still needed.
+   - Preserve the authorization contract without menu scaffolding: in runner
+     mode, the explicit `--mode` is the write-back authorization; outside runner
+     mode, if commit authorization is unclear, ask the human before committing.
 
 4. Strengthen the driver checkpoint.
    - Before modifying artifacts or implementation after a Claude review, the
@@ -67,9 +77,36 @@ Refactor `structured-review` so the shared protocol clearly says:
      decisions, human decisions, remaining risks, and validation provenance.
 
 5. Update repo docs/tests only as needed.
-   - Keep runner tests unchanged unless the refactor affects documented paths.
-   - Add or update lightweight text checks if useful, but do not create a large
-     doc-testing framework.
+   - Add runner tests proving required references are loaded into prompts.
+   - Add lightweight text checks proving removed interaction mechanisms do not
+     remain in `SKILL.md`.
+   - Do not create a large doc-testing framework.
+
+## Default And Availability Semantics
+
+`Default` means: use the runner unless the human explicitly says not to, the
+review is not repo-backed, or the runner is unavailable and the blocker is
+reported.
+
+The runner is available when:
+
+- the bundled script exists in the protocol checkout or submodule;
+- the target worktree is a git repository;
+- Python can run the script;
+- `claude` is available through the configured `--claude-bin`.
+
+If these conditions are not met, the driver must report the blocker and should
+not silently substitute self-review for a required review gate.
+
+## Reference Lifecycle
+
+The `structured-review` protocol owns `SKILL.md`, required references, and the
+runner prompt assembly. When a required reference is renamed, split, or made
+optional, the same change must update:
+
+- links in `SKILL.md`;
+- the runner's required-reference load list;
+- tests that prove prompt reachability.
 
 ## Acceptance Criteria
 
@@ -81,7 +118,8 @@ Refactor `structured-review` so the shared protocol clearly says:
 - `SKILL.md` makes the driver post-review decision checkpoint prominent and
   concrete.
 - Detailed review lenses remain available through direct references linked from
-  `SKILL.md`.
+  `SKILL.md` and loaded by the runner prompt assembly.
+- Tests assert that the runner prompt includes required reference content.
 - Existing runner tests and compile checks pass:
 
 ```bash
@@ -266,3 +304,27 @@ There are blocking issues, so the artifact is not yet ready for its next step.
 Write-back: these comments are written into the thread file and committed under
 this reviewer pass, as authorized by the trigger (mode `write-commit-to-plan`).
 No implementation files were modified.
+
+### Driver response — 2026-06-05
+
+Accepted Thread 1. The original plan had a real contradiction: move load-bearing
+lenses to references, do not change the runner, and do not weaken review
+coverage cannot all be true. Plan updated to allow runner prompt assembly to
+load required protocol references with `SKILL.md`; tests must prove required
+reference content reaches the prompt. `ui-review.md` stays in its existing
+location for this PR.
+
+Accepted Thread 2. The user explicitly wants human shorthand and old action
+menus deleted, but the write-back/commit authorization contract still matters.
+Plan updated: runner mode selection is write-back authorization; outside runner
+mode, if commit authorization is unclear, ask the human before committing,
+without menu scaffolding.
+
+Accepted Thread 3. Plan now requires tests for required-reference prompt
+reachability and lightweight text checks for removed interaction mechanisms.
+
+Accepted Thread 4. Plan now records the reference layout and ownership/update
+expectation for `SKILL.md`, required references, runner prompt assembly, and
+tests.
+
+Accepted Thread 5. Plan now defines `default` and runner availability.
