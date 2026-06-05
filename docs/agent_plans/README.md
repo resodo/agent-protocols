@@ -13,6 +13,8 @@ responses, and closeout evidence for changes to this repo's protocols.
 - Update live indexes such as `README.md`, `AGENTS.md`, `docs/README.md`, and
   `docs/CURRENT.md` when a plan changes the repo's durable organization or
   protocol entrypoints.
+- Review these rules during closeout documentation-consistency checks when
+  plan or artifact handling changes.
 
 ## Current Records
 

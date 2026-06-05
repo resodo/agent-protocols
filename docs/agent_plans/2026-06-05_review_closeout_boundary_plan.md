@@ -816,3 +816,13 @@ doc-consistency check that should pick up Thread 12 if it is deferred.
   `REQUIRED_PROTOCOL_REFERENCES`, every reviewer prompt grows silently; the
   `docs/CURRENT.md` conditional-reference note is the current guard against that,
   not a test.
+
+### Driver response — 2026-06-05 documentation organization implementation review
+
+Accepted Thread 12. `docs/agent_plans/README.md` now states that its rules are
+reviewed during closeout documentation-consistency checks when plan or artifact
+handling changes.
+
+No human escalation was needed. This is a narrow acceptance-tightening edit; it
+does not change runner behavior, protocol semantics, or the documentation
+organization scope.
