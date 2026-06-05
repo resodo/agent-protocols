@@ -35,12 +35,17 @@ After the canonical source is stable, decide:
 
 Run the protocol on real artifacts and record friction points without adding project-specific details to this public backlog.
 
-### 5. Optional references
+### 5. Optional examples and evolution logs
 
-If v1 usage proves they are needed, add:
-- `references/evolution-log.md`
-- `references/review-checklist.md`
-- `references/examples.md`
+The `references/` directory now contains required protocol references loaded by
+the Claude runner. If v1 usage proves they are needed, add optional files for:
+
+- evolution logs;
+- examples;
+- unusual review cases that should not bloat `SKILL.md`.
+
+Do not create a second general checklist that duplicates
+`references/review-lenses.md`.
 
 ## Rule for this backlog
 

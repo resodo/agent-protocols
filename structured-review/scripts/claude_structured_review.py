@@ -28,6 +28,10 @@ DEFAULT_HEARTBEAT_SEC = 30
 
 CONTEXT_OVERLAY = Path(".agent-protocols/context.md")
 STRUCTURED_REVIEW_OVERLAY = Path(".agent-protocols/structured-review.md")
+REQUIRED_PROTOCOL_REFERENCES = (
+    Path("references/review-lenses.md"),
+    Path("references/collaboration.md"),
+)
 REVIEW_THREADS_RE = re.compile(r"^##\s+Review Threads\s*$", re.IGNORECASE | re.MULTILINE)
 TOP_LEVEL_HEADING_RE = re.compile(r"^##\s+", re.MULTILINE)
 REVIEW_HEADING_RE = re.compile(r"^###\s+.*(?:review|reviewer|thread)", re.IGNORECASE)
@@ -219,6 +223,8 @@ def resolve_protocol_dir(raw: str | None) -> Path:
 
 def load_protocol_sections(config: RunConfig) -> list[tuple[str, str]]:
     sections = [("STRUCTURED REVIEW SKILL", read_text(config.protocol_dir / "SKILL.md"))]
+    for rel in REQUIRED_PROTOCOL_REFERENCES:
+        sections.append((f"STRUCTURED REVIEW REFERENCE {rel.as_posix()}", read_text(config.protocol_dir / rel)))
     for label, rel in (
         ("TARGET CONTEXT OVERLAY", CONTEXT_OVERLAY),
         ("TARGET STRUCTURED REVIEW OVERLAY", STRUCTURED_REVIEW_OVERLAY),

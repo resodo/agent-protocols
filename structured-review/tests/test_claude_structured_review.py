@@ -50,7 +50,11 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
     def init_protocol_dir(self) -> Path:
         protocol = self.root / "structured-review"
         protocol.mkdir()
+        references = protocol / "references"
+        references.mkdir()
         (protocol / "SKILL.md").write_text("# Structured Review\n\nReviewer protocol.\n", encoding="utf-8")
+        (references / "review-lenses.md").write_text("# Review Lenses\n\nValidation sentinel.\n", encoding="utf-8")
+        (references / "collaboration.md").write_text("# Collaboration\n\nDriver checkpoint sentinel.\n", encoding="utf-8")
         return protocol
 
     def config_for(
@@ -115,6 +119,27 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertIn("STRUCTURED REVIEW SKILL", prompt)
         self.assertIn("TARGET STRUCTURED REVIEW OVERLAY", prompt)
         self.assertIn("Target overlay text.", prompt)
+
+    def test_required_protocol_references_load_into_prompt(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+
+        prompt = csr.build_prompt(config)
+
+        self.assertIn("STRUCTURED REVIEW REFERENCE references/review-lenses.md", prompt)
+        self.assertIn("Validation sentinel.", prompt)
+        self.assertIn("STRUCTURED REVIEW REFERENCE references/collaboration.md", prompt)
+        self.assertIn("Driver checkpoint sentinel.", prompt)
+
+    def test_missing_required_protocol_reference_fails(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        (protocol / "references/review-lenses.md").unlink()
+        config = self.config_for(repo, protocol)
+
+        with self.assertRaisesRegex(csr.RunnerError, "required file is missing"):
+            csr.build_prompt(config)
 
     def test_path_escape_is_rejected(self) -> None:
         repo = self.init_target_repo()
@@ -208,6 +233,29 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertNotIn("--allowedTools", argv)
         self.assertNotIn("--allowed-tools", argv)
         self.assertNotIn("--disallowed-tools", argv)
+
+    def test_skill_removed_legacy_human_interaction_mechanics(self) -> None:
+        skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
+
+        forbidden = (
+            "Human Shorthand",
+            "[O]",
+            "[H]",
+            "[V]",
+            "[R]",
+            "[X]",
+            "Write review comments into the artifact and commit",
+            "numbered decision menu",
+            "action menu",
+        )
+        for text in forbidden:
+            self.assertNotIn(text, skill)
+
+        self.assertIn("Default Claude Runner Rule", skill)
+        self.assertIn("accepted", skill)
+        self.assertIn("rejected", skill)
+        self.assertIn("deferred", skill)
+        self.assertIn("escalation-needed", skill)
 
     def test_default_claude_bin_uses_path_lookup(self) -> None:
         repo = self.init_target_repo()
