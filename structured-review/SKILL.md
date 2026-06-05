@@ -1,71 +1,76 @@
 ---
 name: structured-review
-description: Use when a written reviewable artifact needs structured human-agent review, including high-level plans, implementation plans, and completed implementation validation. This skill standardizes explicit roles (`reviewer` or `driver`), plain-language discussion, validation-first scrutiny, and comment-based convergence.
+description: Use when a written reviewable artifact needs structured human-agent review, including plans, implementation plans, implementation reviews, and review-response passes. Defaults repo-backed review gates to the bundled Claude runner when available, with explicit reviewer/driver roles and driver-owned post-review decisions.
 ---
 
 # Structured Review
 
 Use this skill when:
-- there is already a written artifact in a file
-- the current task is to review, revise, or respond to review on that artifact
-- the artifact is important enough that chat-only feedback would be too easy to lose
+- there is a written artifact in a file;
+- the task is to review, revise, or respond to review on that artifact;
+- losing the review in chat would make the next step risky.
 
-This skill covers:
-- reviewing high-level plans, implementation plans, and implementation closeout reports
-- replying to review as the driver
-- deciding whether the artifact is ready for its next step
-- writing review comments back after human approval
-
-This skill does not cover:
-- brainstorming from scratch
-- implementing code directly
-- replacing final human acceptance
+This skill does not replace human final authority, direct implementation work,
+or brainstorming from scratch.
 
 ## Trigger
 
-Expect the trigger to specify:
-- `Skill`: `structured-review`
-- `Role`: `reviewer` or `driver`
-- `Artifact`: file path to the document under discussion
-- `Type`: optional but recommended, one of `other-plan`, `impl-plan`, or `impl`
+The trigger must identify:
+- `Role`: `reviewer` or `driver`;
+- `Artifact`: path to the document under discussion;
+- `Type`: optional but recommended, one of `other-plan`, `impl-plan`, or
+  `impl`.
 
-The trigger does not need to follow a rigid template.
-Natural-language triggering is fine as long as it clearly includes those three pieces of information.
+Ask for missing role or artifact. Do not guess.
 
-Canonical template:
+Use the artifact type as the first review lens:
+- `other-plan`: check goal, scope, sequencing, non-goals, acceptance, and
+  reader clarity.
+- `impl-plan`: check concrete steps, data assumptions, validation commands,
+  rollback/fallback behavior, file ownership, and whether implementation would
+  require guessing.
+- `impl`: compare completed work against the accepted plan or acceptance list,
+  verify evidence, and check docs/status consistency.
 
-```text
-Use skill: structured-review
-Role: reviewer
-Artifact: docs/some_artifact.md
-Type: impl-plan
-```
+## Required References
 
-or
+This skill has required references:
+- `references/review-lenses.md` for validation, source-of-truth, lifecycle,
+  human-facing output, UI, polling, time-series, and branch/PR checks.
+- `references/collaboration.md` for review threads, write ownership, handoff
+  commits, resolution ownership, and multi-round change reading.
 
-```text
-Use skill: structured-review
-Role: driver
-Artifact: docs/some_artifact.md
-Type: impl
-```
+The bundled runner loads these references into reviewer prompts. If using the
+skill manually, read these references before judging readiness.
 
-Natural-language examples:
+For high-touch product UI, dashboards, charts, data review tools, and operator
+consoles, also apply `ui-review.md`.
 
-```text
-Use structured-review as reviewer and look at docs/some_artifact.md.
-```
+## Default Claude Runner Rule
 
-```text
-Use the structured-review skill. You are the driver. The artifact is docs/some_artifact.md.
-```
+For repo-backed Plan Review, Plan Re-review, Implementation Review, and
+Implementation Re-review gates, the driver defaults to invoking the bundled
+Claude runner for the reviewer pass when it is available.
 
-If `Artifact` or `Plan` is missing, ask for it. Do not guess.
-If `Role` is missing, ask for it. Do not guess.
+`Default` means use the runner unless:
+- the human explicitly says not to use Claude;
+- the review is not repo-backed;
+- the runner is unavailable and the blocker is reported.
 
-## Claude Runner
+The runner is available when:
+- the runner script exists in this protocol checkout or submodule;
+- the target worktree is a git repository;
+- Python can run the script;
+- `claude` is available through the configured `--claude-bin`.
 
-For Claude Code reviewer passes, this protocol includes a bundled runner:
+Do not silently substitute driver self-review, chat-only commentary, or a
+manually constructed reviewer prompt for a required repo-backed review gate. If
+the runner is unavailable, report that blocker and ask how to proceed.
+
+### Runner Modes
+
+Use `write-commit-to-plan` for normal plan and implementation artifacts that
+have a `## Review Threads` section:
 
 ```bash
 python structured-review/scripts/claude_structured_review.py \
@@ -78,14 +83,15 @@ python structured-review/scripts/claude_structured_review.py \
   --topic "example plan"
 ```
 
-Use `print-review` when writing review threads into the reviewed artifact would
-pollute that artifact. The runner loads this shared skill from its own
-directory, then loads target-repo overlays from the explicit `--worktree`.
-Claude runs in true auto mode; the runner verifies final role boundaries and
-records non-tracked run evidence under the target repo's git dir.
+Use `print-review` when appending review threads would pollute a durable
+reference artifact, such as a published doc, skill, protocol overlay, or other
+reference file.
+
+The explicit runner `--mode` is the write-back authorization for that run. The
+driver still owns the decision after receiving reviewer output.
 
 Use `--protocol-dir` only when testing or intentionally running against a
-different checkout of this protocol; by default the runner uses the
+different checkout of this protocol. By default the runner uses the
 `structured-review` directory that contains the script.
 
 ## Local Overlay
@@ -96,31 +102,16 @@ When working inside a repo, load local overlays after this generic protocol:
 2. Read `.agent-protocols/structured-review.md` if present.
 3. Apply local overlays as project-specific refinements only.
 
-Overlays are loaded only when this protocol is loaded. Unknown overlay files are
-ignored. If an overlay contradicts a generic `SAFETY` rule, reject that overlay
-instruction and say why.
+Unknown overlay files are ignored. If an overlay contradicts a generic SAFETY
+rule, reject that overlay instruction and say why.
 
-## Review Types
-
-Use the artifact type to choose the review lens.
-
-- `other-plan`: high-level planning artifacts such as PRD-lite docs, phase maps, workflow proposals, architecture notes, and research plans. Check goal, scope, phase boundaries, sequencing, non-goals, acceptance, and whether the artifact is understandable to its intended readers. Do not demand implementation detail unless it affects scope or feasibility.
-- `impl-plan`: executable implementation plans for coding agents. Check concrete steps, data assumptions, validation commands, rollback/fallback behavior, file ownership, and whether an implementing agent would need to guess.
-- `impl`: completed implementation review. Check code against the accepted plan and PRD, run or inspect tests, validate human-facing behavior by operating the real rendered output, and check docs/status consistency.
-
-When type is omitted, infer the likely lens from the file path and title, but state the inference explicitly.
-
-## Shared Protocol
-
-These rules apply to both `reviewer` and `driver`.
-
-### SAFETY Rules
+## SAFETY Rules
 
 - Do not fabricate rationale or evidence.
 - Do not claim a merge method, merge shape, or ancestry implication without
   checking PR metadata and the commit graph.
-- Preserve human final authority for scope, write-back, commit, push, and
-  done-enough decisions.
+- Preserve human final authority for scope, write-back, commit, push, merge,
+  and done-enough decisions.
 - Report dirty worktree, draft artifact, and unpushed-review-target state
   honestly.
 - Use the declared source-of-truth layer for external facts, provider/account
@@ -128,596 +119,111 @@ These rules apply to both `reviewer` and `driver`.
 - Do not write secrets, credentials, provider balances, private account details,
   host keys, or raw private production data into repo artifacts.
 
-### Core Goal
-
-The goal is not to make the artifact sound polished.
-The goal is to make the next step safe without guessing.
-
-### Human Concern Anchor Rule
-
-At the start of a review or driver handoff, restate the human's original concern in one sentence when it is known.
-
-Use this as an anchor, not a new approval gate:
-- if the artifact's internal goals drift away from the human's concern, call that out
-- do not turn every technical review into a full product requirements debate
-- if the original concern is unclear, ask the human instead of inventing it
-
-### Plain-Language Rule
-
-When speaking to the human:
-- default to plain language
-- explain jargon the first time it appears
-- do not hide weak reasoning behind compressed technical wording
-- if the reason is weak or unknown, say so directly
-
-### Validation-First Rule
-
-An artifact is not ready if acceptance is vague.
-
-Always check:
-- what exactly proves success
-- whether the implementing agent can verify that by itself
-- what artifact, query, command, screenshot, or test will be used
-- what result would falsify the artifact
-
-For artifacts involving external facts, data, metrics, dashboards, reports, APIs, logs, or database fields, also check:
-- whether the required data actually exists and is usable
-- whether the correct source-of-truth layer is being used
-- whether different representations are being confused
-
-### Mechanism Lifecycle Rule
-
-When an artifact introduces or materially changes a durable mechanism, review
-its maintenance lifecycle, not only whether it works today.
-
-Durable mechanisms include:
-- hard-coded lists, allowlists, denylists, and path globs;
-- status/config tables and required-check lists;
-- CI jobs, hooks, scripts, generated-output rules, and cleanup rules;
-- protocol checklists and recurring review/closeout steps;
-- caches, archives, retention policies, and private-output handling.
-
-For plans, require explicit coverage of:
-- who maintains the mechanism;
-- when it is updated;
-- how stale entries, obsolete rules, or temporary exceptions are removed;
-- whether human participation is required;
-- what signal shows the mechanism is stale or incomplete;
-- whether a simpler default rule can replace a manually maintained list.
-
-For implementation reviews, check:
-- the implemented mechanism matches the accepted lifecycle contract;
-- broad allowlists are not hiding future maintenance work;
-- exceptions are narrow and documented with owner/update/removal expectations;
-- tests or validation prove both clean and negative cases where practical;
-- any unresolved lifecycle question is recorded as residual risk or deferred
-  work, not left as an invisible implementation detail.
-
-### Persistent Schema Lifecycle Rule
-
-When an artifact touches persisted schemas, database models, migration plans,
-status/state fields, retry/rerun behavior, JSON payload columns, cache freshness,
-or source/target database boundaries, the review must check lifecycle semantics,
-not only create-time shape.
-
-For plans, require explicit coverage of:
-- owner service or writer;
-- create path and update path;
-- allowed states and state transitions;
-- retry, rerun, and idempotency behavior;
-- archive, delete, expiry, or retention behavior;
-- JSON inner contract vs intentionally opaque raw payload;
-- cache freshness, stale behavior, and refresh trigger;
-- source database vs target database role boundary;
-- validation strategy, including tests or explicit deferral.
-
-For implementation reviews, check:
-- code follows the accepted lifecycle contract;
-- string statuses and categorical fields have named allowed values or an
-  explicit deferral;
-- contract-bound JSON dicts are typed/validated, or the plan documents why they
-  remain opaque;
-- create-only code did not omit required update, rerun, archive, or cleanup
-  behavior;
-- migrations match the lifecycle contract when schema changes are in scope;
-- tests cover the relevant lifecycle path, or the missing path is explicitly
-  deferred with human approval.
-
-### Human-Facing Output Rule
-
-For human-facing outputs, query/API success is not sufficient validation.
-
-Human-facing outputs include:
-- dashboards and Grafana panels
-- reports and daily summaries
-- notification bodies
-- CLI tables
-- UI screens
-- rendered docs or charts
-
-For these outputs, always check:
-- who reads it
-- what question the reader is trying to answer
-- what the output looks like under current real data
-- how empty data, missing series, zero values, `NaN`, and low-volume data render
-- what artifact proves the rendered output is usable, such as a screenshot, copied output, or explicit rendered example
-
-For UI implementation review specifically:
-- page load is not enough
-- do not validate only the happy path; exercise at least one normal path, one empty/no-match path, and one recovery/reset path when the UI has controls
-- visible controls must be exercised, including search, filters, navigation, detail pages, and empty-result states
-- if a filter option has no matching sample data, verify that it returns an intentional empty state and that `all` or reset restores the data
-- placeholder stages must be understandable to a human reader
-- clarify who owns any dev server used for human acceptance, so the agent does not silently leave or kill a server the human depends on
-- when the artifact names a visual prototype or design reference, compare against it at the agreed fidelity level only; do not require pixel-perfect reproduction unless the artifact explicitly requires it
-- treat implementation source-of-truth data, schema, and API contracts as higher priority than prototype mock fields, placeholder labels, or design-tool sample data
-- reject UI that accidentally implements prototype-only actions or workflows that the artifact explicitly excludes
-- validate visual behavior with rendered screenshots covering desktop and any responsive viewport the surface targets; code inspection supports a claim but does not replace rendered evidence
-- check layout containment with realistic long content: long titles, names, identifiers, URLs, messages, JSON, tags/chips, table cells, and multi-line body text should wrap, clamp, or scroll inside their intended containers instead of overflowing, overlapping, or causing unintended horizontal page scroll
-- check information hierarchy, not just presence: the reader should be able to distinguish primary content, secondary metadata, actions, errors, warnings, review states, and empty states without reading every line of text
-- verify data wiring against real or acceptance-grade data when the implementation claims to support it; synthetic fixture-only rendering is not enough for final implementation acceptance unless the artifact explicitly limits the scope to a mock prototype
-- check basic accessibility pragmatically: interactive elements have understandable labels, keyboard focus remains visible, color is not the only signal for critical state, and contrast is acceptable
-
-For high-touch product UI, dashboards, charts, data review tools, and operator
-consoles, also apply `structured-review/ui-review.md`. That reference covers
-the visual state-matrix, visible-defect rejection, screenshot evidence including
-superseded-screenshot handling, no-hidden-acceptance-relaxation, design-reference
-handling, and cross-surface consistency.
-
-When grouping multiple outputs into one surface, justify the grouping by reader scenario:
-- who reads the combined surface
-- when they read it
-- what decision or question the grouping helps answer
-
-Maintainer-side convenience, such as one fewer file, one fewer panel, or one fewer directory, is not sufficient justification by itself.
-
-Treat "the query returns `success`", "the API returned 200", or "the SQL parses" as insufficient. The artifact should define the reader-facing acceptance artifact whenever feasible.
-
-### Sample-Data-Before-Endorsement Rule
-
-For any artifact item that depends on a field, table, API response field, log record, metric, or other live data source:
-- do not endorse it based only on schema, docs, or naming
-- check sample live data before endorsing the item
-- treat "the field exists" as insufficient evidence that the field is usable
-- treat "the raw field exists" as insufficient evidence that raw should be used
-- when both raw and enriched or corrected variants exist, default to enriched or corrected unless there is a reason to prefer raw
-
-When appropriate, the artifact should reference the sample evidence or the validation step that will check it.
-
-### External Resource Source-of-Truth Rule
-
-For artifacts involving third-party quota, billing, rate limits, usage budgets, API availability, external account state, or service-side counters, internal application metrics are not automatically the source of truth.
-
-Always check:
-- who owns the authoritative number
-- whether an API, dashboard, invoice, admin page, or provider-side response exposes that number
-- whether the artifact's metric is authoritative, derived, sampled, or only a proxy
-- what conversion factor connects internal events to external units, if any
-- whether that conversion factor is validated or merely guessed
-
-If both external truth and internal estimates exist, prefer a reconciliation design:
-- show external truth
-- show internal estimate
-- show drift only when both sides cover the same scope
-
-Do not endorse alert thresholds or budget projections based on internal counters alone unless the artifact explains why no external source exists or why the internal counter is equivalent.
-
-### Plan-to-Implementation Traceability Rule
-
-For `Type: impl` reviews, passing tests and healthy production smoke are not
-enough.
-
-The reviewer must compare the completed work against the accepted plan, PRD, or
-acceptance list item by item:
-- mark each in-scope item as `Done`, `Partial`, `Missing`, or `Deferred`
-- require concrete evidence for `Done`
-- treat an empty evidence cell, chat memory, or "looks fine" as insufficient
-- treat every planned-but-unimplemented item as `Missing` unless the human
-  explicitly defers it
-- call out any status doc that says or implies completion while rows are still
-  missing or partial
-
-If no accepted plan or acceptance list exists, say that directly and create a
-minimal traceability list before judging the implementation complete.
-
-### Branch and PR Hygiene Rule
-
-When the artifact is meant to close a branch, worktree, feature, or PR, check
-the process gate as part of the review.
-
-Always verify or ask for:
-- branch/worktree status and whether unrelated dirty files exist;
-- PR or merge path, if the repo requires one;
-- required CI/check status and exact check names when branch protection depends
-  on them;
-- review-thread status, including unresolved blocking threads;
-- validation provenance: CI-backed, reviewer-rerun, driver-reported, or human
-  acceptance;
-- deferred work owner and backlog/plan link.
-
-Do not treat a pushed commit as equivalent to branch closeout when the repo's
-workflow requires PR, CI, review, or human acceptance.
-
-### Polling Safety Rule
-
-For any artifact that periodically calls an external API or service, check polling safety before accepting the interval.
-
-The artifact should define:
-- the polling interval
-- whether the endpoint itself costs money, quota, credits, tokens, or rate-limit budget
-- whether the endpoint has documented or observed rate limits
-- whether multiple processes could poll redundantly
-- what backoff or disable behavior happens after failures
-- whether a controlled live check has proven the polling call is safe
-
-If cost or rate-limit behavior is unknown, default to treating the endpoint as expensive until proven otherwise. An artifact must not daemonize frequent polling of an unknown-cost endpoint without first validating that the polling itself will not exhaust or distort the resource being measured.
-
-### Time-Series Semantics Rule
-
-For artifacts using Prometheus, Grafana, or other time-series systems, check that metric type and query semantics match.
-
-Always check:
-- counters are used for monotonically increasing event counts
-- gauges are used for current snapshots
-- `rate()` / `increase()` are only used on counters or on values with explicitly handled reset/decrease semantics
-- snapshot gauges are not treated as consumption counters without a poller-computed monotonic delta
-- low-volume business events use human-scale units such as per-hour or per-day when per-second rates are unreadable
-- missing series and zero events are handled intentionally, not left as confusing empty panels
-
-If an artifact derives consumption from periodic snapshots, it must define reset handling. For example, if a provider-side `used` snapshot decreases because a quota pool resets, the artifact should not treat that decrease as negative consumption.
-
-### No-Made-Up-Rationale Rule
-
-Do not defend a choice with invented rationale.
-
-If a reason was assumed but never validated:
-- say that clearly
-- downgrade the confidence
-- ask for evidence or artifact revision
-
-### Comment-Thread Rule
-
-The artifact file is the shared record.
-
-Default behavior:
-- discuss with the human first
-- write comments back only after approval
-- prefer comment-based convergence over silent rewrites
-
-Unless explicitly asked otherwise, do not silently change the main artifact body during review discussion.
-
-### Human as Final Authority
-
-Reviewer and driver propose. The human decides.
-
-The human is the final authority on:
-- scope decisions
-- priority tradeoffs between reviewer and driver positions
-- when an artifact is "done enough" to stop iterating
-- whether a concern is over-engineering relative to the task
-
-If reviewer and driver disagree and neither side yields, explicitly escalate to the human instead of forcing through a unilateral outcome.
-
-### Human Input Rule
-
-Human shorthand and raw chat text are part of the conversation protocol, not the artifact file by default.
-
-When human input is needed, the agent must present a short numbered decision menu in plain text. If the runtime supports a native choice UI, use it; otherwise fall back to the numbered text menu. The menu should include the recommended option first when there is a clear recommendation, and it should always allow free-form human reply.
-
-The menu's numbers are the only numbers the human should need to reply with. Do not put competing internal option numbers such as `Option 1`, `Option 2`, or `Option 3` inside the menu labels. If the artifact already uses numbered option names, rewrite them into plain action labels for the human menu.
-
-Bad:
-
-```text
-1. Option 3 (recommended): Do not write a stub
-2. Option 1: Add a cache table
-3. Option 2: Write a stub row
-```
-
-Good:
-
-```text
-1. Do not write a stub (recommended): simplest; retry only if referenced again.
-2. Add a 404 cache table: more precise, but adds a table.
-3. Write a deleted stub row: most complex; needs placeholder fields and reader skip rules.
-```
-
-Example:
-
-```text
-Need a decision:
-
-1. Write this back to the review thread (recommended)
-2. Keep it only in chat for now
-3. Drop this concern
-
-You can also reply in your own words.
-```
-
-Do not rely on shorthand tags as the main human interface. Shorthand is optional, not required.
-
-Do not copy the human's raw shorthand or raw wording into the artifact unless explicitly asked.
-
-If the human makes a strong decision that affects the artifact, the current agent may summarize it in artifact-friendly form.
-
-Prefer summarized decisions such as:
-- a scope decision
-- a hard constraint
-- an explicit approval or rejection of a proposal
-
-Do not preserve the human's raw chat text unless that exact wording is itself important.
-
-After completing a repo-backed review, do not stop at chat-only output. Offer a
-short numbered action menu. The recommended default should usually be:
-
-```text
-1. Write review comments into the artifact and commit (recommended)
-2. Write review comments into the artifact only
-3. Leave review in chat only
-```
-
-Execute write/commit only after the human chooses that action or explicitly
-requested it upfront. This extends the Human Input Rule; it is not a separate
-menu mechanism.
-
-### Reviewed File Collaboration Protocol
-
-The shared reviewed file has two different functions:
-
-1. **Main artifact body**
-   - the current source of truth
-   - updated by the driver after convergence on accepted changes
-
-2. **Review threads**
-   - appended near the end of the file
-   - used for reviewer comments, driver replies, and explicit resolutions
-
-Default collaboration rules:
-- one issue or one tightly related issue cluster per thread
-- reviewer writes comments into review threads
-- driver replies inside those threads and updates the main body separately
-- reviewer decides whether a thread is resolved
-- each mature thread should end with an explicit resolution written by the reviewer
-
-Resolution examples:
-- `Resolved. Artifact body updated in §4.`
-- `Resolved by human decision. Keep current scope; no further change.`
-- `Superseded by later rewrite in §7.`
-
-### Write Ownership Rule
-
-Only one agent should be the active writer for a reviewed artifact at a time.
-
-Default ownership:
-- during review pass: reviewer writes comment threads
-- during revision pass: driver writes thread replies and artifact-body updates
-
-Avoid simultaneous edits to the same artifact file by both reviewer and driver.
-
-### Handoff Commit Protocol
-
-Structured review depends on clear git boundaries. After an agent writes to a reviewed file, that agent must run `git status` and inspect the relevant diff before handing off.
-
-Default behavior after reviewed-file edits:
-- if the human has already authorized commits for this review session, create a small commit for the artifact change
-- if commit authorization is unclear, ask with a numbered decision menu before committing
-- if the human chooses not to commit, explicitly say the artifact changes are left uncommitted
-
-Recommended commit message format:
-- reviewer comment pass: `structured-review: add reviewer comments for <artifact topic>`
-- driver revision pass: `structured-review: respond to review for <artifact topic>`
-- reviewer resolution pass: `structured-review: resolve review threads for <artifact topic>`
-
-Do not mix unrelated code changes or unrelated reviewed files into a handoff commit. If the worktree already has unrelated changes, mention them and commit only the relevant file when authorized.
-
-### Resolution Ownership Rule
-
-The reviewer is the default owner of final resolution.
-
-Default lifecycle:
-- reviewer opens the thread
-- driver replies and updates the artifact body if needed
-- reviewer checks the reply and the updated body
-- reviewer writes the final resolution when satisfied
-
-A thread is not considered closed until the reviewer writes resolution.
-
-The driver may suggest that a thread is ready to close, but does not finalize resolution by default.
-
-The driver may explicitly mark a thread as ready for reviewer closure after replying and updating the artifact body.
-
-### Change-Reading Rule
-
-When revisiting an artifact that has already gone through one or more review rounds:
-- inspect recent diff or history first
-- use `git diff -- <artifact>` to find uncommitted changes
-- use `git log -1 -- <artifact>` or recent history to find the last committed handoff
-- read changed sections before expanding to the full file
-- read the newest review-thread additions before re-reading the whole artifact
-
-This is required for multi-round review work.
-The current artifact file remains the source of truth.
+## Shared Review Rules
+
+- Restate the human's original concern in one sentence when known.
+- Use plain language when speaking to the human.
+- Check what proves success, who can verify it, and what would falsify it.
+- For external facts, data, metrics, dashboards, reports, APIs, logs, or
+  database fields, check the correct source-of-truth layer.
+- Do not defend a choice with invented rationale. If evidence is missing, say
+  so and lower confidence.
+- If review rounds keep adding low-value issues, raise the possibility that the
+  artifact is already good enough for the next step.
 
 ## Reviewer Role
 
 Use this section only when `Role: reviewer`.
 
-### Reviewer Responsibilities
-
 The reviewer:
-- reads the artifact critically
-- identifies blocking and non-blocking issues
-- checks whether implementation would require guessing
-- checks whether validation is strong enough
-- discusses findings with the human first
-- writes comments back only after approval
-
-### What the Reviewer Must Look For
-
-Actively look for:
-- missing or weak acceptance criteria
-- vague implementation rules that different agents could interpret differently
-- assumptions that were never validated
-- wrong source-of-truth layer
-- claimed completion that only proves service health, not plan completion
-- planned work that disappeared into implicit deferral without human decision
-- previously agreed acceptance criteria silently relaxed inside an implementation
-  or closeout report rather than amended via a plan thread
-- stale or superseded evidence, such as screenshots, query outputs, or sample
-  payloads, presented in the artifact body without being marked historical
-- missing invariants, fallback behavior, or edge-case handling
-- reasoning that sounds plausible but has no evidence
-- for grouped plan items, inconsistent presentation of the same semantic role without justification
-- for human-facing outputs, missing reader question, empty-state behavior, or screenshot/rendered-output acceptance
-- for UI work, controls that are visible but not actually wired, filters with no sample coverage, unclear placeholder states, and mismatch between prototype fidelity and implementation scope
-- for UI work, apply the visual state-matrix, visible-defect rejection, and cross-surface consistency rules in `structured-review/ui-review.md`
-- for external resources, confusion between provider-side truth and internal estimates
-- unsafe polling frequency, missing cost/rate-limit validation, or redundant pollers
-- time-series type/query mismatches such as `increase()` on a snapshot gauge
-- for persisted schemas, missing lifecycle coverage for state transitions,
-  retry/rerun, archive/delete/retention, JSON contracts, cache freshness, or
-  source/target database boundaries
-
-### Reviewer Output Shape
+- reads the artifact critically;
+- applies the required references;
+- identifies blocking and non-blocking issues;
+- checks whether implementation would require guessing;
+- checks whether validation is strong enough;
+- says explicitly when there are no blocking issues.
 
 Default output order:
 
-1. blocking issues
-2. non-blocking issues
-3. overall judgment
-4. whether comments should be written back
-
-If there are no blocking issues, say so explicitly.
+1. Blocking issues.
+2. Non-blocking issues.
+3. Overall judgment.
+4. Residual risks or validation gaps.
 
 ## Driver Role
 
 Use this section only when `Role: driver`.
 
-### Driver Responsibilities
+The driver owns the artifact body and the decision after reviewer output. The
+reviewer can recommend; the driver decides what to do next, and the human is
+the final authority.
 
-The driver:
-- owns the current artifact body
-- reads reviewer comments carefully
-- replies point-by-point where needed
-- revises the artifact body when changes are accepted
-- makes disagreements explicit instead of silently ignoring review
+Before editing artifacts or implementation after a reviewer pass, the driver
+must classify reviewer findings as:
+- `accepted`: will update the artifact or implementation;
+- `rejected`: will not change, with reason;
+- `deferred`: real issue, but tracked outside the current step with owner or
+  follow-up location;
+- `escalation-needed`: requires human discussion before editing.
 
-### How the Driver Should Respond
+Pause and discuss with the human before editing when a reviewer finding:
+- changes accepted scope;
+- contradicts explicit human direction;
+- changes risk tolerance, rollout posture, production behavior, or merge
+  readiness;
+- exposes an ambiguous tradeoff the artifact does not already settle;
+- would require dropping or weakening an accepted acceptance criterion.
 
-When replying to review:
-- separate agreement, disagreement, and partial agreement
-- explain what changed in the artifact body
-- if rejecting a point, explain why
-- if a reviewer found a real gap, fix the artifact instead of only defending it
-- if validation was weak, strengthen it in the artifact body
-- if implementation missed an accepted plan item, either implement it or record
-  it as `Missing` / `Partial` / `Deferred` with evidence and human decision
-- before handing off human-facing outputs, simulate the reader experience yourself: open the dashboard, read the report body, render the notification, or inspect the CLI/UI output; if you cannot simulate it, say so and ask the reviewer or human to do it
-- before handing off UI implementation, run a visual self-review using the same
-  state matrix expected from the reviewer. The handoff should name the states
-  actually checked, attach or reference rendered screenshots for the important
-  states, and explicitly list any states not checked.
-- do not use screenshots as decoration. If a screenshot is cited as evidence,
-  state what it proves. If it reveals a visible defect, either fix the defect or
-  record it as an accepted compromise / backlog item before handoff.
-- when iterating implementation across multiple review rounds, retire or
-  explicitly annotate superseded screenshots in the report body so current
-  evidence is distinguishable from historical screenshots.
-- do not relax a load-bearing acceptance criterion solely inside the
-  implementation report. If a measurable threshold changes, amend the plan via
-  an explicit review thread before treating the implementation as compliant.
-- if implementation changes product semantics across related surfaces, such as
-  filter meaning, chip labels, direction labels, issue badges, or bucket display,
-  document the semantic change and validate at least one cross-surface example.
+After applying or rejecting reviewer feedback, the driver summary must
+distinguish:
+- Claude reviewer suggestions;
+- driver decisions;
+- human decisions;
+- remaining risks;
+- validation provenance: CI-backed, reviewer-rerun, driver-reported, or human
+  acceptance.
 
-### Driver Output Shape
+The driver is not scoring the artifact. The driver is tightening it or
+explaining why a reviewer recommendation is not being adopted.
 
-Default output order:
+## Reviewed File Protocol
 
-1. points accepted
-2. points rejected or revised
-3. artifact changes made
-4. any remaining open questions
+The reviewed file is the shared record:
+- the main artifact body is the current source of truth;
+- the `## Review Threads` section holds reviewer comments, driver replies, and
+  explicit resolutions.
 
-The driver is not scoring the artifact. The driver is responding to review and tightening the artifact.
+Use one issue or tightly related issue cluster per thread. The reviewer opens
+threads. The driver replies and updates the body when needed. The reviewer is
+the default owner of final resolution.
 
-## Human Shorthand
+If a non-runner path writes to the reviewed file and commit authorization is
+unclear, ask the human before committing. Do not mix unrelated code changes or
+unrelated reviewed files into a handoff commit.
 
-These are optional shortcuts for humans who already know them. They are not the primary interaction design. Agents must still present numbered decision menus when asking for human input.
-
-Agents should recognize these shorthand tags in human input. Natural language is equally valid.
-
-The human may use these shortcuts with either role:
-
-- `[O]`
-  Agree. Continue on this direction or write it back to the artifact.
-
-- `[H]`
-  Restate in plain language. Avoid jargon and explain more clearly.
-
-- `[V]`
-  Validation is not sufficient. Add stronger acceptance or self-verification before moving on.
-
-- `[R]`
-  The rationale is not convincing. Provide evidence and do not guess.
-
-- `[X]`
-  Drop this item or direction.
-
-These may appear alone or with a short tail:
-
-- `[H] too much jargon`
-- `[V] define self-check first`
-- `[R] what evidence supports this`
-- `[X] drop this direction`
-
-Common natural-language equivalents should also be recognized, for example:
-- "say it plainly" / "说人话" -> `[H]`
-- "no evidence" / "编的" -> `[R]`
-- "not verifiable enough" / "验证不到" -> `[V]`
-- "drop it" / "算了" -> `[X]`
-- "OK" / "对" -> `[O]`
+Recommended commit message prefixes:
+- reviewer comment pass: `structured-review: add reviewer comments for <topic>`
+- driver revision pass: `structured-review: respond to review for <topic>`
+- reviewer resolution pass: `structured-review: resolve review threads for <topic>`
 
 ## Readiness Standard
 
 An artifact is ready for its next step only when:
-- the goal is clear
-- non-goals are clear enough to prevent scope drift
-- key assumptions are explicit
-- acceptance is specific
-- validation can be executed by the next agent where applicable
-- unresolved questions are either closed or explicitly tracked
+- the goal is clear;
+- non-goals are clear enough to prevent scope drift;
+- key assumptions are explicit;
+- acceptance is specific;
+- validation can be executed by the next agent where applicable;
+- unresolved questions are closed or explicitly tracked;
+- blocking review threads are resolved or explicitly escalated.
 
-If these are not true, do not treat the artifact as ready for its next step.
+Do not treat the artifact as ready when these are not true.
 
-## Iteration Discipline
+## Skill Self-Evolution
 
-If review rounds keep increasing without producing new high-value issues, either agent should proactively raise the possibility that the artifact is becoming over-specified.
-
-In that situation, explicitly ask the human whether the artifact is already good enough to move to the next step.
-
-## Post-Implementation Reality Check
-
-If implementation or deployment exposes a gap that review should have caught:
-- fix the immediate implementation issue
-- write the gap back into the artifact or related review record in summarized form
-- state the root cause clearly
-- update this skill or its references if the gap reveals a systematic blind spot
-- if the gap involves a human-facing output, add or strengthen reader-facing acceptance for future similar plans
-- if the gap involves external resource usage, add or strengthen source-of-truth, polling-safety, and reconciliation checks
-
-The goal is not blame. The goal is to turn a missed review failure mode into a stronger future protocol.
-
-This skill document itself falls under this protocol when it is updated:
-- treat changes to this skill as a plan-revision pass
-- assign reviewer and driver roles explicitly
-
-## Skill Self-Evolution Discipline
-
-When updating this skill after a missed review case:
-- add only generalized failure modes, not project-specific incidents
-- keep the main `SKILL.md` as a short operating checklist, not an incident log
-- prefer action-oriented checks over long explanations
-- put concrete examples, case studies, and niche details in review threads or reference files instead of the main skill body
-- if a new rule needs more than a few bullets, create a reference file and link it from `SKILL.md`
-- periodically prune, merge, or shorten rules that overlap, rarely trigger, or describe the same underlying check
+This skill falls under this protocol when updated:
+- treat changes to this skill as a plan-revision pass;
+- assign reviewer and driver roles explicitly;
+- keep `SKILL.md` as a short operating checklist;
+- put detailed checks, examples, and niche cases in references;
+- periodically prune, merge, or shorten rules that overlap or rarely trigger.
