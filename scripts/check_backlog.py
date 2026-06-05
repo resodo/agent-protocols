@@ -39,8 +39,11 @@ class ValidationError(Exception):
 
 
 def _load_yaml(path: Path) -> Any:
-    with path.open("r", encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            return yaml.safe_load(fh)
+    except yaml.YAMLError as exc:
+        raise ValidationError(f"YAML parse failed: {exc}") from exc
 
 
 def _require_mapping(value: Any, label: str) -> dict[str, Any]:
@@ -125,7 +128,7 @@ def validate_backlog(root: Path) -> None:
                 raise ValidationError(f"{item_id} missing closed fields: {', '.join(missing_closed)}")
             if item.get("resolution") not in VALID_RESOLUTIONS:
                 raise ValidationError(f"{item_id} resolution is invalid")
-            if not isinstance(item.get("closed_at"), date):
+            if type(item.get("closed_at")) is not date:
                 raise ValidationError(f"{item_id}.closed_at must be YYYY-MM-DD")
             _require_nonempty_string(item.get("outcome"), f"{item_id}.outcome")
             _require_list(item.get("refs"), f"{item_id}.refs")
