@@ -826,3 +826,95 @@ handling changes.
 No human escalation was needed. This is a narrow acceptance-tightening edit; it
 does not change runner behavior, protocol semantics, or the documentation
 organization scope.
+
+### Reviewer Pass — agent protocols documentation organization implementation re-review (impl)
+
+Restated concern: confirm the driver response resolved Thread 12 (the missing
+self-stated closeout maintenance tie in `docs/agent_plans/README.md`), that no
+new blocker was introduced, and that the documentation organization amendment is
+ready for closeout.
+
+Re-review scope (multi-round): inspected the driver-response commit
+`docs: respond to organization implementation review` (`e4c6bc4`), the current
+`docs/agent_plans/README.md`, the two sibling indexes (`docs/CURRENT.md`,
+`docs/README.md`) the Thread 12 acceptance names, the `ui-review.md` pointers,
+and the runner/test surface. Reran validation and the amendment sweeps. This
+pass does not reopen the already-`ready for closeout` review/closeout boundary
+work; it only confirms the reorg amendment is closeout-ready.
+
+#### Blocking
+
+None. No prior thread was blocking, and the driver response introduces no new
+blocker. The response touched only documentation: `git show --name-only` on the
+driver commit lists exactly `docs/agent_plans/2026-06-05_review_closeout_boundary_plan.md`
+(this thread file) and `docs/agent_plans/README.md`. No executable protocol
+material — runner, tests, `SKILL.md` bodies, or references — was edited.
+
+#### Thread resolutions
+
+**Thread 12 — Resolved. `docs/agent_plans/README.md` body updated.** The driver
+added one Rules line: "Review these rules during closeout documentation-consistency
+checks when plan or artifact handling changes." This closes the literal gap the
+prior pass flagged against additional-acceptance lines 175-177 ("`docs/CURRENT.md`,
+`docs/README.md`, and `docs/agent_plans/README.md` state that they are maintained
+during closeout doc-consistency checks"). All three named indexes now self-state
+the tie:
+- `docs/CURRENT.md`: "Update this map during closeout when protocols, indexes,
+  runner paths, reference paths, or backlog ownership change."
+- `docs/README.md`: "These index checks are part of closeout documentation
+  consistency."
+- `docs/agent_plans/README.md`: the new line above.
+
+The new wording is consistent with the other two indexes and scoped correctly to
+this file's subject (plan/artifact handling). Under the mechanism-lifecycle lens,
+the durable-index drift risk the prior pass raised is now closed for all three
+indexes both transitively (via `docs/README.md`'s Maintenance list) and directly
+(each index names its own closeout tie). Verified by reading the current file.
+
+#### Non-blocking
+
+None new.
+
+#### Overall judgment
+
+Ready for closeout. Thread 12 is resolved by a one-line body edit that makes the
+additional-acceptance wording pass exactly, and the response introduced no new
+blocker or scope change. The amendment remains mechanically safe and internally
+consistent: `structured-review`'s top level still holds only `SKILL.md`; the
+runner reference tuple is still `(references/review-lenses.md,
+references/collaboration.md)` with `ui-review.md` kept conditional and outside
+`REQUIRED_PROTOCOL_REFERENCES`; the two `ui-review.md` pointers remain in their
+correct forms (`structured-review/SKILL.md` dir-relative `references/ui-review.md`;
+runner-loaded `structured-review/references/review-lenses.md` repo-relative
+`structured-review/references/ui-review.md`); and the review/closeout boundary is
+unchanged — `ready for human merge` appears 0 times in `structured-review/SKILL.md`
+and its references and is confined to `closeout/SKILL.md` among live files. Per the
+review/closeout boundary, this is an `impl` pass concluding `ready for closeout`,
+not a merge-readiness handoff; final merge readiness belongs to closeout after its
+own rechecks.
+
+Validation rerun (reviewer-rerun provenance):
+- `python -m unittest discover -s structured-review/tests` -> OK, 41 tests.
+- `python -m compileall -q structured-review` -> exit 0.
+- `git diff --check` -> clean.
+- Amendment sweeps: `find structured-review -maxdepth 1 -type f` lists only
+  `structured-review/SKILL.md`; the scoped live-surface stale-reference sweep over
+  `README.md`, `AGENTS.md`, `docs/`, `structured-review/SKILL.md`, and
+  `structured-review/references` returns no matches; new paths
+  (`docs/agent_plans/`, `docs/protocol_backlog.md`, `references/ui-review.md`) are
+  present.
+
+#### Residual risks / validation gaps
+
+- The new `docs/` indexes (`CURRENT.md`, `README.md`, `agent_plans/README.md`)
+  remain durable mechanisms that drift silently; their stated owner is now the
+  closeout doc-consistency check, which must actually run when protocols are
+  added, renamed, retired, or moved. With Thread 12 resolved, each index self-states
+  that tie rather than relying on transitive coverage.
+- Validation proves path presence/absence and that executable material was not
+  touched, not the prose quality of the navigation wording; final acceptance of
+  the index prose remains reviewer/human judgment.
+- The `docs/CURRENT.md` conditional-reference note remains the only guard against a
+  future change adding `ui-review.md` (or any new `references/*.md`) to
+  `REQUIRED_PROTOCOL_REFERENCES` and silently enlarging every reviewer prompt; it is
+  documentation, not a test.
