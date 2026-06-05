@@ -22,7 +22,7 @@ rules live in `docs/README.md`; the current protocol map lives in
 
 - `docs/agent_plans/` - dated plans, review-thread artifacts, and closeout
   evidence for protocol changes.
-- `docs/protocol_backlog.md` - this repo's protocol-development backlog.
+- `docs/backlog.yml` - this repo's protocol-development backlog.
 
 Protocol directories should hold executable or reusable protocol material:
 `SKILL.md`, `scripts/`, `tests/`, `references/`, and templates. Do not put

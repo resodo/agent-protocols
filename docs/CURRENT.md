@@ -13,7 +13,7 @@ avoid treating historical plans as current instructions.
 - Repo overview: `README.md`
 - Documentation rules: `docs/README.md`
 - Protocol change plans and review artifacts: `docs/agent_plans/`
-- Protocol-development backlog: `docs/protocol_backlog.md`
+- Protocol-development backlog: `docs/backlog.yml`
 
 ## Current Protocols
 
@@ -26,8 +26,8 @@ avoid treating historical plans as current instructions.
 - `planning/SKILL.md` - discussion-to-plan workflow before implementation.
 - `retrospective/SKILL.md` - evidence-based post-incident or post-closeout
   learning workflow.
-- `backlog-maintenance/SKILL.md` - YAML backlog registry maintenance protocol
-  for adopting repos that use `docs/backlog.yml`.
+- `backlog-maintenance/SKILL.md` - YAML backlog registry maintenance protocol.
+  This repo dogfoods it through `docs/backlog.yml`.
 - `agent-readiness/` - worktree guard contract and agent bootstrap template for
   downstream repos.
 

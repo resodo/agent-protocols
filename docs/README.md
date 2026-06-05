@@ -11,7 +11,9 @@ placement and naming.
   and current maintenance notes.
 - `agent_plans/` - dated plans, review-thread artifacts, implementation
   records, and closeout evidence for protocol changes.
-- `protocol_backlog.md` - this repo's protocol-development backlog.
+- `backlog.yml` - this repo's protocol-development backlog. Use
+  `backlog-maintenance/SKILL.md` before adding, updating, closing, or querying
+  items.
 
 Protocol packages live at the repo root, such as `structured-review/` and
 `closeout/`. Those directories should contain executable or reusable protocol
@@ -29,7 +31,7 @@ Exceptions:
 
 - `README.md`;
 - `CURRENT.md`;
-- `protocol_backlog.md`;
+- `backlog.yml`;
 - long-lived protocol files such as `SKILL.md`, `references/*.md`, templates,
   scripts, and tests.
 
@@ -57,6 +59,6 @@ When protocols are added, renamed, retired, or moved, update:
 - `docs/CURRENT.md`;
 - this file when placement or lifecycle rules change;
 - `docs/agent_plans/README.md` when plan/artifact handling changes;
-- `docs/protocol_backlog.md` when backlog ownership changes.
+- `docs/backlog.yml` when backlog ownership changes.
 
 These index checks are part of closeout documentation consistency.
