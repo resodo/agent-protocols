@@ -187,6 +187,86 @@ python -m compileall -q structured-review
 git diff --check
 ```
 
+## Backlog YAML Dogfood Amendment
+
+Human follow-up: since this repo owns the `backlog-maintenance` protocol, its
+own active backlog should use `docs/backlog.yml` instead of a parallel Markdown
+backlog. Keeping `docs/protocol_backlog.md` as active backlog now contradicts
+the protocol this repo asks downstream repos to use.
+
+This amendment supersedes the earlier Documentation Organization Amendment's
+temporary `docs/protocol_backlog.md` target and anti-migration non-goal.
+
+Extend this PR before merge:
+
+1. Migrate `docs/protocol_backlog.md` into `docs/backlog.yml`.
+   - Use `backlog-maintenance/SKILL.md` schema.
+   - Set `version: 1`.
+   - Set `repo: resodo/agent-protocols`.
+   - Set `id_prefix: AP-BL`.
+   - Keep kinds to the protocol's standard set:
+     `bug`, `feature`, `ops`, `debt`, `research`, `process`.
+   - Convert the five existing open Markdown items into open YAML items with
+     stable IDs `AP-BL-0001` through `AP-BL-0005`.
+   - Preserve useful context in `why`, `next`, and `done_when`.
+
+2. Remove the active Markdown backlog file.
+   - Do not keep `docs/protocol_backlog.md` as a second active backlog.
+   - Historical mentions inside dated plans can remain unchanged as provenance.
+
+3. Update live indexes and entrypoints:
+   - `README.md`;
+   - `AGENTS.md`;
+   - `docs/README.md`;
+   - `docs/CURRENT.md`;
+   - `docs/agent_plans/README.md` only if needed.
+   - Remove the prior anti-migration wording that says not to migrate this repo
+     to `docs/backlog.yml`; this amendment is the accepted migration plan.
+   - Remove or replace all live `docs/protocol_backlog.md` pointers in these
+     live entry/index surfaces.
+
+4. Add a backlog validation mechanism:
+   - add `scripts/check_backlog.py`;
+   - use PyYAML for YAML parsing and install `PyYAML` in CI before running the
+     checker;
+   - validate the hard checks listed in `backlog-maintenance/SKILL.md`;
+   - add negative-case unit tests for the checker, such as duplicate IDs, bad
+     priority, missing open required field, and stray `docs/backlog.md`;
+   - add it to CI.
+
+Amendment non-goals:
+
+- Do not redesign backlog-maintenance schema in this PR.
+- Do not add closed items or invent new backlog scope.
+- Do not rewrite historical review-thread bodies that mention
+  `docs/protocol_backlog.md`.
+- Do not migrate downstream repos in this PR.
+
+Additional acceptance:
+
+- `docs/backlog.yml` is the only active backlog source of truth.
+- `docs/protocol_backlog.md` is absent.
+- The YAML entries are semantically faithful to the five existing open items.
+- Live docs point to `docs/backlog.yml`, not `docs/protocol_backlog.md`.
+- CI runs the backlog checker.
+- Checker negative-case tests prove the hard checks fail when violated.
+- Existing review/closeout boundary and docs-organization behavior remains
+  unchanged.
+- Priority, kind, and prose field choices are reviewer/human-judged for
+  semantic faithfulness; CI validates shape, not judgment.
+
+Additional validation:
+
+```bash
+python scripts/check_backlog.py
+python -m unittest discover -s tests
+python -m unittest discover -s structured-review/tests
+python -m compileall -q structured-review
+rg -n 'docs/protocol_backlog|Do not migrate this repo to `docs/backlog.yml`' README.md AGENTS.md docs/README.md docs/CURRENT.md docs/agent_plans/README.md structured-review
+rg -n "docs/backlog.yml|AP-BL|check_backlog" README.md AGENTS.md docs .github scripts
+git diff --check
+```
+
 ## Review Threads
 
 ### Driver response — 2026-06-05 plan review
@@ -826,70 +906,6 @@ handling changes.
 No human escalation was needed. This is a narrow acceptance-tightening edit; it
 does not change runner behavior, protocol semantics, or the documentation
 organization scope.
-
-## Backlog YAML Dogfood Amendment
-
-Human follow-up: since this repo owns the `backlog-maintenance` protocol, its
-own active backlog should use `docs/backlog.yml` instead of a parallel Markdown
-backlog. Keeping `docs/protocol_backlog.md` as active backlog now contradicts
-the protocol this repo asks downstream repos to use.
-
-Extend this PR before merge:
-
-1. Migrate `docs/protocol_backlog.md` into `docs/backlog.yml`.
-   - Use `backlog-maintenance/SKILL.md` schema.
-   - Set `repo: resodo/agent-protocols`.
-   - Set `id_prefix: AP-BL`.
-   - Keep kinds to the protocol's standard set:
-     `bug`, `feature`, `ops`, `debt`, `research`, `process`.
-   - Convert the five existing open Markdown items into open YAML items with
-     stable IDs `AP-BL-0001` through `AP-BL-0005`.
-   - Preserve useful context in `why`, `next`, and `done_when`.
-
-2. Remove the active Markdown backlog file.
-   - Do not keep `docs/protocol_backlog.md` as a second active backlog.
-   - Historical mentions inside dated plans can remain unchanged as provenance.
-
-3. Update live indexes and entrypoints:
-   - `README.md`;
-   - `AGENTS.md`;
-   - `docs/README.md`;
-   - `docs/CURRENT.md`;
-   - `docs/agent_plans/README.md` only if needed.
-
-4. Add a backlog validation mechanism:
-   - add `scripts/check_backlog.py`;
-   - validate the hard checks listed in `backlog-maintenance/SKILL.md`;
-   - add it to CI.
-
-Amendment non-goals:
-
-- Do not redesign backlog-maintenance schema in this PR.
-- Do not add closed items or invent new backlog scope.
-- Do not rewrite historical review-thread bodies that mention
-  `docs/protocol_backlog.md`.
-- Do not migrate downstream repos in this PR.
-
-Additional acceptance:
-
-- `docs/backlog.yml` is the only active backlog source of truth.
-- `docs/protocol_backlog.md` is absent.
-- The YAML entries are semantically faithful to the five existing open items.
-- Live docs point to `docs/backlog.yml`, not `docs/protocol_backlog.md`.
-- CI runs the backlog checker.
-- Existing review/closeout boundary and docs-organization behavior remains
-  unchanged.
-
-Additional validation:
-
-```bash
-python scripts/check_backlog.py
-python -m unittest discover -s structured-review/tests
-python -m compileall -q structured-review
-rg -n "docs/protocol_backlog|Do not migrate this repo to `docs/backlog.yml`" README.md AGENTS.md docs/README.md docs/CURRENT.md docs/agent_plans/README.md structured-review
-rg -n "docs/backlog.yml|AP-BL|check_backlog" README.md AGENTS.md docs .github scripts
-git diff --check
-```
 
 ### Reviewer Pass — agent protocols documentation organization implementation re-review (impl)
 
