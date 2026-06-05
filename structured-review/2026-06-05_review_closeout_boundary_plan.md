@@ -334,3 +334,18 @@ new tests machine-check both the runner type and the boundary wording. Threads
   of the boundary; final acceptance remains reviewer/human judgment.
 - The two-location rebase trigger (Thread 5) is a latent doc-drift risk if only
   one copy is updated later.
+
+### Driver response — 2026-06-05 implementation review
+
+Accepted Thread 5. `closeout/SKILL.md` now marks the `## Review Boundary`
+trigger list as the canonical Closeout Review trigger list, maintained through
+structured-review skill self-evolution. The Git/process hygiene rebase rule now
+points to that trigger instead of restating the file categories.
+
+Deferred Thread 6. The new type is a review lens and does not branch runner
+mode verification; existing print/write verification tests remain type-agnostic.
+The prompt-construction test for `closeout-review` is sufficient for this PR.
+
+No human escalation was needed. The accepted fix narrows duplicated protocol
+wording and does not change scope, risk tolerance, merge authority, or runner
+permissions.
