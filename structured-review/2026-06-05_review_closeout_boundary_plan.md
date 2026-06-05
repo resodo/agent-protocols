@@ -483,3 +483,158 @@ Validation rerun (reviewer-rerun provenance):
 - The accepted deferral leaves no `closeout-review` runtime (print/write) test;
   acceptable while the type stays a pure review lens. If a future change makes
   the runner branch on `review_type`, add a type-specific runtime test then.
+
+### Reviewer Pass — agent protocols documentation organization (impl-plan)
+
+Restated concern: reorganize agent-protocols documentation (move dated plans,
+`BACKLOG.md`, and `ui-review.md` out of / within protocol directories; add
+`AGENTS.md` + `docs/` navigation mirroring the cleaner Skynet V2 layout) without
+breaking runner-loaded references, the runner's behavior, or historical review
+threads, and with acceptance/validation strong enough that the next agent does
+not have to guess.
+
+Scope of this pass: the `## Documentation Organization Amendment` section only
+(plan lines 113-164). The review/closeout boundary work above is already
+resolved and `ready for closeout`; this pass does not reopen it.
+
+What I verified directly:
+- The runner loads exactly two references — `REQUIRED_PROTOCOL_REFERENCES =
+  (references/review-lenses.md, references/collaboration.md)` in
+  `structured-review/scripts/claude_structured_review.py`. It is a hard-coded
+  tuple, not a `references/` glob. So moving `ui-review.md` into `references/`
+  does **not** auto-load it and does **not** change prompt assembly.
+- `structured-review/tests/test_claude_structured_review.py` does not reference
+  `ui-review.md`, `BACKLOG.md`, or any dated plan by path. The two tests that
+  read the real skill read `structured-review/SKILL.md`, which the amendment
+  keeps in place. So the moves do not break the test suite.
+- `ui-review.md` is referenced in two tracked, non-test places:
+  `structured-review/SKILL.md:49` ("also apply `ui-review.md`") and the
+  runner-loaded `structured-review/references/review-lenses.md:106` ("also apply
+  `structured-review/ui-review.md`").
+- `closeout/SKILL.md` already independently assumes `AGENTS.md` (lines 194, 212),
+  `docs/README.md` (line 195), and `docs/agent_plans/` (line 264). No `AGENTS.md`
+  or `docs/` exists in the repo yet, so the new files are greenfield (no
+  overwrite risk).
+- The sibling plan
+  `structured-review/2026-06-05_structured_review_runner_default_refactor_plan.md`
+  made a deliberate, accepted decision (its Thread 7, deferred as residual risk)
+  to keep `ui-review.md` as a conditional, disk-only reference and **not** add it
+  to `REQUIRED_PROTOCOL_REFERENCES`.
+
+#### Blocking
+
+None. Nothing in the amendment breaks mechanically: the runner's reference set
+is hard-coded (so the `ui-review.md` move cannot disturb prompt assembly), the
+tests do not depend on the moved paths, and the new `AGENTS.md`/`docs/` targets
+are greenfield. The proposed layout is implementable as written. The threads
+below are tightenings, not gates.
+
+#### Non-blocking
+
+**Thread 7 — State that moving `ui-review.md` into `references/` does not change
+its loading status.** After the move, `references/` will hold three files, two of
+which (`review-lenses.md`, `collaboration.md`) are runner-loaded required
+references and one (`ui-review.md`) is a conditional reference the runner does
+*not* load. A reader — or an implementer trying to be helpful — could reasonably
+infer that anything in `references/` should be added to
+`REQUIRED_PROTOCOL_REFERENCES`. Doing so would silently change every reviewer
+prompt (it would grow by the whole UI reference) and would reverse the sibling
+plan's accepted Thread 7 decision. The current Non-Goal "Do not change Claude
+runner flags, permissions, logging, or artifact format" points the right way,
+but it does not name this specific trap. Recommend one explicit sentence in the
+amendment: moving `ui-review.md` into `references/` is a relocation only; it stays
+a conditional reference and is **not** added to `REQUIRED_PROTOCOL_REFERENCES`.
+This directly answers the review focus "whether required runner references would
+break": they do not, provided this stays a pure relocation.
+
+**Thread 8 — Note that the `ui-review.md` path update in `review-lenses.md` is
+load-bearing, not cosmetic.** Amendment item 4 already says "update references to
+the new path," and the validation `rg` already searches for
+`references/ui-review.md`, so this is covered in principle. Worth making explicit
+because `references/review-lenses.md` is one of the two runner-loaded references:
+its text is injected verbatim into *every* reviewer prompt. If the file moves but
+line 106's `structured-review/ui-review.md` is not updated, every future reviewer
+is told to "also apply" a path that no longer exists. `SKILL.md:49` ("also apply
+`ui-review.md`") must change too. Both are repo-relative-vs-dir-relative variants
+of the same pointer; the validation pattern `references/ui-review.md` catches both
+post-move forms. Low effort; just call out that these two edits are required, not
+optional, and that one of them lives inside a prompt-loaded file.
+
+**Thread 9 — The stale-reference acceptance and its `rg` cannot distinguish
+frozen historical mentions from live stale references; tighten it, and use
+`git mv`.** The acceptance says "No references to the moved *active* files remain
+stale," but the validation `rg ... "structured-review/(2026-|BACKLOG.md|
+ui-review.md)|..."` over `docs structured-review` will also match the *historical
+bodies* of the dated plans being moved. The sibling refactor plan alone mentions
+`structured-review/ui-review.md` roughly a dozen times inside frozen review
+threads; once that plan moves to `docs/agent_plans/`, the sweep will fire on all
+of them. Two failure modes for the next agent: (a) it cannot get a clean pass and
+treats real work as "done" by ignoring the noise, or (b) it "fixes" the hits by
+editing old-path strings inside frozen 2026-06-05 review threads — falsifying what
+a reviewer actually wrote at the time, which the project's own references
+(retire/annotate superseded evidence rather than silently rewrite) caution
+against. Recommend: (1) declare that moved dated plans are frozen historical
+records and their bodies are out of scope for the stale-reference sweep — only
+live indexes, `SKILL.md`, `README.md`, `AGENTS.md`, and the runner-loaded
+references must be updated; (2) scope the `rg` accordingly (e.g. exclude
+`docs/agent_plans/`), or split it into a "live surfaces must be current" check and
+a separate "moved plans untouched except path" check; (3) use `git mv` for the
+moves so history and review-thread traceability survive the relocation.
+
+**Thread 10 — Layout is not overfit, but record maintenance ownership for the new
+index files and disambiguate the backlog name.** On the "mirrors Skynet V2
+without overfitting" focus: the `AGENTS.md` + `docs/README.md` + `docs/agent_plans/`
+parts are not overfitting — `closeout/SKILL.md` already assumes exactly these
+(lines 194-195, 264), so the amendment harmonizes this repo with conventions its
+own protocols already expect. The only genuinely new element is `docs/CURRENT.md`
+(an active source-of-truth map); closeout references generic "current-doc
+indexes," so it fits and is a single low-cost file, not overfit. Two small
+follow-ups under the mechanism-lifecycle lens, since `docs/CURRENT.md`,
+`docs/README.md`, and `docs/agent_plans/README.md` are durable indexes that go
+stale silently: (a) name who updates the source-of-truth map / indexes when a
+protocol is added, renamed, or retired (a one-line "maintained at closeout via
+the doc-consistency check" note is enough, and aligns with `closeout/SKILL.md`
+§4/§4.1); (b) `docs/README.md` should disambiguate `docs/protocol_backlog.md`
+(this repo's own protocol-development backlog) from the `backlog-maintenance`
+protocol's `docs/backlog.yml` convention, so a future agent does not conflate the
+two or try to migrate one into the other.
+
+**Thread 11 — Give the amendment its own Non-Goals/assumptions (minor).** The
+plan's Non-Goals (lines 69-76) were written for the boundary work; one of them
+("Do not create new long reference files unless the SKILL.md bodies become too
+large") reads oddly next to an amendment that intentionally adds four navigation
+docs (which are indexes, not long references — no real conflict, but the framing
+collides). A short "Amendment Non-Goals" would prevent scope drift: no change to
+runner reference loading (Thread 7); do not touch `agent-readiness/` or other
+protocol dirs beyond the named moves; do not migrate this repo to `docs/backlog.yml`;
+preserve filenames on move. Optional.
+
+#### Overall judgment
+
+Ready to implement, with no blocking issues. The amendment is mechanically safe:
+the runner's reference set is hard-coded so the `ui-review.md` relocation cannot
+disturb prompt assembly; the tests do not depend on any moved path; the new
+`AGENTS.md`/`docs/` targets are greenfield; and the proposed layout aligns with
+conventions `closeout/SKILL.md` already assumes (so it is harmonizing, not
+overfitting). Threads 7-9 are the ones worth folding into a revision pass before
+implementation, because they govern the two things the focus asks about —
+runner-reference integrity (7, 8) and acceptance/validation precision for the
+historical moves (9). Threads 10-11 are polish. Per the review/closeout boundary,
+this is an `impl-plan` pass: it concludes `ready for implementation`, not a
+merge-readiness handoff.
+
+#### Residual risks / validation gaps
+
+- If Thread 7 is left implicit, an implementer may add `ui-review.md` to
+  `REQUIRED_PROTOCOL_REFERENCES`, silently enlarging every reviewer prompt and
+  reversing the sibling plan's accepted decision.
+- As written, the stale-reference `rg` produces false positives on frozen
+  historical plan bodies (Thread 9); the acceptance cannot be a clean pass/fail
+  until the sweep is scoped to live surfaces.
+- `docs/CURRENT.md` and the new indexes are durable mechanisms with no stated
+  maintenance owner (Thread 10); they will drift unless tied to the closeout
+  doc-consistency check.
+- The amendment changes only documentation; the runner, tests, and
+  review/closeout boundary behavior are expected to remain byte-for-byte
+  unchanged. The validation reruns `unittest` + `compileall`, which guards that
+  the moves did not touch executable protocol material — a good check to keep.
