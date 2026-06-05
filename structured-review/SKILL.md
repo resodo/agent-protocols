@@ -46,7 +46,7 @@ The bundled runner loads these references into reviewer prompts. If using the
 skill manually, read these references before judging readiness.
 
 For high-touch product UI, dashboards, charts, data review tools, and operator
-consoles, also apply `ui-review.md`.
+consoles, also apply `references/ui-review.md`.
 
 ## Default Claude Runner Rule
 
