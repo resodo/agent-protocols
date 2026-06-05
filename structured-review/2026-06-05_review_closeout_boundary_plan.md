@@ -234,3 +234,103 @@ are improvements that can fold into the same revision pass.
 - Validation cannot prove the semantic correctness of the boundary wording;
   final acceptance is reviewer/human judgment.
 - `closeout/SKILL.md` wording is grep-checked only (no unit-test coverage).
+
+### Reviewer Pass — review closeout boundary implementation (impl)
+
+Restated concern: confirm the implementation keeps `structured-review` a quality
+gate and `closeout` the driver-owned delivery gate, makes `Closeout Review`
+optional and closeout-triggered, lets a repo-backed Closeout Review run through
+the Claude runner with correct mode guidance, keeps merge authority in
+closeout/human handoff, and covers the runner type plus boundary wording in
+tests.
+
+Traceability against the accepted Acceptance list:
+
+- Separates plan/impl review readiness from merge readiness — Done.
+  `structured-review/SKILL.md` adds `## Boundary With Closeout`:
+  "Structured-review is a quality gate. Closeout is the delivery gate," normal
+  next-step language, and "Plan and implementation reviews must not make final
+  merge-readiness handoffs."
+- Closeout is the driver-owned delivery gate with defined Closeout Review
+  triggers — Done. `closeout/SKILL.md` adds `## Review Boundary`: "Closeout is
+  driver-owned by default. Do not invoke Claude or another reviewer just because
+  closeout has started," plus the six-trigger list and the return contract.
+- No normal review wording says `ready for human merge` — Done. Verified the
+  phrase does not appear in `structured-review/SKILL.md` or its references; it
+  appears only in `closeout/SKILL.md`. The new test asserts its absence.
+- `Closeout Review` is not a default/mandatory runner gate — Done.
+  `structured-review/SKILL.md`: "`Closeout Review` is not part of this default
+  gate list ... the trigger comes from closeout, not from structured-review by
+  default." Test asserts the "is not part of this default gate list" phrase.
+- Closeout still owns `ready for human merge` after final rechecks — Done.
+  `closeout/SKILL.md` retains the verified-handoff wording.
+- Runner mode guidance for a triggered Closeout Review — Done and internally
+  consistent across both skills: default `print-review` for durable closeout
+  reports/reference artifacts; `write-commit-to-plan` only when the driver
+  provides a thread file with `## Review Threads`. This matches the runner's
+  actual constraints (`--thread-file` forbidden in print mode; required plus a
+  `## Review Threads` anchor in write mode).
+- Runner accepts the new type — Done. `REVIEW_TYPES` gains `closeout-review`;
+  the type threads into the prompt as `Type: closeout-review`.
+- Test coverage extended — Done.
+  `test_closeout_review_type_loads_into_prompt` machine-checks the runner type;
+  `test_skill_separates_review_readiness_from_closeout_handoff` machine-checks
+  the boundary wording and the absence of `ready for human merge`.
+- README unchanged — Correct. README describes structured-review and closeout
+  without any merge-handoff claim, so it does not conflict with the boundary;
+  the plan only required changing it on conflict.
+
+Validation rerun (reviewer-rerun provenance):
+- `python -m unittest discover -s structured-review/tests` → OK, 41 tests.
+- `python -m compileall -q structured-review` → exit 0.
+- `git diff --check` → clean.
+- `rg` boundary-wording sweep → matches the expectations above.
+
+#### Blocking
+
+None. The prior plan-review blocker (Thread 1: define how Closeout Review
+relates to the Default Claude Runner Rule and name the runner mode) is resolved
+in both skills, and the central Human Concern — closeout not silently becoming a
+mandatory Claude/cross-agent gate — holds: `Closeout Review` is explicitly
+excluded from the default gate list and is invoked only on closeout triggers.
+
+#### Non-blocking
+
+**Thread 5 — Rebase-conflict trigger is stated in two places in
+`closeout/SKILL.md`.** The "rebase or conflict resolution touched
+source-of-truth docs, protocol files, tests, CI, deploy/runtime templates"
+condition now appears both in the new `## Review Boundary` trigger list (around
+line 36) and in the Git/Process Hygiene rebase rule (around line 287). They
+agree today, but per the mechanism-lifecycle lens this is a durable checklist
+maintained in two spots: a future wording change must update both or they
+drift. Optional: keep the canonical list in `## Review Boundary` and have the
+hygiene rule point to it instead of restating the trigger. Plan-review Thread 4
+also suggested recording that the trigger list is maintained via
+structured-review skill self-evolution; that explicit maintenance-ownership note
+was not added. Minor; not required for this step.
+
+**Thread 6 — `closeout-review`'s runner runtime path has no type-specific
+test.** The new test exercises prompt construction for the type but not a
+print/write verification run. Acceptable: the type is a review lens only and
+does not branch the runner's mode verification, so the existing type-agnostic
+run/verify tests already cover that path. Noted for awareness, not a gap to fill
+now.
+
+#### Overall judgment
+
+Ready for closeout. The implementation matches every Acceptance item, the
+quality-gate / delivery-gate boundary is explicit and mutually consistent across
+both skills, `Closeout Review` is optional and closeout-triggered with correct
+runner mode guidance, merge authority stays in closeout/human handoff, and the
+new tests machine-check both the runner type and the boundary wording. Threads
+5-6 are minor and can be deferred or folded into a later skill-evolution pass.
+
+#### Residual risks / validation gaps
+
+- `closeout/SKILL.md` wording is reviewer/human-judged and grep-checked only (no
+  unit-test coverage), consistent with the plan's accepted validation
+  provenance.
+- Machine checks confirm phrase presence/absence, not the semantic correctness
+  of the boundary; final acceptance remains reviewer/human judgment.
+- The two-location rebase trigger (Thread 5) is a latent doc-drift risk if only
+  one copy is updated later.
