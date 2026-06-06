@@ -144,6 +144,7 @@ class ScoutRunnerTests(unittest.TestCase):
         )
         self.assertTrue((run_dir / "SCOUT_REPORT.md").exists())
         self.assertTrue((run_dir / "MANIFEST.md").exists())
+        self.assertIn("Backlog baseline sha256:", (run_dir / "MANIFEST.md").read_text(encoding="utf-8"))
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(runner.cmd_check(check_args), 0)
 
@@ -186,6 +187,44 @@ class ScoutRunnerTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(runner.RunnerError, "dry-run"):
             runner.cmd_check(args)
+
+    def test_dry_run_allows_backlog_dirty_before_setup_when_unchanged(self) -> None:
+        (self.root / "docs/backlog.yml").write_text(
+            "version: 1\nrepo: example/repo\nid_prefix: EX-BL\nkinds: [debt]\nitems:\n"
+            "  - id: EX-BL-0001\n"
+            "    status: candidate\n"
+            "    priority: P2\n"
+            "    kind: debt\n"
+            "    title: Existing candidate\n"
+            "    why: >\n"
+            "      Existing human-approved candidate before this dry-run.\n"
+            "    next: >\n"
+            "      Review later.\n"
+            "    done_when: >\n"
+            "      Reviewed.\n"
+            "    refs:\n"
+            "      - docs/agent_plans/outputs/previous/SCOUT_REPORT.md#candidate-proposal-001\n",
+            encoding="utf-8",
+        )
+
+        setup_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            mode="dry-run",
+            date="2026-06-06",
+            slug="scout_run",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            runner.cmd_setup(setup_args)
+
+        args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            run_dir="docs/agent_plans/outputs/2026-06-06_scout_run",
+            mode="dry-run",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.cmd_check(args), 0)
 
     def test_vulture_config_is_canonical_and_outside_repo(self) -> None:
         out1 = Path(self.tmp.name) / "vulture1.toml"
