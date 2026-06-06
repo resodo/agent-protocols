@@ -33,5 +33,8 @@ jobs:
       - name: Unit tests
         run: python -m unittest discover -s structured-review/tests
 
+      - name: Scout tests
+        run: python -m unittest discover -s scout/tests
+
       - name: Compile
-        run: python -m compileall -q structured-review
+        run: python -m compileall -q structured-review scout

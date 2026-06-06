@@ -16,10 +16,11 @@ except ImportError as exc:  # pragma: no cover - exercised by environment, not l
     raise SystemExit("PyYAML is required. Install with: python -m pip install PyYAML") from exc
 
 
-VALID_STATUSES = {"open", "closed"}
+VALID_STATUSES = {"candidate", "open", "closed"}
 VALID_PRIORITIES = {"P0", "P1", "P2"}
 VALID_RESOLUTIONS = {"completed", "cancelled", "transferred"}
 OPEN_REQUIRED = {"id", "status", "priority", "kind", "title", "why", "next", "done_when"}
+CANDIDATE_REQUIRED = OPEN_REQUIRED | {"refs"}
 CLOSED_REQUIRED = {
     "id",
     "status",
@@ -109,7 +110,7 @@ def validate_backlog(root: Path) -> None:
         kind = item.get("kind")
         title = item.get("title")
         if status not in VALID_STATUSES:
-            raise ValidationError(f"{item_id} status must be open or closed")
+            raise ValidationError(f"{item_id} status must be candidate, open, or closed")
         if priority not in VALID_PRIORITIES:
             raise ValidationError(f"{item_id} priority must be P0, P1, or P2")
         if kind not in kind_set:
@@ -122,6 +123,15 @@ def validate_backlog(root: Path) -> None:
                 raise ValidationError(f"{item_id} missing open fields: {', '.join(missing_open)}")
             for field in ("why", "next", "done_when"):
                 _require_nonempty_string(item[field], f"{item_id}.{field}")
+        elif status == "candidate":
+            missing_candidate = sorted(CANDIDATE_REQUIRED - item.keys())
+            if missing_candidate:
+                raise ValidationError(f"{item_id} missing candidate fields: {', '.join(missing_candidate)}")
+            for field in ("why", "next", "done_when"):
+                _require_nonempty_string(item[field], f"{item_id}.{field}")
+            refs = _require_list(item.get("refs"), f"{item_id}.refs")
+            if not refs or any(not isinstance(ref, str) or not ref.strip() for ref in refs):
+                raise ValidationError(f"{item_id}.refs must contain non-empty strings")
         else:
             missing_closed = sorted(CLOSED_REQUIRED - item.keys())
             if missing_closed:
