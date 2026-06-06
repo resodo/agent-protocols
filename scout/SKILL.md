@@ -116,7 +116,8 @@ The runner stabilizes mechanics:
 
 Backlog item field validation belongs to the repo backlog checker. The runner
 may invoke or require that checker, but it must not maintain an independent
-candidate field contract.
+candidate field contract. Write-enabled runs must still follow
+`backlog-maintenance/SKILL.md` and run the repo backlog checker before handoff.
 
 The runner must not interpret tool output, decide whether a finding is true,
 deduplicate candidates semantically, judge overlap with open/closed backlog

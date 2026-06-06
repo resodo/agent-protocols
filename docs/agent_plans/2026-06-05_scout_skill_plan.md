@@ -283,7 +283,7 @@ and non-empty. `python.test_roots`, `python.active_contract_sources`, and
 in repos that lack those concepts. `python.known_false_positive_classes` is
 optional and extends the shared defaults. `python.vulture.roots` is required and
 non-empty when Vulture is enabled. `python.vulture.version` should declare the
-adopted Vulture version range or exact pin used for the run.
+adopted exact Vulture version pin used for the run.
 `python.vulture.min_confidence` defaults to 60.
 `python.vulture.ignore_decorators` and `python.vulture.ignore_names` are
 optional lists defaulting to empty lists.

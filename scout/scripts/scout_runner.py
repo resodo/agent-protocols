@@ -53,15 +53,15 @@ class RunnerError(RuntimeError):
     pass
 
 
-def load_yaml(path: Path) -> dict[str, Any]:
+def load_yaml(path: Path, *, label: str = "YAML") -> dict[str, Any]:
     if not path.exists():
-        raise RunnerError(f"overlay is missing: {path}")
+        raise RunnerError(f"{label} is missing: {path}")
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
-        raise RunnerError(f"overlay YAML parse failed: {exc}") from exc
+        raise RunnerError(f"{label} parse failed: {exc}") from exc
     if not isinstance(data, dict):
-        raise RunnerError("overlay must be a mapping")
+        raise RunnerError(f"{label} must be a mapping")
     return data
 
 
@@ -117,7 +117,7 @@ def repo_path(repo_root: Path, raw: str, label: str) -> Path:
 
 def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
     repo_root = repo_root.resolve()
-    data = load_yaml(overlay_path)
+    data = load_yaml(overlay_path, label="overlay YAML")
     missing = [field for field in CORE_FIELDS if field not in data]
     if missing:
         raise RunnerError(f"overlay missing fields: {', '.join(missing)}")
@@ -192,7 +192,7 @@ def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
     backlog = repo_path(repo_root, repo_context["backlog_path"], "repo_context.backlog_path")
     if not backlog.exists():
         raise RunnerError(f"configured backlog is missing: {repo_context['backlog_path']}")
-    load_yaml(backlog)
+    load_yaml(backlog, label="backlog YAML")
     return data
 
 
