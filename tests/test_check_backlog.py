@@ -54,6 +54,20 @@ def closed_item() -> dict[str, Any]:
     }
 
 
+def candidate_item() -> dict[str, Any]:
+    return {
+        "id": "AP-BL-0003",
+        "status": "candidate",
+        "priority": "P2",
+        "kind": "debt",
+        "title": "Candidate example",
+        "why": "Scout found evidence that should be reviewed.",
+        "next": "Decide whether to accept this proposal into open backlog.",
+        "done_when": "The proposal is accepted, closed, or left pending with rationale.",
+        "refs": ["docs/agent_plans/outputs/2026-06-06_scout_run/SCOUT_REPORT.md#candidate-proposal-001"],
+    }
+
+
 class BacklogCheckerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -96,6 +110,38 @@ class BacklogCheckerTests(unittest.TestCase):
         self.write_backlog(data)
 
         self.assert_invalid("missing open fields")
+
+    def test_candidate_item_passes(self) -> None:
+        data = valid_backlog()
+        data["items"] = [candidate_item()]
+        self.write_backlog(data)
+
+        check_backlog.validate_backlog(self.root)
+
+    def test_candidate_missing_refs_fails(self) -> None:
+        data = valid_backlog()
+        data["items"] = [candidate_item()]
+        del data["items"][0]["refs"]
+        self.write_backlog(data)
+
+        self.assert_invalid("missing candidate fields: refs")
+
+    def test_candidate_empty_refs_fails(self) -> None:
+        data = valid_backlog()
+        data["items"] = [candidate_item()]
+        data["items"][0]["refs"] = []
+        self.write_backlog(data)
+
+        self.assert_invalid("refs must contain non-empty strings")
+
+    def test_candidate_does_not_require_closed_fields(self) -> None:
+        data = valid_backlog()
+        data["items"] = [candidate_item()]
+        for field in ("resolution", "closed_at", "outcome"):
+            self.assertNotIn(field, data["items"][0])
+        self.write_backlog(data)
+
+        check_backlog.validate_backlog(self.root)
 
     def test_retired_markdown_backlog_fails(self) -> None:
         self.write_backlog(valid_backlog())

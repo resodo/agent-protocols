@@ -1,6 +1,6 @@
 # Scout Skill Plan
 
-Status: draft plan / decisions captured / pending structured review
+Status: accepted plan / implementation in progress
 Date: 2026-06-05
 
 ## Context
@@ -1065,7 +1065,6 @@ Out of scope for first implementation:
 
 ## Review Notes
 
-This file is a draft implementation plan pending structured review. Before
-implementation starts, the remaining implementation-detail questions above
-should be resolved or explicitly deferred, and the plan should receive the
-normal structured-review treatment for protocol changes.
+This file is the accepted implementation plan for the Scout protocol Slice 1
+work. Structured review passed after resolving the candidate `refs` contract and
+shared backlog-checker scope blockers.

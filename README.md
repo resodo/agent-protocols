@@ -13,6 +13,7 @@ rules live in `docs/README.md`; the current protocol map lives in
 - `planning/` - discussion-to-plan workflow before implementation starts.
 - `retrospective/` - evidence-based post-incident or post-closeout learning workflow.
 - `backlog-maintenance/` - YAML backlog registry maintenance for deferred work, including add/update/close/read operations and CI schema expectations.
+- `scout/` - judgment-heavy repository discovery workflow that produces Scout reports and human-reviewed backlog candidate proposals without replacing CI.
 
 ## Guidance
 

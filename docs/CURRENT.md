@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-06-05
+Last updated: 2026-06-06
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -28,6 +28,10 @@ avoid treating historical plans as current instructions.
   learning workflow.
 - `backlog-maintenance/SKILL.md` - YAML backlog registry maintenance protocol.
   This repo dogfoods it through `docs/backlog.yml`.
+- `scout/SKILL.md` - judgment-heavy repository discovery workflow for
+  lifecycle, reachability, coverage, documentation, process, and
+  maintainability findings that should become human-reviewed backlog
+  candidates rather than CI failures.
 - `agent-readiness/` - worktree guard contract and agent bootstrap template for
   downstream repos.
 
@@ -40,6 +44,11 @@ avoid treating historical plans as current instructions.
   `structured-review/references/collaboration.md`
 - Conditional UI review reference:
   `structured-review/references/ui-review.md`
+- Scout runner:
+  `scout/scripts/scout_runner.py`
+- Scout Slice 1 references:
+  `scout/references/script-lifecycle.md` and
+  `scout/references/code-reachability-backend-python.md`
 
 The UI review reference is conditional. It is not part of the runner-loaded
 required reference set unless a future accepted plan changes runner loading.

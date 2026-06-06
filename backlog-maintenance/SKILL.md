@@ -124,6 +124,28 @@ items:
         note: Update only if shared deployment runtime wording changes.
 ```
 
+Candidate item:
+
+```yaml
+items:
+  - id: EXAMPLE-BL-0004
+    status: candidate
+    priority: P2
+    kind: debt
+    title: Decide whether to retire stale helper scripts
+    why: >
+      A Scout dry-run found scripts that appear to have no active entrypoint,
+      but the finding still needs human review before becoming open backlog.
+    next: >
+      Review the linked Scout evidence, then accept the item into open backlog,
+      close it as cancelled, or leave it pending with updated rationale.
+    done_when: >
+      The helper scripts are either assigned active lifecycle ownership,
+      removed or archived, or explicitly kept with a documented reason.
+    refs:
+      - docs/agent_plans/outputs/2026-06-06_scout_run/SCOUT_REPORT.md#candidate-proposal-001
+```
+
 Closed item:
 
 ```yaml
@@ -158,12 +180,21 @@ items:
 
 `status` is an item attribute, not a top-level grouping:
 
+- `candidate`: human-unreviewed backlog proposal awaiting accept/close/pending
+  review.
 - `open`: deferred work still exists.
 - `closed`: this backlog item is no longer open.
 
 Do not use `in_progress` as a status. Work that is currently being carried by a
 plan or PR remains `status: open` until the backlog item is fully closed. Use
 optional `active_refs` and `progress` to record staged work.
+
+Candidate items use open-style fields, but `refs` is required so the proposal
+links to its review evidence. A human may later accept a candidate into
+`status: open`, close it as cancelled/completed/transferred, or leave it
+pending for later review. Do not add Scout-specific metadata fields such as
+`scout`, `fingerprint`, `confidence`, `severity`, or `human_review`; put
+evidence in the linked report.
 
 ## Priority
 
@@ -223,6 +254,18 @@ Open item fields:
 - `next`
 - `done_when`
 
+Candidate item fields:
+
+- `id`
+- `status`
+- `priority`
+- `kind`
+- `title`
+- `why`
+- `next`
+- `done_when`
+- `refs`
+
 Optional open item fields:
 
 - `refs`: list of related plans, PRs, docs, issues, or reports.
@@ -259,6 +302,26 @@ When the user asks to record backlog work:
    `kind`, allocate the next ID, and write `why`, `next`, and `done_when`.
 6. Run the repo's backlog validation command.
 
+## Candidate Workflow
+
+Use `status: candidate` only when a human-unreviewed proposal should remain in
+the durable backlog registry before acceptance. Scout may propose candidate
+items in a run report; after explicit human approval, backlog-maintenance owns
+the YAML write.
+
+When adding an approved candidate:
+
+1. Search existing `candidate`, `open`, and `closed` items for semantic overlap.
+2. Allocate the next normal backlog ID.
+3. Set `status: candidate`.
+4. Choose a valid `priority` and `kind`.
+5. Write concise `why`, `next`, and `done_when`.
+6. Set `refs` to the evidence source, such as a Scout report anchor.
+7. Run the repo's backlog validation command.
+
+Do not promote, close, cancel, reopen, or delete candidates automatically.
+Human review owns lifecycle transitions.
+
 ## Close Workflow
 
 When closing a backlog item:
@@ -291,9 +354,10 @@ Repos adopting this protocol should run a backlog check in CI. Hard checks:
 - top-level `version`, `repo`, `id_prefix`, `kinds`, and `items` exist.
 - every ID matches `id_prefix` and is unique across `items`.
 - every item has `status`, `priority`, `kind`, `title`, and `id`.
-- `status` is `open` or `closed`.
+- `status` is `candidate`, `open`, or `closed`.
 - `priority` is `P0`, `P1`, or `P2`.
 - open items have required open fields.
+- candidate items have required candidate fields, including `refs`.
 - closed items have required closed fields.
 - `kind` is in `kinds`.
 - `resolution` is one of `completed`, `cancelled`, or `transferred`.
