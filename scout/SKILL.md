@@ -31,6 +31,9 @@ checker instead of Scout.
    - inspect evidence and run/search tools where useful;
    - interpret evidence with subskill rules;
    - loop back for more evidence when the finding is not clear enough;
+   - for candidate-worthy bug, legacy, lifecycle, or reachability findings,
+     collect history provenance with `git blame`, relevant commits, and related
+     historical plans/docs when available;
    - classify findings;
    - compare candidate-worthy findings with existing backlog items;
    - write the subskill report section.
@@ -66,6 +69,11 @@ candidate YAML.
 
 Candidate granularity is one human decision or one coherent fix. Do not turn
 raw tool findings, files, or line counts directly into backlog items.
+
+Candidate-worthy findings should explain both current state and likely origin.
+When practical, cite the commit or plan that introduced or last changed the
+surface, and say whether the finding is a new regression, planned residue, or
+old debt that became visible through the current scan.
 
 ## Report Contract
 

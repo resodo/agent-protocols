@@ -41,7 +41,10 @@ For each script or coherent script group:
 5. Check CI, import smoke, syntax checks, docs, or runbooks for ownership.
 6. Look for duplicate, superseded, legacy-service, or obsolete-dependency
    signals.
-7. Classify the finding.
+7. For candidate-worthy scripts, check `git blame` / `git log -- <path>` and
+   related plan references to identify when the script was introduced, last
+   materially changed, or last used as evidence.
+8. Classify the finding.
 
 Useful tools are ordinary repo tools such as `rg`, `find`, shell syntax checks,
 package manifest reads, and CI workflow reads. Do not create a new helper script
@@ -94,5 +97,7 @@ Each candidate proposal should cite:
 - active entrypoint evidence or absence;
 - active-doc or historical-only references;
 - CI/test/import/syntax ownership evidence;
+- history provenance, such as introducing or last-active plan/commit, when
+  available;
 - concrete risk;
 - clear next decision/action.
