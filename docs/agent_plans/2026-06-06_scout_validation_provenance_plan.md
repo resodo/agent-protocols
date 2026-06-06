@@ -416,3 +416,125 @@ runner/protocol boundary remains appropriately repo-agnostic.
   `scout/tests/test_scout_runner.py`) and the plan diff for driver response 1;
   no tests were run (none exist yet for this change). Functional proof still
   depends on the implementation-review gate executing the Validation Plan.
+
+### Reviewer pass 3 (impl)
+
+Human concern restated: confirm the implemented change makes a write-enabled
+Scout run that recorded only setup-level provenance fail mechanically, that B1's
+manifest section-boundary risk is actually handled in code, that the tests cover
+the observed Data write-enabled gap, and that the validation evidence is
+sufficient.
+
+Scope of this pass: compare the implementation in commit `c678f49`
+(`scout/SKILL.md`, `scout/scripts/scout_runner.py`,
+`scout/tests/test_scout_runner.py`) against the accepted plan and acceptance
+criteria.
+
+Verification performed (CI-backed unless noted):
+
+- Ran the full Validation Plan in this worktree. `python -m unittest discover -s
+  scout/tests` → 14 tests OK. `tests` → 15 OK. `structured-review/tests` → 41 OK.
+  `python -m compileall -q scout scripts structured-review tests` → clean. `git
+  diff --check` → clean. Worktree clean; impl commit `c678f49` touches only the
+  three intended files (`scout/SKILL.md` +16, `scout/scripts/scout_runner.py`
+  +27, `scout/tests/test_scout_runner.py` +73).
+- B1 boundary, confirmed empirically against the real `manifest_skeleton(
+  "write-enabled", ...)`: `section_text(manifest, "## Validation", "##",
+  artifact="MANIFEST.md")` returns only `- Report skeleton created by Scout
+  runner.` / `- Overlay parsed by Scout runner.` and excludes the immediately
+  following `## Backlog Write Mode` body. The bounded extraction contains no
+  `backlog` token; an unbounded-to-EOF extraction would. So the load-bearing
+  vacuous-pass hole B1 named is closed in code.
+- Catastrophic B1 case is doubly guarded: the report `## Runner Validation`
+  skeleton is literally `- Setup: completed.`, which carries no `scout_runner.py`
+  / `check` tokens and is the last `##` heading (nothing can leak into it). A
+  setup-only write-enabled run therefore fails on the report side before the
+  backlog rule is even reached — independent of manifest bounding.
+
+Plan-to-implementation traceability (acceptance criteria):
+
+- AC1 (dry-run setup-only fails) — Done. `test_check_requires_runner_validation_provenance`
+  passes; report skeleton carries no provenance tokens.
+- AC2 (dry-run recording `scout_runner.py check` passes) — Done.
+  `test_setup_and_check_report_artifacts`,
+  `test_dry_run_allows_backlog_dirty_before_setup_when_unchanged`.
+- AC3 (write-enabled recording check but omitting backlog fails) — Done.
+  `test_write_enabled_requires_backlog_checker_provenance` (see N1 on which side
+  it actually exercises).
+- AC4 (write-enabled recording both passes) — Done.
+  `test_write_enabled_manifest_declares_write_mode`.
+- AC5 (existing structural/immutability/Vulture tests keep passing) — Done; full
+  suites green above.
+- AC6 (`scout/SKILL.md` and runner agree) — Done. SKILL.md `## Workflow` step 5,
+  `## Report Contract` (`Runner Validation` + manifest `Validation`), and
+  `## Runner Boundary` now match runner enforcement: all modes record the
+  `scout_runner.py check` command/result; write-enabled also records the repo
+  backlog checker command/result.
+
+Proposed Design step 2 items all present: section helper reused for both
+artifacts with an `artifact` label (N2), `## Runner Validation` / `## Validation`
+both extracted with `"##"` as the boundary (per pass-2 note), token search scoped
+to the extracted section, case-insensitive matching via `contains_all_tokens`,
+and named constants `RUNNER_CHECK_PROVENANCE_TOKENS` /
+`WRITE_ENABLED_BACKLOG_PROVENANCE_TOKEN` beside `REPORT_HEADINGS` (N3).
+
+#### Blocking
+
+None. The implementation matches the accepted plan, every acceptance criterion is
+met with concrete evidence, all Validation Plan commands pass, and B1's section
+boundary is correctly handled in code.
+
+#### Non-blocking
+
+**N1. The B1 negative test exercises the report side, not the manifest boundary
+it nominally guards.** In `require_validation_provenance` the report-side backlog
+rule is checked before the manifest-side rule, and
+`test_write_enabled_requires_backlog_checker_provenance` (via
+`add_validation_provenance(include_backlog_check=False)`) feeds identical
+backlog-less provenance to both artifacts. I confirmed empirically that the test
+raises the same `SCOUT_REPORT.md ... repo backlog checker provenance` error
+whether `section_text` is bounded or regressed to unbounded — so this test would
+NOT catch a future regression of the manifest `## Validation` extractor to
+unbounded. Pass 2's statement that "the negative test now genuinely guards the
+boundary" holds for the report side and overall behavior, but not for the
+manifest boundary specifically. Suggested hardening (non-gating, code is
+correct): add one test where the report records full provenance including
+`backlog` but the manifest `## Validation` records only `scout_runner.py check`
+(no `backlog` within its bounds), and assert a `MANIFEST.md ... backlog checker`
+error. That locks the manifest boundary directly; without it the manifest-side
+isolation is correct but untested.
+
+**N2. (observation, not a gate) Mode keying carried through as planned.**
+`cmd_check` keys the write-enabled backlog requirement off `args.mode`, not the
+manifest's recorded `## Backlog Write Mode`. This is the mode-spoofing residual
+the plan explicitly scoped out; recording that it is unchanged in the
+implementation.
+
+#### Overall judgment
+
+Ready for closeout. The accepted plan is implemented faithfully, B1 is resolved
+in code (empirically verified), the observed Data write-enabled gap (setup-only
+artifacts, and the narrower "recorded check but omitted backlog" case) is caught,
+and all Validation Plan commands are green in this worktree. N1 is a test-robustness
+improvement, not a gate, because the code is correct and the catastrophic
+vacuous-pass case is independently impossible on the report side.
+
+#### Residual risks / validation gaps
+
+- Manifest-boundary regression guard is missing (N1): the manifest `## Validation`
+  isolation is implemented correctly but not directly tested; a future unbounded
+  regression there would be masked by the report-first short-circuit.
+- Syntactic looseness (accepted by the plan), sharpened: the recorded
+  `scout_runner.py check --run-dir <path>` line lives inside the searched
+  section, so if an adopting repo's output/run-dir path ever contained the
+  substring `backlog`, the write-enabled backlog requirement could be satisfied
+  by the command line itself without a real backlog-checker line. Acceptable for
+  this slice (artifact checker, not executor); worth a one-line awareness note if
+  this ever feels noisy.
+- Mode-spoofing (N2): `check` trusts `--mode` over the manifest's recorded mode;
+  out of scope for this slice per the plan.
+- Validation provenance for this review: CI-backed — reviewer reran the full
+  Validation Plan (scout/tests 14, tests 15, structured-review/tests 41,
+  compileall, `git diff --check`) plus targeted empirical checks of the
+  `## Validation` boundary and the report-first check ordering against the real
+  skeletons.
