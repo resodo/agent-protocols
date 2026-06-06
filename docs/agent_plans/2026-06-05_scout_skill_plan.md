@@ -218,6 +218,7 @@ subskills:
         roots:
           - backend/app
           - scripts
+        version: "2.x"
         min_confidence: 60
         ignore_decorators:
           - "@app.get"
@@ -269,18 +270,33 @@ required and should be non-empty for an enabled run. `known_manual_entrypoints`
 is optional and defaults to an empty list. `historical_script_contexts` is
 optional and defaults to `repo_context.archive_paths`.
 
+When a more-specific historical/archive path sits under a broader active source
+path, the more-specific historical/archive classification wins. For example,
+`docs/agent_plans/outputs` should not be treated as an active
+`docs/agent_plans` entrypoint source merely because the parent path is scanned.
+This prevents Scout run reports and historical output artifacts from creating
+false active references.
+
 For backend/Python `code-reachability`, `python.production_roots` is required
 and non-empty. `python.test_roots`, `python.active_contract_sources`, and
 `python.dynamic_entrypoint_sources` are required fields but may be empty lists
 in repos that lack those concepts. `python.known_false_positive_classes` is
 optional and extends the shared defaults. `python.vulture.roots` is required and
-non-empty when Vulture is enabled. `python.vulture.min_confidence` defaults to
-60. `python.vulture.ignore_decorators` and `python.vulture.ignore_names` are
+non-empty when Vulture is enabled. `python.vulture.version` should declare the
+adopted Vulture version range or exact pin used for the run.
+`python.vulture.min_confidence` defaults to 60.
+`python.vulture.ignore_decorators` and `python.vulture.ignore_names` are
 optional lists defaulting to empty lists.
 
 `python.production_roots` and `python.vulture.roots` are intentionally separate.
 Production roots define semantic scope; Vulture roots define the concrete tool
 scan. They may match, but they do not have to.
+
+False-positive classes and ignore lists are durable maintenance surfaces. They
+should be reviewed when repo framework wiring changes, when a decorator/name no
+longer exists, or when repeated Scout runs show the allowlist is suppressing
+useful signal. The first implementation does not need an automated staleness
+checker, but this lifecycle note should be present in the subskill docs.
 
 Scout should also include a lightweight runner script for deterministic
 orchestration. The runner should not replace the agent's judgment or try to
@@ -313,10 +329,11 @@ Runner v1 hard checks should include:
 5. Generated tool adapters: when a temporary native config is generated from
    overlay data, verify canonical output for identical overlay input and keep it
    outside the repo unless explicitly configured otherwise.
-6. Report completeness: every enabled subskill must have a section with
-   context/tools used, findings classification, proposed candidates or `None`,
-   report-only observations or `None`, ignored noise or `None`, and
-   inconclusive items or `None`; no TODO placeholders should remain.
+6. Report completeness: every enabled subskill must have required headings and
+   subsections for context/tools used, findings classification, proposed
+   candidates or `None`, report-only observations or `None`, ignored noise or
+   `None`, and inconclusive items or `None`; no TODO placeholders should remain.
+   The runner should check headings/placeholders, not judge prose content.
 7. Manifest completeness: primary artifact, supporting artifacts or `None`,
    validation provenance, and backlog write mode must be present.
 
@@ -430,6 +447,17 @@ protocol must be updated in the same implementation scope. It should define:
   `refs`;
 - that no Scout-specific metadata fields are required.
 
+The shared `agent-protocols` repo dogfoods this backlog contract, so the shared
+PR must update the shared `scripts/check_backlog.py` and
+`tests/test_check_backlog.py` alongside `backlog-maintenance/SKILL.md`. The
+checker should treat `candidate` like an open-style item with
+`id/status/priority/kind/title/why/next/done_when/refs` requirements, not like a
+closed item requiring `resolution`, `closed_at`, and `outcome`.
+
+Skynet V2 has its own backlog checker fork. The adoption PR must update that
+repo-local checker separately. The plan does not assume a single shared checker
+implementation across both repos.
+
 ### Scout Report Carries Evidence
 
 Decision: Each Scout run should produce a Markdown report. Backlog candidates
@@ -484,7 +512,8 @@ Summary` should record counts and a short run-level summary, not long evidence.
 
 `Proposed Backlog Changes` should contain `Candidate Proposals` and `Candidate
 Refinements`. Each proposal/refinement must include proposed title, target
-backlog action, `why`, `next`, `done_when`, evidence summary, refs considered,
+backlog action, proposed `priority` with rationale, proposed `kind` with
+rationale, `why`, `next`, `done_when`, evidence summary, refs considered,
 subskill, and status if approved. These are proposals, not already-written
 backlog entries.
 
@@ -842,10 +871,12 @@ Raw dead-code tool output is not enough by itself.
 For Skynet V2 Slice 1, this subskill is backend/Python only:
 
 - Python: use Vulture only as a noisy candidate-pool generator. Configure it
-  through overlay fields such as `vulture_min_confidence`,
-  `vulture_ignore_decorators`, and `vulture_ignore_names`; if Vulture requires a
-  TOML config, have the runner generate a deterministic temporary adapter file
-  from those fields.
+  through nested overlay fields such as `python.vulture.min_confidence`,
+  `python.vulture.ignore_decorators`, and `python.vulture.ignore_names`; if
+  Vulture requires a TOML config, have the runner generate a deterministic
+  temporary adapter file from those fields. The adopting repo must also declare
+  how Vulture is provisioned or pinned for the run so repeated dry-runs are
+  comparable.
 
 Backend/Python candidate admission requires semantic confirmation after the
 tool signal. A raw Vulture finding, low reference count, single reference, or
@@ -916,14 +947,18 @@ items are implementation details that can be finalized during the shared
 2. Markdown templates and checks: exact `SCOUT_REPORT.md` / `MANIFEST.md`
    template text and how runner checks required sections without becoming
    brittle about ordinary prose edits.
-3. Backlog-maintenance examples: exact `candidate` wording, validation
-   examples, and approved-refinement mechanics now that Scout owns the semantic
-   proposal while backlog-maintenance owns YAML mutation.
+3. Backlog-maintenance examples: exact `candidate` wording across Status,
+   Required Fields, and CI Expectations sections; validation examples; and
+   approved-refinement mechanics now that Scout owns the semantic proposal while
+   backlog-maintenance owns YAML mutation.
 4. Subskill document template: exact required sections for each subskill doc,
    including purpose, shared scope, overlay fields, useful tools, granularity,
    candidate/report/ignore rules, and evidence standard.
 5. Candidate volume control: intentionally deferred until after the first
    dry-run report shows whether admission rules create backlog-flood risk.
+6. Candidate refinement validation: Slice 1 may not exercise a real
+   pre-existing candidate refinement. If not exercised, record it as a known
+   validation gap in the shared PR and first V2 dry-run report.
 
 The following decisions are no longer open: one YAML overlay, Slice 1
 backend/Python-only `code-reachability`, first-run dry-run mode, approved
@@ -941,7 +976,10 @@ The shared `agent-protocols` PR should be accepted only if:
   candidate/report/ignore rules, and admission standards.
 - `backlog-maintenance` defines `candidate` status using the normal backlog
   fields, no Scout-specific metadata, and examples for approved Scout proposal
-  writes/refinements.
+  writes/refinements across its Status, Required Fields, and CI Expectations
+  sections.
+- The shared backlog checker and tests accept `candidate` as an open-style item
+  and reject malformed candidates without treating them as closed items.
 - The runner validates overlay schema, enabled subskills, report/manifest
   skeletons, backlog mechanics, dry-run no-backlog-write behavior, and
   deterministic generated tool adapters.
@@ -955,6 +993,8 @@ The Skynet V2 adoption PR should be accepted only if:
   unpublished local changes under `external/agent-protocols`;
 - `.agent-protocols/scout.yml` enables `script-lifecycle` and backend/Python
   `code-reachability` with the agreed Slice 1 overlay fields;
+- the V2 overlay or toolchain declares Vulture provisioning/version for the
+  backend dry-run;
 - `scripts/check_backlog.py` accepts `status: candidate` with the same fields
   as open items;
 - the first Scout run produces a dry-run output directory with
@@ -974,15 +1014,19 @@ The implementation should include:
    backend/Python `code-reachability`.
 3. In the `agent-protocols` source repo, update shared
    `backlog-maintenance/SKILL.md` to define `candidate` status and lifecycle in
-   simple terms.
-4. In the `agent-protocols` source repo, add or update shared backlog
-   validation tests if shared protocol repo schema changes.
+   simple terms across Status, Required Fields, and CI Expectations.
+4. In the `agent-protocols` source repo, update the shared
+   `scripts/check_backlog.py` and `tests/test_check_backlog.py` so candidate
+   items validate as open-style backlog proposals with their own positive and
+   negative test cases.
 5. In the `agent-protocols` source repo, add a lightweight Scout runner for
    config validation, report skeletons, and mechanical backlog/report checks.
 6. Merge the shared `agent-protocols` PR first.
 7. In Skynet V2, consume the shared change through a submodule pointer update.
 8. Add Skynet V2 Scout overlay config/prose files in the adopting repo.
-9. Update Skynet V2 `scripts/check_backlog.py` to allow `candidate`.
+9. Update Skynet V2 `scripts/check_backlog.py` to allow `candidate`. This is a
+   separate repo-local checker fork, not the shared checker from
+   `agent-protocols`.
 10. Produce a first Scout run report in Skynet V2 in dry-run mode.
 11. After explicit human approval, optionally create or refine a small number of
     high-signal candidate backlog items from that report through
