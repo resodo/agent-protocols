@@ -319,6 +319,17 @@ When adding an approved candidate:
 6. Set `refs` to the evidence source, such as a Scout report anchor.
 7. Run the repo's backlog validation command.
 
+When refining an approved Scout finding into an existing candidate:
+
+1. Confirm the existing item is still `status: candidate`.
+2. Keep the existing `id`, `status`, `priority`, `kind`, and `title` unless the
+   title is materially misleading.
+3. Update `why`, `next`, or `done_when` only when the new evidence clarifies the
+   same human decision or coherent fix.
+4. Append the new Scout report anchor to `refs` instead of replacing prior
+   evidence.
+5. Run the repo's backlog validation command.
+
 Do not promote, close, cancel, reopen, or delete candidates automatically.
 Human review owns lifecycle transitions.
 

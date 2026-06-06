@@ -94,7 +94,11 @@ def require_string_list(value: Any, label: str, *, non_empty: bool = False) -> l
 
 def validate_version_pin(value: str, label: str) -> None:
     lowered = value.lower()
-    if any(marker in lowered for marker in ("<", ">", "*", "x", "pinned-by-adopting-repo")):
+    if (
+        any(marker in lowered for marker in ("<", ">", "*", "pinned-by-adopting-repo"))
+        or lowered.endswith(".x")
+        or lowered == "x"
+    ):
         raise RunnerError(f"{label} must be an exact version pin, not a range or placeholder")
 
 
@@ -188,6 +192,7 @@ def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
     backlog = repo_path(repo_root, repo_context["backlog_path"], "repo_context.backlog_path")
     if not backlog.exists():
         raise RunnerError(f"configured backlog is missing: {repo_context['backlog_path']}")
+    load_yaml(backlog)
     return data
 
 
@@ -310,6 +315,17 @@ def contains_heading(text: str, heading: str) -> bool:
     return re.search(rf"^{re.escape(heading)}\s*$", text, re.MULTILINE) is not None
 
 
+def section_text(text: str, heading: str, next_level_prefix: str) -> str:
+    pattern = re.compile(rf"^{re.escape(heading)}\s*$", re.MULTILINE)
+    match = pattern.search(text)
+    if match is None:
+        raise RunnerError(f"SCOUT_REPORT.md missing section: {heading}")
+    next_heading = re.search(rf"^{re.escape(next_level_prefix)}\s+", text[match.end() :], re.MULTILINE)
+    if next_heading is None:
+        return text[match.end() :]
+    return text[match.end() : match.end() + next_heading.start()]
+
+
 def git_path_dirty(repo_root: Path, path: str) -> bool:
     result = subprocess.run(
         ["git", "status", "--porcelain", "--", path],
@@ -340,9 +356,10 @@ def cmd_check(args: argparse.Namespace) -> int:
     for subskill in data["enabled_subskills"]:
         if not contains_heading(report, f"### {subskill}"):
             raise RunnerError(f"SCOUT_REPORT.md missing subskill section: {subskill}")
+        subskill_text = section_text(report, f"### {subskill}", "###")
         for heading in SUBSKILL_SUBHEADINGS:
-            if heading not in report:
-                raise RunnerError(f"SCOUT_REPORT.md missing subskill subsection: {heading}")
+            if heading not in subskill_text:
+                raise RunnerError(f"SCOUT_REPORT.md missing {subskill} subsection: {heading}")
     if re.search(r"\bTODO\b", report) or re.search(r"\bTODO\b", manifest):
         raise RunnerError("report artifacts contain TODO placeholders")
     for heading in ("# Scout Run Output Manifest", "## Primary Artifact", "## Supporting Artifacts", "## Validation", "## Backlog Write Mode"):
