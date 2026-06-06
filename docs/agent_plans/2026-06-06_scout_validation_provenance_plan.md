@@ -56,10 +56,13 @@ Make missing final validation provenance a mechanical Scout runner failure.
 ## Proposed Design
 
 1. Update `scout/SKILL.md`.
-   - Require `SCOUT_REPORT.md` `Runner Validation` to record final validation
-     provenance, not only setup.
-   - Require `MANIFEST.md` `Validation` to mirror the final mechanical
-     validation summary.
+   - In the `## Workflow` step that says to run `scout_runner.py check` before
+     handoff, state that the final report/manifest must record that validation
+     before handoff.
+   - In the `## Report Contract` block, require `SCOUT_REPORT.md`
+     `Runner Validation` to record final validation provenance, not only setup.
+   - In the same `## Report Contract` block, require `MANIFEST.md`
+     `Validation` to mirror the final mechanical validation summary.
    - State that all modes must record the `scout_runner.py check` command and
      result.
    - State that write-enabled mode must also record the adopting repo backlog
@@ -70,9 +73,22 @@ Make missing final validation provenance a mechanical Scout runner failure.
    - During `check`, inspect:
      - `SCOUT_REPORT.md` `## Runner Validation`;
      - `MANIFEST.md` `## Validation`.
+   - Extract both sections strictly from their heading to the next same-level
+     `##` heading. This prevents `MANIFEST.md` `## Validation` from matching
+     later `## Backlog Write Mode` text such as "Write-enabled runs may modify
+     backlog YAML."
    - Fail if either section lacks `scout_runner.py` and `check` provenance.
    - In `write-enabled` mode, also fail if either section lacks backlog checker
      provenance.
+   - Scope token searches strictly to the extracted section text. Do not search
+     the whole report or manifest.
+   - Match provenance tokens case-insensitively so ordinary command/prose
+     capitalization does not matter.
+   - Generalize section extraction error labels so manifest failures say
+     `MANIFEST.md`, not `SCOUT_REPORT.md`.
+   - Define the required provenance tokens near `REPORT_HEADINGS`, for example
+     runner tokens `scout_runner.py` + `check`, and write-enabled backlog token
+     `backlog`, so future runner renames expose the coupling.
    - Keep the check intentionally syntactic. It should look for durable
      provenance text, not prove that the command actually ran.
 
@@ -82,15 +98,26 @@ Make missing final validation provenance a mechanical Scout runner failure.
      `scout_runner.py check` but omit backlog checker provenance.
    - Update positive setup/check tests so they simulate an agent appending
      final validation provenance before calling `cmd_check`.
+   - Update every existing positive `cmd_check` path that relies on a setup
+     skeleton:
+     - `test_setup_and_check_report_artifacts`;
+     - `test_dry_run_allows_backlog_dirty_before_setup_when_unchanged`;
+     - `test_write_enabled_manifest_declares_write_mode`;
+     - `test_check_rejects_dry_run_backlog_change`, if it still calls another
+       positive setup/check helper internally.
 
 ## Backlog Checker Provenance Matching
 
 Use a medium-strict rule:
 
 - `scout_runner.py` and `check` must both appear in each final validation
-  section.
+  section. Matching is case-insensitive.
 - In write-enabled mode, `backlog` must appear in each final validation
-  section.
+  section. Matching is case-insensitive.
+- The section searched is only `SCOUT_REPORT.md` `## Runner Validation` or
+  `MANIFEST.md` `## Validation`, bounded by the next same-level `##` heading.
+  Later manifest text such as `## Backlog Write Mode` must not satisfy the
+  validation provenance check.
 
 This intentionally accepts variants such as:
 
@@ -166,6 +193,11 @@ regressions before PR handoff.
   command-like text is acceptable.
 - Existing agents may fail until they learn to append final validation
   provenance before calling `check`. That is the intended behavior.
+- Mode spoofing remains possible: `scout_runner.py check` keys the
+  write-enabled backlog requirement off the `--mode` flag rather than proving
+  the manifest's recorded mode. This matches the existing runner interface and
+  can be hardened later if it becomes noisy; this slice keeps scope on
+  provenance completeness.
 
 ## Review Threads
 
@@ -282,3 +314,26 @@ not gates.
 - Validation provenance for this review: reviewer-inspected source and directory
   layout only; tests were not run (none exist yet for this change). Functional
   proof depends on the implementation-review gate executing the Validation Plan.
+
+### Driver response 1
+
+Accepted B1. The plan now requires section extraction to stop at the next
+same-level `##` heading and requires provenance token searches to be scoped
+strictly to the extracted `SCOUT_REPORT.md` `## Runner Validation` and
+`MANIFEST.md` `## Validation` text. This prevents `## Backlog Write Mode` from
+satisfying the write-enabled backlog-token requirement.
+
+Accepted N1. The plan now names the existing positive `cmd_check` tests that
+must receive simulated final validation provenance.
+
+Accepted N2. The plan now requires manifest section extraction failures to name
+`MANIFEST.md` rather than reusing the report error label.
+
+Accepted N3. The plan now requires the provenance tokens to be named constants
+near `REPORT_HEADINGS`.
+
+Accepted N4. The plan now names the `scout/SKILL.md` `## Workflow` and
+`## Report Contract` areas that need edits.
+
+Accepted residual-risk note. The plan now records mode spoofing as out of scope
+for this slice.
