@@ -309,7 +309,8 @@ parts:
 - print or record the current subskill step;
 - validate that candidate writes use allowed backlog statuses and required
   fields, with `refs` required for candidates so every approved Scout proposal
-  points back to its report evidence;
+  points back to its report evidence, by delegating field validation to the
+  repo backlog checker where possible;
 - verify generated tool adapter files are deterministic when they are used;
 - check report and manifest completeness before handoff.
 
@@ -989,13 +990,15 @@ The shared `agent-protocols` PR should be accepted only if:
   approved Scout proposal writes/refinements across its Status, Required Fields,
   and CI Expectations sections.
 - The shared backlog checker and tests accept `candidate` as an open-style item
-  and reject malformed candidates without treating them as closed items.
+  plus required `refs`, reject a candidate missing `refs`, and reject malformed
+  candidates without treating them as closed items.
 - The runner validates overlay schema, enabled subskills, report/manifest
   skeletons, backlog mechanics, dry-run no-backlog-write behavior, and
   deterministic generated tool adapters.
 - Runner tests or equivalent validation cover overlay parsing, report skeleton
   generation, dry-run backlog protection, candidate field validation, and
-  deterministic Vulture TOML adapter generation.
+  deterministic Vulture TOML adapter generation, including a missing-candidate
+  `refs` negative case.
 
 The Skynet V2 adoption PR should be accepted only if:
 
