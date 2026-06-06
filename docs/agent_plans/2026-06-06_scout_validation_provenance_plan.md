@@ -538,3 +538,78 @@ vacuous-pass case is independently impossible on the report side.
   compileall, `git diff --check`) plus targeted empirical checks of the
   `## Validation` boundary and the report-first check ordering against the real
   skeletons.
+
+### Reviewer pass 4 (impl re-review)
+
+Scope of this pass (per task focus): inspect commit `d8a9ad0` and confirm the
+new test directly guards `MANIFEST.md` `## Validation` backlog provenance — the
+exact hardening pass-3 N1 recommended — and that no new implementation blocker
+was introduced.
+
+Verification performed (CI-backed unless noted):
+
+- `d8a9ad0` touches only `scout/tests/test_scout_runner.py` (+27). `git diff
+  c678f49 d8a9ad0 -- scout/scripts/scout_runner.py scout/SKILL.md` is empty, so
+  the implementation reviewed in pass 3 is byte-identical; no new implementation
+  surface was added and no implementation blocker could be introduced by this
+  commit.
+- Full Validation Plan green in this worktree: `scout/tests` 15 OK (was 14; the
+  one new test), `tests` 15 OK, `structured-review/tests` 41 OK, `compileall`
+  clean, `git diff --check` clean. Worktree clean.
+- The new `test_write_enabled_requires_manifest_backlog_checker_provenance`
+  isolates the manifest side correctly: `add_validation_provenance(...,
+  include_backlog_check=True)` writes both the `scout_runner.py check` line and
+  the `check_backlog.py` line to *both* artifacts, then the test strips only the
+  backlog line from `MANIFEST.md`. So `SCOUT_REPORT.md` `## Runner Validation`
+  still carries full provenance and passes the report-side rules; the failure
+  must come from the manifest-side `backlog` rule in
+  `require_validation_provenance`. The assertion regex `MANIFEST.md.*backlog
+  checker` pins the error to the manifest message, not the report message.
+- Directly guards the manifest boundary (the pass-3 N1 gap), confirmed
+  empirically: I ran the new test against the real runner (passes), then
+  monkeypatched `section_text` to an unbounded-to-EOF extractor and re-ran it —
+  the test then FAILS with "RunnerError not raised", because the unbounded
+  manifest `## Validation` extraction leaks the `## Backlog Write Mode` body
+  ("Write-enabled runs may modify backlog YAML.") whose `backlog` token
+  vacuously satisfies the requirement. This is precisely the regression pass-3
+  N1 said the existing report-side test could not catch; it is now caught. The
+  run-dir slug used by the test (`scout_write`) contains no `backlog` substring,
+  so the command line itself does not mask the assertion.
+
+#### Blocking
+
+None. The reviewed implementation is unchanged from the pass-3 impl commit and
+remains correct; the new test adds the manifest-boundary guard that pass-3 N1
+identified as the one missing piece, and it demonstrably fails on the regression
+it is meant to catch.
+
+#### Non-blocking
+
+**N1 (pass 3) resolved.** The manifest `## Validation` isolation is now directly
+tested, mirroring the existing report-side
+`test_write_enabled_requires_backlog_checker_provenance`. The two tests together
+cover both sides of `require_validation_provenance`'s write-enabled backlog
+rule.
+
+No new findings.
+
+#### Overall judgment
+
+Ready for closeout. Commit `d8a9ad0` is a clean, well-scoped test-only addition
+that closes the sole residual test-robustness gap from pass 3 without touching
+implementation. All Validation Plan commands are green, and the new test is
+proven to guard the manifest boundary it nominally protects.
+
+#### Residual risks / validation gaps
+
+- Syntactic looseness and mode-keying (`check` trusts `--mode` over the
+  manifest's recorded mode) remain as previously documented and out of scope for
+  this slice; unchanged by this commit.
+- The run-dir-path-contains-`backlog` edge case noted in pass 3 is unchanged
+  (artifact-checker, not executor); the new test does not exercise it and does
+  not need to.
+- Validation provenance for this re-review: CI-backed — reviewer reran the full
+  Validation Plan (scout/tests 15, tests 15, structured-review/tests 41,
+  compileall, `git diff --check`), confirmed `d8a9ad0` is test-only against
+  `c678f49`, and empirically verified the new test fails under an unbounded
+  `section_text` regression.
