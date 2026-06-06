@@ -110,6 +110,12 @@ class ScoutRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(runner.RunnerError, "inside repo"):
             runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
 
+    def test_malformed_backlog_is_rejected(self) -> None:
+        (self.root / "docs/backlog.yml").write_text("version: 1\nitems: [\n", encoding="utf-8")
+
+        with self.assertRaisesRegex(runner.RunnerError, "YAML parse failed"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
     def test_setup_and_check_report_artifacts(self) -> None:
         setup_args = SimpleNamespace(
             repo_root=self.root,
@@ -132,6 +138,30 @@ class ScoutRunnerTests(unittest.TestCase):
         self.assertTrue((run_dir / "MANIFEST.md").exists())
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(runner.cmd_check(check_args), 0)
+
+    def test_check_requires_subsections_under_each_subskill(self) -> None:
+        setup_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            mode="dry-run",
+            date="2026-06-06",
+            slug="scout_run",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            runner.cmd_setup(setup_args)
+        report_path = self.root / "docs/agent_plans/outputs/2026-06-06_scout_run/SCOUT_REPORT.md"
+        report = report_path.read_text(encoding="utf-8")
+        report = report.replace("### code-reachability\n\n#### Context And Tools Used", "### code-reachability\n\nContext omitted", 1)
+        report_path.write_text(report, encoding="utf-8")
+
+        args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            run_dir="docs/agent_plans/outputs/2026-06-06_scout_run",
+            mode="dry-run",
+        )
+        with self.assertRaisesRegex(runner.RunnerError, "code-reachability subsection"):
+            runner.cmd_check(args)
 
     def test_check_rejects_dry_run_backlog_change(self) -> None:
         self.test_setup_and_check_report_artifacts()

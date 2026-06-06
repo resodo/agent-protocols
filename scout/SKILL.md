@@ -114,6 +114,10 @@ The runner stabilizes mechanics:
 - generate deterministic temporary tool adapters;
 - check report/manifest headings and dry-run backlog protection.
 
+Backlog item field validation belongs to the repo backlog checker. The runner
+may invoke or require that checker, but it must not maintain an independent
+candidate field contract.
+
 The runner must not interpret tool output, decide whether a finding is true,
 deduplicate candidates semantically, judge overlap with open/closed backlog
 items, or replace the subskill evidence loop.
