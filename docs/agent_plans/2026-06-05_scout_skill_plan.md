@@ -218,7 +218,7 @@ subskills:
         roots:
           - backend/app
           - scripts
-        version: "2.x"
+        version: "<exact-version-pinned-by-adopting-repo>"
         min_confidence: 60
         ignore_decorators:
           - "@app.get"
@@ -308,7 +308,8 @@ parts:
 - create the run directory, report skeleton, and manifest skeleton;
 - print or record the current subskill step;
 - validate that candidate writes use allowed backlog statuses and required
-  fields;
+  fields, with `refs` required for candidates so every approved Scout proposal
+  points back to its report evidence;
 - verify generated tool adapter files are deterministic when they are used;
 - check report and manifest completeness before handoff.
 
@@ -325,7 +326,9 @@ Runner v1 hard checks should include:
    `SCOUT_REPORT.md` / `MANIFEST.md` with fixed headings and run mode.
 4. Backlog mechanics: locate and parse the configured backlog YAML; in dry-run
    mode, verify the backlog file was not modified; when backlog writes are
-   allowed, verify candidate status and required fields.
+   allowed, verify candidate status and required fields by invoking or deferring
+   to the repo's backlog checker rather than maintaining a second independent
+   field contract in the Scout runner.
 5. Generated tool adapters: when a temporary native config is generated from
    overlay data, verify canonical output for identical overlay input and keep it
    outside the repo unless explicitly configured otherwise.
@@ -390,7 +393,7 @@ Human review owns candidate promotion or closure.
 
 ### No Scout-Specific Backlog Metadata In V1
 
-Decision: Candidate items use the same fields as normal open items:
+Decision: Candidate items use open-style backlog fields, with `refs` required:
 
 - `id`
 - `status`
@@ -401,6 +404,12 @@ Decision: Candidate items use the same fields as normal open items:
 - `next`
 - `done_when`
 - `refs`
+
+This is an open-style field set, but not identical to the shared open-item
+minimum: `refs` is required for `candidate` so every approved Scout proposal can
+link back to the report anchor that carries its evidence. If a candidate is
+later promoted to `open`, retaining `refs` is encouraged but open-item
+validation remains governed by the normal backlog-maintenance contract.
 
 Scout v1 should not add dedicated fields such as `scout`, `fingerprint`,
 `confidence`, `severity`, or `human_review`.
@@ -440,7 +449,7 @@ Because `candidate` is a new backlog status, the shared backlog-maintenance
 protocol must be updated in the same implementation scope. It should define:
 
 - `candidate` as a human-unreviewed backlog proposal;
-- allowed fields, matching normal backlog items;
+- allowed fields, using open-style fields with `refs` required for candidates;
 - the transition expectation that a human may later accept it into `open`,
   close/cancel it, or leave it pending;
 - that Scout-proposed candidates should link back to a Scout report anchor in
@@ -514,8 +523,10 @@ Summary` should record counts and a short run-level summary, not long evidence.
 Refinements`. Each proposal/refinement must include proposed title, target
 backlog action, proposed `priority` with rationale, proposed `kind` with
 rationale, `why`, `next`, `done_when`, evidence summary, refs considered,
-subskill, and status if approved. These are proposals, not already-written
-backlog entries.
+subskill, and status if approved. Proposed `priority` must be one of the
+backlog-maintenance priority values, and proposed `kind` must be one of the
+adopting repo's configured backlog kinds. These are proposals, not
+already-written backlog entries.
 
 `Human Review Queue` should list the concrete decisions needed from the human,
 such as approving or rejecting specific proposal anchors. `Subskill Results`
@@ -875,8 +886,7 @@ For Skynet V2 Slice 1, this subskill is backend/Python only:
   `python.vulture.ignore_decorators`, and `python.vulture.ignore_names`; if
   Vulture requires a TOML config, have the runner generate a deterministic
   temporary adapter file from those fields. The adopting repo must also declare
-  how Vulture is provisioned or pinned for the run so repeated dry-runs are
-  comparable.
+  an exact Vulture version pin for the run so repeated dry-runs are comparable.
 
 Backend/Python candidate admission requires semantic confirmation after the
 tool signal. A raw Vulture finding, low reference count, single reference, or
@@ -974,10 +984,10 @@ The shared `agent-protocols` PR should be accepted only if:
 - Slice 1 subskill docs exist for `script-lifecycle` and backend/Python
   `code-reachability`, with overlay fields, evidence loops, granularity,
   candidate/report/ignore rules, and admission standards.
-- `backlog-maintenance` defines `candidate` status using the normal backlog
-  fields, no Scout-specific metadata, and examples for approved Scout proposal
-  writes/refinements across its Status, Required Fields, and CI Expectations
-  sections.
+- `backlog-maintenance` defines `candidate` status using open-style backlog
+  fields plus required `refs`, no Scout-specific metadata, and examples for
+  approved Scout proposal writes/refinements across its Status, Required Fields,
+  and CI Expectations sections.
 - The shared backlog checker and tests accept `candidate` as an open-style item
   and reject malformed candidates without treating them as closed items.
 - The runner validates overlay schema, enabled subskills, report/manifest
@@ -993,10 +1003,10 @@ The Skynet V2 adoption PR should be accepted only if:
   unpublished local changes under `external/agent-protocols`;
 - `.agent-protocols/scout.yml` enables `script-lifecycle` and backend/Python
   `code-reachability` with the agreed Slice 1 overlay fields;
-- the V2 overlay or toolchain declares Vulture provisioning/version for the
-  backend dry-run;
-- `scripts/check_backlog.py` accepts `status: candidate` with the same fields
-  as open items;
+- the V2 overlay or toolchain declares an exact Vulture provisioning/version pin
+  for the backend dry-run;
+- `scripts/check_backlog.py` accepts `status: candidate` with open-style fields
+  plus required `refs`;
 - the first Scout run produces a dry-run output directory with
   `SCOUT_REPORT.md` and `MANIFEST.md`;
 - no backlog candidates are written unless the human explicitly approves
