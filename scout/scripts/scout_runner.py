@@ -272,6 +272,19 @@ def file_sha256(path: Path) -> str:
 
 
 def manifest_skeleton(mode: str, backlog_sha256: str) -> str:
+    if mode == "dry-run":
+        backlog_lines = [
+            "- Dry-run reports do not modify backlog YAML.",
+            f"- Backlog baseline sha256: {backlog_sha256}",
+        ]
+        note = "- Candidate proposals require explicit human approval before backlog writes."
+    else:
+        backlog_lines = [
+            "- Write-enabled runs may modify backlog YAML.",
+            "- Backlog/report changes must be validated and committed separately per subskill.",
+        ]
+        note = "- Candidate proposals/refinements written to backlog must follow backlog-maintenance."
+
     return "\n".join(
         [
             "# Scout Run Output Manifest",
@@ -292,12 +305,11 @@ def manifest_skeleton(mode: str, backlog_sha256: str) -> str:
             "## Backlog Write Mode",
             "",
             f"- Mode: {mode}",
-            "- Dry-run reports do not modify backlog YAML.",
-            f"- Backlog baseline sha256: {backlog_sha256}",
+            *backlog_lines,
             "",
             "## Notes",
             "",
-            "- Candidate proposals require explicit human approval before backlog writes.",
+            note,
         ]
     ) + "\n"
 

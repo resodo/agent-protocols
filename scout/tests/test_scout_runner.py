@@ -226,6 +226,31 @@ class ScoutRunnerTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(runner.cmd_check(args), 0)
 
+    def test_write_enabled_manifest_declares_write_mode(self) -> None:
+        args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            mode="write-enabled",
+            date="2026-06-06",
+            slug="scout_write",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.cmd_setup(args), 0)
+
+        run_dir = self.root / "docs/agent_plans/outputs/2026-06-06_scout_write"
+        manifest = (run_dir / "MANIFEST.md").read_text(encoding="utf-8")
+        self.assertIn("Write-enabled runs may modify backlog YAML.", manifest)
+        self.assertNotIn("Backlog baseline sha256:", manifest)
+
+        check_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            run_dir="docs/agent_plans/outputs/2026-06-06_scout_write",
+            mode="write-enabled",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.cmd_check(check_args), 0)
+
     def test_vulture_config_is_canonical_and_outside_repo(self) -> None:
         out1 = Path(self.tmp.name) / "vulture1.toml"
         out2 = Path(self.tmp.name) / "vulture2.toml"
