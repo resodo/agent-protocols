@@ -170,3 +170,115 @@ regressions before PR handoff.
 ## Review Threads
 
 <!-- Structured review threads go here. -->
+
+### Reviewer pass 1 (impl-plan)
+
+Human concern restated: make a write-enabled Scout run that recorded only
+setup-level provenance fail mechanically, so the report/manifest carry the final
+validation evidence a later review needs, without the shared runner owning any
+one repo's backlog command.
+
+Verification performed before judging:
+
+- Confirmed the plan's factual claims against the code. The report skeleton's
+  `## Runner Validation` is literally `- Setup: completed.` and the manifest
+  skeleton's `## Validation` is `- Report skeleton created by Scout runner.` /
+  `- Overlay parsed by Scout runner.` (`scout/scripts/scout_runner.py`,
+  `report_skeleton` and `manifest_skeleton`). `cmd_check` validates headings,
+  subskill subsections, TODO, manifest headings, and dry-run baseline only — no
+  provenance. Claims accurate.
+- Confirmed `## Runner Validation` and `## Validation` are the correct section
+  names already enforced by `REPORT_HEADINGS` and the manifest heading list.
+- Confirmed all validation-plan directories exist (`scout/tests`, `tests`,
+  `structured-review/tests`, `scout`, `scripts`, `structured-review`), so the
+  Validation Plan is runnable by the next agent.
+
+#### Blocking
+
+**B1. Pin the manifest `## Validation` section boundary and token case, or the
+write-enabled `backlog` check can pass vacuously against the very skeleton it
+must reject.**
+
+This is the load-bearing detail for the task focus ("do acceptance criteria
+catch the observed write-enabled gap?"). The new check works only if the
+extracted `## Validation` text is correctly isolated.
+
+In the manifest skeleton the `## Validation` section is immediately followed by
+`## Backlog Write Mode`, whose body already contains "Backlog Write Mode",
+"Write-enabled runs may modify backlog YAML", and "Backlog/report changes ...";
+the `## Artifacts` table also contains "output-manifest check". If the new
+helper extracts `## Validation` unbounded-to-EOF (or matches the `backlog` token
+case-insensitively across the whole file), the write-enabled `backlog`
+requirement is satisfied by the skeleton itself — so a setup-only write-enabled
+run would PASS, which is exactly the failure this plan exists to prevent.
+
+The existing `section_text` already bounds at the next same-level heading, but
+the plan only says "Add a helper to extract section text from either report or
+manifest" and does not pin: (a) the manifest `## Validation` section ends at the
+next `##` heading (so `## Backlog Write Mode` is excluded), and (b) whether the
+`scout_runner.py` / `check` / `backlog` token match is case-sensitive and
+scoped strictly to the extracted section text. Please state both in Proposed
+Design step 2 and in the Backlog Checker Provenance Matching rule. The negative
+test (acceptance criterion 3) only guards this if the test artifact retains
+`## Backlog Write Mode`; making the boundary explicit removes the coupling where
+a too-loose extractor and a too-loose test could agree and ship the bug.
+
+#### Non-blocking
+
+**N1. Enumerate every existing positive `cmd_check` test that will break, not
+just "positive setup/check tests."** After this change the raw skeleton fails
+`check`, so four call sites need the provenance-append helper, not one:
+`test_setup_and_check_report_artifacts` (dry-run),
+`test_dry_run_allows_backlog_dirty_before_setup_when_unchanged` (dry-run),
+`test_write_enabled_manifest_declares_write_mode` (write-enabled — must append
+BOTH `scout_runner.py check` and backlog provenance), and
+`test_check_rejects_dry_run_backlog_change`, which calls
+`test_setup_and_check_report_artifacts` and would now error on the inner check
+before reaching its own assertion. Listing these prevents surprise failures and
+makes the "existing tests keep passing" acceptance criterion verifiable.
+
+**N2. Generalizing `section_text` must fix its hard-coded error label.** It
+currently raises `SCOUT_REPORT.md missing section: ...`. Reused for the manifest
+it would mislabel a manifest problem as a report problem. Have the helper take
+the artifact name (or message) so failures point at the right file.
+
+**N3. Keep the required-provenance tokens as named constants.** The plan
+hard-codes `scout_runner.py`, `check`, and `backlog`. Define them near
+`REPORT_HEADINGS` so the contract is discoverable and so a future rename of the
+runner script surfaces the coupling rather than silently weakening the check.
+This satisfies the mechanism-lifecycle lens (who maintains it / what signals
+staleness).
+
+**N4. Name the specific `scout/SKILL.md` sections to edit.** Design step 1 says
+"update SKILL.md" without saying where. The provenance requirement touches the
+Report Contract block (the `Runner Validation` / manifest `Validation`
+descriptions, around the `## Report Contract` section) and the run-loop step 5
+("Run `scout_runner.py check` before handoff"). Pointing the implementer at the
+exact sections keeps SKILL.md and the runner in agreement (acceptance criterion
+6) without guessing.
+
+#### Overall judgment
+
+Ready for implementation once B1 is resolved (or explicitly escalated). The goal
+is clear, non-goals are strong, the factual claims match the code, and the
+runner/protocol boundary is appropriate and explicitly non-overfit: the
+medium-strict `backlog` token rule and the refusal to hard-code one checker
+command keep the shared runner repo-agnostic while still catching the observed
+gap. The acceptance criteria do catch the Data write-enabled gap — provided B1's
+section isolation is pinned down. N1–N4 are quality/specificity improvements,
+not gates.
+
+#### Residual risks / validation gaps
+
+- Syntactic looseness is real and acknowledged by the plan: an agent can write
+  the word "backlog" in prose without having run the checker. Accepted for this
+  slice because the runner is an artifact checker, not an executor.
+- Mode-spoofing: `check` keys the backlog requirement off the `--mode` flag, not
+  the manifest's recorded `## Backlog Write Mode`. Running `check --mode dry-run`
+  against a write-enabled run dir skips the new backlog requirement. This mirrors
+  the existing dry-run baseline behavior, but the plan now gates more on it —
+  worth recording as residual risk or hardening with an optional cross-check
+  against the recorded mode.
+- Validation provenance for this review: reviewer-inspected source and directory
+  layout only; tests were not run (none exist yet for this change). Functional
+  proof depends on the implementation-review gate executing the Validation Plan.
