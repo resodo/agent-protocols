@@ -289,13 +289,37 @@ def manifest_skeleton(mode: str, backlog_sha256: str) -> str:
         [
             "# Scout Run Output Manifest",
             "",
-            "## Primary Artifact",
+            "Status: open; Scout run report generated",
+            "Owner: Scout run driver",
+            "PR: pending",
+            f"Created: {datetime.now(UTC).date().isoformat()}",
+            "Closed: pending",
             "",
-            "- `SCOUT_REPORT.md` - Scout run report.",
+            "## Primary Plans",
             "",
-            "## Supporting Artifacts",
+            "- None. This folder records Scout run evidence.",
             "",
-            "None.",
+            "## Artifacts",
+            "",
+            "| Path | Type | Keep / delete / archive policy | Owner | Referenced by | Notes |",
+            "| --- | --- | --- | --- | --- | --- |",
+            "| `MANIFEST.md` | manifest | Keep permanently with this Scout output folder. | Scout run driver | output-manifest check | Owns the lifecycle of artifacts in this folder. |",
+            "| `SCOUT_REPORT.md` | Scout report | Keep permanently as repo-safe Scout discovery evidence. | Scout run driver | backlog candidates / closeout | Records subskill findings, commands, validation, and backlog write behavior. |",
+            "",
+            "## Lifecycle Rules",
+            "",
+            "- This folder stores repo-safe Scout run evidence only.",
+            "- Every committed artifact in this folder must appear in the Artifacts table above.",
+            "- Scratch/debug/temp artifacts must be deleted before closeout or moved to ignored private storage.",
+            "- Do not add secrets, tokens, credentials, provider balances, raw production rows, private host identifiers, or local environment files.",
+            "",
+            "## Human Acceptance",
+            "",
+            "- Human review is required before promoted Scout candidates become accepted backlog work.",
+            "",
+            "## Next / Backlog",
+            "",
+            "- Review candidate proposals/refinements in `SCOUT_REPORT.md` and update backlog state according to the owning repo's backlog protocol.",
             "",
             "## Validation",
             "",
@@ -374,7 +398,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                 raise RunnerError(f"SCOUT_REPORT.md missing {subskill} subsection: {heading}")
     if re.search(r"\bTODO\b", report) or re.search(r"\bTODO\b", manifest):
         raise RunnerError("report artifacts contain TODO placeholders")
-    for heading in ("# Scout Run Output Manifest", "## Primary Artifact", "## Supporting Artifacts", "## Validation", "## Backlog Write Mode"):
+    for heading in ("# Scout Run Output Manifest", "## Primary Plans", "## Artifacts", "## Lifecycle Rules", "## Human Acceptance", "## Next / Backlog", "## Validation", "## Backlog Write Mode"):
         if not contains_heading(manifest, heading):
             raise RunnerError(f"MANIFEST.md missing heading: {heading}")
     if args.mode == "dry-run":

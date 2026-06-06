@@ -144,7 +144,15 @@ class ScoutRunnerTests(unittest.TestCase):
         )
         self.assertTrue((run_dir / "SCOUT_REPORT.md").exists())
         self.assertTrue((run_dir / "MANIFEST.md").exists())
-        self.assertIn("Backlog baseline sha256:", (run_dir / "MANIFEST.md").read_text(encoding="utf-8"))
+        manifest = (run_dir / "MANIFEST.md").read_text(encoding="utf-8")
+        self.assertIn("Status:", manifest)
+        self.assertIn("Owner:", manifest)
+        self.assertIn("PR:", manifest)
+        self.assertIn("Created:", manifest)
+        self.assertIn("Closed:", manifest)
+        self.assertIn("## Artifacts", manifest)
+        self.assertIn("`SCOUT_REPORT.md`", manifest)
+        self.assertIn("Backlog baseline sha256:", manifest)
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(runner.cmd_check(check_args), 0)
 
