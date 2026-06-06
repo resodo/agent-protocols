@@ -102,6 +102,14 @@ class ScoutRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(runner.RunnerError, "exact version pin"):
             runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
 
+    def test_vulture_version_range_is_rejected(self) -> None:
+        data = self.overlay()
+        data["subskills"]["code-reachability"]["python"]["vulture"]["version"] = "2.x"
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "exact version pin"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
     def test_output_root_escape_is_rejected(self) -> None:
         data = self.overlay()
         data["report"]["output_root"] = "../outside"
@@ -113,7 +121,7 @@ class ScoutRunnerTests(unittest.TestCase):
     def test_malformed_backlog_is_rejected(self) -> None:
         (self.root / "docs/backlog.yml").write_text("version: 1\nitems: [\n", encoding="utf-8")
 
-        with self.assertRaisesRegex(runner.RunnerError, "YAML parse failed"):
+        with self.assertRaisesRegex(runner.RunnerError, "backlog YAML parse failed"):
             runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
 
     def test_setup_and_check_report_artifacts(self) -> None:
