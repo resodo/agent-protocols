@@ -332,6 +332,33 @@ class ScoutRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(runner.RunnerError, "backlog checker"):
             runner.cmd_check(check_args)
 
+    def test_write_enabled_requires_manifest_backlog_checker_provenance(self) -> None:
+        args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            mode="write-enabled",
+            date="2026-06-06",
+            slug="scout_write",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            runner.cmd_setup(args)
+
+        run_dir = self.root / "docs/agent_plans/outputs/2026-06-06_scout_write"
+        self.add_validation_provenance(run_dir, mode="write-enabled", include_backlog_check=True)
+        manifest_path = run_dir / "MANIFEST.md"
+        manifest = manifest_path.read_text(encoding="utf-8")
+        manifest = manifest.replace("- `python scripts/check_backlog.py` passed.\n", "", 1)
+        manifest_path.write_text(manifest, encoding="utf-8")
+
+        check_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            run_dir="docs/agent_plans/outputs/2026-06-06_scout_write",
+            mode="write-enabled",
+        )
+        with self.assertRaisesRegex(runner.RunnerError, "MANIFEST.md.*backlog checker"):
+            runner.cmd_check(check_args)
+
     def test_vulture_config_is_canonical_and_outside_repo(self) -> None:
         out1 = Path(self.tmp.name) / "vulture1.toml"
         out2 = Path(self.tmp.name) / "vulture2.toml"
