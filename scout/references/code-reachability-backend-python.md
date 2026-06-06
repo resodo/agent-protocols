@@ -63,7 +63,10 @@ For each raw signal:
 4. Search docs references.
 5. Search config and dynamic entrypoint references.
 6. Rule out known false-positive classes.
-7. Decide whether the action is clear enough for a candidate.
+7. For candidate-worthy signals, inspect `git blame` / `git log` on the
+   definition and nearby callers, plus related plan text, to understand whether
+   the code is planned residue, a regression, a compatibility shim, or old debt.
+8. Decide whether the action is clear enough for a candidate.
 
 Raw Vulture output, low reference count, single reference, or test-only
 reference is not enough by itself.
@@ -125,4 +128,6 @@ Each candidate proposal should cite:
 - test reference search result;
 - docs/config/entrypoint search result;
 - false-positive classes ruled out;
+- history provenance, such as introducing or last-semantic-change commit/plan,
+  when available;
 - risk and clear next decision/action.
