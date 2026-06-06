@@ -337,3 +337,82 @@ Accepted N4. The plan now names the `scout/SKILL.md` `## Workflow` and
 
 Accepted residual-risk note. The plan now records mode spoofing as out of scope
 for this slice.
+
+### Reviewer pass 2 (impl-plan re-review)
+
+Re-reviewed after driver response 1. Scope of this pass: confirm B1 is resolved,
+confirm readiness for implementation, and raise new blockers only if the
+revision introduced a real implementation-risk gap.
+
+Verification performed against current source (not just the prose):
+
+- `scout/scripts/scout_runner.py` `manifest_skeleton` confirms the load-bearing
+  hazard B1 named: the manifest `## Validation` section (`- Report skeleton
+  created by Scout runner.` / `- Overlay parsed by Scout runner.`) is immediately
+  followed by `## Backlog Write Mode`, whose body contains "Write-enabled runs
+  may modify backlog YAML." and "Backlog/report changes ...". Unbounded
+  extraction or whole-file token search would let that section satisfy the
+  write-enabled `backlog` requirement against the very skeleton the check must
+  reject.
+- `section_text` already bounds at the next heading via its `next_level_prefix`
+  argument and hard-codes the `SCOUT_REPORT.md missing section:` error label
+  (the N2 finding is accurate).
+- `REPORT_HEADINGS` exists and lists `## Runner Validation` last, so on the
+  report side a `##`-bounded extraction runs to EOF — safe, since nothing
+  follows it.
+- `scout/SKILL.md` has `## Workflow` (step 5 is "Run `scout/scripts/scout_runner.py
+  check` before handoff") and `## Report Contract` (with `Runner Validation`), so
+  the N4 section pointers land on real headings.
+- All four tests the plan now enumerates exist in `scout/tests/test_scout_runner.py`,
+  and `test_check_rejects_dry_run_backlog_change` does call
+  `test_setup_and_check_report_artifacts()` internally — so the N1 caveat is
+  accurate and the "existing tests keep passing" criterion is now verifiable.
+
+#### Blocking
+
+None.
+
+B1 is resolved. Proposed Design step 2 now requires extracting both sections
+"strictly from their heading to the next same-level `##` heading" with the
+explicit anti-leak rationale naming `## Backlog Write Mode`, requires token
+searches "scoped strictly to the extracted section text" ("Do not search the
+whole report or manifest"), and requires case-insensitive token matching. The
+Backlog Checker Provenance Matching rule repeats both the section-boundary and
+case rules. Together these close the vacuous-pass hole on the manifest side: a
+setup-only write-enabled run can no longer satisfy the `backlog` token from
+`## Backlog Write Mode`. The negative test (acceptance criterion 3) now genuinely
+guards the boundary because it runs against the real `manifest_skeleton(mode=
+"write-enabled", ...)`, which always emits `## Backlog Write Mode`; the design no
+longer depends on the test artifact for correctness.
+
+#### Non-blocking
+
+No new findings. N1–N4 from pass 1 are all accepted and their pointers verified
+accurate above. One optional implementation note (not a gate): the design says
+"next same-level `##` heading", so the implementer should call `section_text`
+with `"##"` as `next_level_prefix` for both `## Runner Validation` and
+`## Validation` — not `"###"` as the existing subskill call does. This is already
+implied by the wording; flagging only to prevent an accidental copy of the
+subskill call convention.
+
+#### Overall judgment
+
+Ready for implementation. The goal, non-goals, assumptions, and acceptance
+criteria are clear and specific; the Validation Plan is runnable by the next
+agent; the sole blocking thread (B1) is resolved with the fix pinned in both the
+design step and the matching rule; and the revision added specificity rather than
+new mechanisms, so it introduced no new implementation-risk gap. The
+runner/protocol boundary remains appropriately repo-agnostic.
+
+#### Residual risks / validation gaps
+
+- Syntactic looseness (an agent can write "backlog" / "check" in prose without
+  having run the checker) remains, acknowledged and accepted for this slice.
+- Mode-spoofing (`check` keys the backlog requirement off `--mode`, not the
+  manifest's recorded `## Backlog Write Mode`) is now explicitly recorded as
+  out-of-scope residual risk, consistent with pass 1.
+- Validation provenance for this re-review: reviewer-inspected source
+  (`scout/scripts/scout_runner.py`, `scout/SKILL.md`,
+  `scout/tests/test_scout_runner.py`) and the plan diff for driver response 1;
+  no tests were run (none exist yet for this change). Functional proof still
+  depends on the implementation-review gate executing the Validation Plan.
