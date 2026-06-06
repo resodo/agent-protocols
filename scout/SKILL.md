@@ -39,6 +39,10 @@ checker instead of Scout.
    - write the subskill report section.
 5. Run `scout/scripts/scout_runner.py check` before handoff.
 6. In dry-run mode, stop for human review before writing any backlog changes.
+7. In write-enabled mode, commit backlog/report changes separately per
+   subskill after validation. Do not mix findings from multiple subskills in
+   one Scout output commit unless the human explicitly requests a combined
+   commit.
 
 ## Finding Classes
 
@@ -66,6 +70,12 @@ as `scout`, `fingerprint`, `confidence`, `severity`, or `human_review`.
 In dry-run mode, write proposed candidates only in `SCOUT_REPORT.md`. After
 explicit human approval, use `backlog-maintenance/SKILL.md` to write or refine
 candidate YAML.
+
+In write-enabled mode, each subskill gets its own backlog commit boundary:
+write that subskill's candidate proposals/refinements, update the run report
+and manifest for that subskill's write, run the repo backlog checker, then
+commit only those changes before moving to the next subskill. Commit messages
+should name the subskill, for example `scout: add script-lifecycle candidates`.
 
 Candidate granularity is one human decision or one coherent fix. Do not turn
 raw tool findings, files, or line counts directly into backlog items.
