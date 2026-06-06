@@ -39,6 +39,8 @@ REPORT_HEADINGS = (
     "## Tool Commands",
     "## Runner Validation",
 )
+RUNNER_CHECK_PROVENANCE_TOKENS = ("scout_runner.py", "check")
+WRITE_ENABLED_BACKLOG_PROVENANCE_TOKEN = "backlog"
 SUBSKILL_SUBHEADINGS = (
     "#### Context And Tools Used",
     "#### Candidate Proposals",
@@ -357,11 +359,11 @@ def contains_heading(text: str, heading: str) -> bool:
     return re.search(rf"^{re.escape(heading)}\s*$", text, re.MULTILINE) is not None
 
 
-def section_text(text: str, heading: str, next_level_prefix: str) -> str:
+def section_text(text: str, heading: str, next_level_prefix: str, *, artifact: str = "SCOUT_REPORT.md") -> str:
     pattern = re.compile(rf"^{re.escape(heading)}\s*$", re.MULTILINE)
     match = pattern.search(text)
     if match is None:
-        raise RunnerError(f"SCOUT_REPORT.md missing section: {heading}")
+        raise RunnerError(f"{artifact} missing section: {heading}")
     next_heading = re.search(rf"^{re.escape(next_level_prefix)}\s+", text[match.end() :], re.MULTILINE)
     if next_heading is None:
         return text[match.end() :]
@@ -371,6 +373,26 @@ def section_text(text: str, heading: str, next_level_prefix: str) -> str:
 def manifest_backlog_baseline(manifest: str) -> str | None:
     match = re.search(r"^- Backlog baseline sha256: ([0-9a-f]{64})\s*$", manifest, re.MULTILINE)
     return match.group(1) if match else None
+
+
+def contains_all_tokens(text: str, tokens: tuple[str, ...]) -> bool:
+    lowered = text.lower()
+    return all(token.lower() in lowered for token in tokens)
+
+
+def require_validation_provenance(report: str, manifest: str, mode: str) -> None:
+    report_validation = section_text(report, "## Runner Validation", "##")
+    manifest_validation = section_text(manifest, "## Validation", "##", artifact="MANIFEST.md")
+    if not contains_all_tokens(report_validation, RUNNER_CHECK_PROVENANCE_TOKENS):
+        raise RunnerError("SCOUT_REPORT.md Runner Validation must record the scout_runner.py check command")
+    if not contains_all_tokens(manifest_validation, RUNNER_CHECK_PROVENANCE_TOKENS):
+        raise RunnerError("MANIFEST.md Validation must record the scout_runner.py check command")
+    if mode == "write-enabled":
+        backlog_tokens = (WRITE_ENABLED_BACKLOG_PROVENANCE_TOKEN,)
+        if not contains_all_tokens(report_validation, backlog_tokens):
+            raise RunnerError("SCOUT_REPORT.md Runner Validation must record repo backlog checker provenance in write-enabled mode")
+        if not contains_all_tokens(manifest_validation, backlog_tokens):
+            raise RunnerError("MANIFEST.md Validation must record repo backlog checker provenance in write-enabled mode")
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -401,6 +423,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     for heading in ("# Scout Run Output Manifest", "## Primary Plans", "## Artifacts", "## Lifecycle Rules", "## Human Acceptance", "## Next / Backlog", "## Validation", "## Backlog Write Mode"):
         if not contains_heading(manifest, heading):
             raise RunnerError(f"MANIFEST.md missing heading: {heading}")
+    require_validation_provenance(report, manifest, args.mode)
     if args.mode == "dry-run":
         baseline = manifest_backlog_baseline(manifest)
         if baseline is None:

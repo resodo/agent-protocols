@@ -37,7 +37,9 @@ checker instead of Scout.
    - classify findings;
    - compare candidate-worthy findings with existing backlog items;
    - write the subskill report section.
-5. Run `scout/scripts/scout_runner.py check` before handoff.
+5. Run `scout/scripts/scout_runner.py check` before handoff, and record that
+   final validation command and result in both `SCOUT_REPORT.md` and
+   `MANIFEST.md`.
 6. In dry-run mode, stop for human review before writing any backlog changes.
 7. In write-enabled mode, commit backlog/report changes separately per
    subskill after validation. Do not mix findings from multiple subskills in
@@ -105,11 +107,20 @@ docs/agent_plans/outputs/YYYY-MM-DD_scout_run/
 - `Tool Commands`
 - `Runner Validation`
 
+`Runner Validation` must record final validation provenance, not only setup.
+At minimum, record the exact `scout_runner.py check` command used and its
+result. In write-enabled mode, also record the adopting repo's backlog checker
+command and result before handoff.
+
 Use stable report anchors such as `candidate-proposal-001` and
 `candidate-refinement-001`. Do not use hashes or fingerprints.
 
 `MANIFEST.md` is an index, not a second report. It lists the primary artifact,
 supporting artifacts or `None`, validation provenance, and backlog write mode.
+Its `Validation` section must mirror the final mechanical validation summary:
+the `scout_runner.py check` command/result, and in write-enabled mode the repo
+backlog checker command/result. A manifest that only records skeleton creation
+is incomplete.
 
 ## Subskills
 
@@ -130,7 +141,8 @@ The runner stabilizes mechanics:
 - parse and validate overlay schema;
 - create report and manifest skeletons;
 - generate deterministic temporary tool adapters;
-- check report/manifest headings and dry-run backlog protection.
+- check report/manifest headings, final validation provenance, and dry-run
+  backlog protection.
 
 Backlog item field validation belongs to the repo backlog checker. The runner
 may invoke or require that checker, but it must not maintain an independent
