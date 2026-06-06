@@ -267,7 +267,11 @@ def report_skeleton(data: dict[str, Any], repo_root: Path, overlay: Path, run_di
     return "\n".join(lines) + "\n"
 
 
-def manifest_skeleton(mode: str) -> str:
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def manifest_skeleton(mode: str, backlog_sha256: str) -> str:
     return "\n".join(
         [
             "# Scout Run Output Manifest",
@@ -289,6 +293,7 @@ def manifest_skeleton(mode: str) -> str:
             "",
             f"- Mode: {mode}",
             "- Dry-run reports do not modify backlog YAML.",
+            f"- Backlog baseline sha256: {backlog_sha256}",
             "",
             "## Notes",
             "",
@@ -305,8 +310,9 @@ def cmd_setup(args: argparse.Namespace) -> int:
     run_date = args.date or datetime.now(UTC).date().isoformat()
     run_dir = next_run_dir(output_root, run_date, args.slug)
     run_dir.mkdir(parents=True)
+    backlog_sha256 = file_sha256(repo_root / data["repo_context"]["backlog_path"])
     (run_dir / "SCOUT_REPORT.md").write_text(report_skeleton(data, repo_root, Path(args.overlay), run_dir.relative_to(repo_root), args.mode), encoding="utf-8")
-    (run_dir / "MANIFEST.md").write_text(manifest_skeleton(args.mode), encoding="utf-8")
+    (run_dir / "MANIFEST.md").write_text(manifest_skeleton(args.mode, backlog_sha256), encoding="utf-8")
     print(run_dir.relative_to(repo_root).as_posix())
     return 0
 
@@ -326,15 +332,9 @@ def section_text(text: str, heading: str, next_level_prefix: str) -> str:
     return text[match.end() : match.end() + next_heading.start()]
 
 
-def git_path_dirty(repo_root: Path, path: str) -> bool:
-    result = subprocess.run(
-        ["git", "status", "--porcelain", "--", path],
-        cwd=repo_root,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-    return bool(result.stdout.strip())
+def manifest_backlog_baseline(manifest: str) -> str | None:
+    match = re.search(r"^- Backlog baseline sha256: ([0-9a-f]{64})\s*$", manifest, re.MULTILINE)
+    return match.group(1) if match else None
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -365,8 +365,13 @@ def cmd_check(args: argparse.Namespace) -> int:
     for heading in ("# Scout Run Output Manifest", "## Primary Artifact", "## Supporting Artifacts", "## Validation", "## Backlog Write Mode"):
         if not contains_heading(manifest, heading):
             raise RunnerError(f"MANIFEST.md missing heading: {heading}")
-    if args.mode == "dry-run" and git_path_dirty(repo_root, data["repo_context"]["backlog_path"]):
-        raise RunnerError("dry-run mode must not modify backlog YAML")
+    if args.mode == "dry-run":
+        baseline = manifest_backlog_baseline(manifest)
+        if baseline is None:
+            raise RunnerError("MANIFEST.md missing backlog baseline sha256")
+        current = file_sha256(repo_root / data["repo_context"]["backlog_path"])
+        if current != baseline:
+            raise RunnerError("dry-run mode must not modify backlog YAML")
     print("ok")
     return 0
 
