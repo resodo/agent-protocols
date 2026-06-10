@@ -118,5 +118,3 @@ post-merge docs follow-up is expected; this report's wording remains true
 after merge.
 
 ## Review Threads
-
-<!-- Structured review threads go here. -->
