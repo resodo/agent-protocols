@@ -252,6 +252,59 @@ by tests; both are faked, as today.
   on the spike evidence at codex-cli 0.137.0 and are re-validated live by the
   dogfooded implementation-review gate.
 
+## Scope Addendum (2026-06-10, human-approved)
+
+After the implementation review passed, the human approved two additions to
+this PR during closeout discussion:
+
+1. Closeout protocol delegation. `closeout/SKILL.md` carried a duplicated,
+   now-stale copy of the runner policy ("use the bundled Claude runner",
+   mode defaults). The duplicated mechanics are removed; closeout keeps its
+   Closeout Review trigger list and defers runner/backend/mode policy to the
+   structured-review skill. This was a non-goal of the original plan; the
+   human explicitly widened scope to fix the drift at its root in this PR.
+
+2. Runner-owned write mode. Field experience (roughly half of
+   write-commit-to-plan runs historically, and one of four runner passes in
+   this PR's own session) shows reviewer agents frequently violate the
+   append-only thread-file contract, typically by deleting placeholder
+   lines, invalidating otherwise-good reviews and forcing manual driver
+   recovery. The write-mode mechanics change from reviewer-writes-and-commits
+   to runner-writes-and-commits:
+   - The reviewer always runs read-only and returns the review text; in
+     write mode the runner itself appends that text verbatim under the
+     thread file's `## Review Threads` section and creates the
+     `structured-review:` commit. Append-only now holds by construction.
+   - Before committing, the runner requires the reviewer to have left the
+     worktree untouched, and checks the text is review-like, free of local
+     absolute paths, and free of secret-like material. `verify_write_mode`
+     is kept unchanged as a defense-in-depth self-check on the runner's own
+     commit.
+   - The Codex backend runs `--sandbox read-only` in both modes; the
+     write-mode `--add-dir` git-dir grant is removed as no longer needed.
+     The Claude backend's argv is unchanged.
+   - The reviewer prompt no longer instructs committing; it instructs
+     returning the complete review threads as markdown and explicitly
+     forbids writing files.
+   - The human's requirement driving this: the complete reviewer text must
+     land in the durable thread verbatim with zero driver transcription
+     burden, which the by-construction append guarantees.
+
+Updated acceptance for the addendum:
+
+- Write mode produces exactly one runner-created commit whose added lines
+  are the reviewer's output verbatim inside the `## Review Threads` section,
+  for both backends, including when other `##` sections follow the threads
+  section.
+- A reviewer that modifies the worktree or HEAD in write mode fails the run
+  before any append happens.
+- Non-review-like, local-path-bearing, or secret-bearing reviewer output
+  fails before any commit, with the text preserved in run logs.
+- Codex argv contains `--sandbox read-only` and no `--add-dir` in both
+  modes.
+- `closeout/SKILL.md` keeps the trigger list and no longer states runner,
+  backend, or mode policy.
+
 ## Review Threads
 
 ### Reviewer pass 1 (impl-plan, claude reviewer)

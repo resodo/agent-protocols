@@ -703,47 +703,22 @@ print('stderr path', file=sys.stderr, flush=True)
             config = self.config_for(repo, protocol, extra=["--reviewer-backend", "codex"])
         self.assertEqual(config.backend, "codex")
 
-    def test_codex_argv_write_mode_sandbox_git_dirs_and_defaults(self) -> None:
+    def test_codex_argv_is_read_only_in_both_modes_with_defaults(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
-        config = self.config_for(repo, protocol, extra=["--reviewer-backend", "codex"])
         logs = self.logs_for(self.root / "codex-logs")
 
-        argv = csr.codex_argv(config, logs)
+        for mode, topic in ((csr.MODE_WRITE, "plan"), (csr.MODE_PRINT, None)):
+            config = self.config_for(repo, protocol, mode=mode, topic=topic, extra=["--reviewer-backend", "codex"])
+            argv = csr.codex_argv(config, logs)
 
-        self.assertEqual(argv[:4], ["codex", "exec", "-", "--json"])
-        self.assertIn("workspace-write", argv)
-        add_dirs = [argv[i + 1] for i, flag in enumerate(argv) if flag == "--add-dir"]
-        self.assertEqual(add_dirs, [str((repo / ".git").resolve())])
-        self.assertIn("gpt-5.5", argv)
-        self.assertIn("model_reasoning_effort=xhigh", argv)
-        self.assertEqual(argv[argv.index("--output-last-message") + 1], str(logs.root / "last-message.txt"))
-
-    def test_codex_argv_linked_worktree_adds_both_git_dirs(self) -> None:
-        repo = self.init_target_repo()
-        protocol = self.init_protocol_dir()
-        linked = self.root / "linked"
-        run_git(repo, "worktree", "add", str(linked), "-b", "linked")
-        config = self.config_for(linked, protocol, extra=["--reviewer-backend", "codex"])
-        logs = self.logs_for(self.root / "codex-logs")
-
-        argv = csr.codex_argv(config, logs)
-
-        add_dirs = [argv[i + 1] for i, flag in enumerate(argv) if flag == "--add-dir"]
-        self.assertEqual(len(add_dirs), 2)
-        self.assertIn(str((repo / ".git").resolve()), add_dirs)
-
-    def test_codex_argv_print_mode_is_read_only_without_add_dir(self) -> None:
-        repo = self.init_target_repo()
-        protocol = self.init_protocol_dir()
-        config = self.config_for(repo, protocol, mode=csr.MODE_PRINT, topic=None, extra=["--reviewer-backend", "codex"])
-        logs = self.logs_for(self.root / "codex-logs")
-
-        argv = csr.codex_argv(config, logs)
-
-        self.assertIn("read-only", argv)
-        self.assertNotIn("workspace-write", argv)
-        self.assertNotIn("--add-dir", argv)
+            self.assertEqual(argv[:4], ["codex", "exec", "-", "--json"])
+            self.assertIn("read-only", argv)
+            self.assertNotIn("workspace-write", argv)
+            self.assertNotIn("--add-dir", argv)
+            self.assertIn("gpt-5.5", argv)
+            self.assertIn("model_reasoning_effort=xhigh", argv)
+            self.assertEqual(argv[argv.index("--output-last-message") + 1], str(logs.root / "last-message.txt"))
 
     def test_codex_model_and_effort_overrides(self) -> None:
         repo = self.init_target_repo()
@@ -838,17 +813,13 @@ print('stderr path', file=sys.stderr, flush=True)
 
         self.assertEqual(result.review_text, "First note.\n\nSecond note.")
 
-    def test_run_codex_write_mode_end_to_end(self) -> None:
+    def test_run_codex_write_mode_runner_appends_and_commits(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
+        review = "### Reviewer pass 1 (impl-plan, codex reviewer)\\n\\nNo blocking issues."
         fake_codex = self.write_fake_codex(
-            "with open('docs/plan.md', 'a') as fh:\n"
-            "    fh.write('\\n### Reviewer pass 1 (impl-plan, codex reviewer)\\n\\nNo blocking issues.\\n')\n"
-            "subprocess.run(['git', 'add', 'docs/plan.md'], check=True)\n"
-            "subprocess.run(['git', 'commit', '-m', 'structured-review: add reviewer comments for plan'], check=True)\n"
-            "print('{\"type\":\"item.completed\",\"item\":{\"id\":\"i1\",\"type\":\"agent_message\",\"text\":\"Committed review.\"}}', flush=True)\n"
             "with open(out_path, 'w') as fh:\n"
-            "    fh.write('Committed review.')\n"
+            f"    fh.write('{review}')\n"
         )
         config = self.config_for(
             repo,
@@ -859,12 +830,98 @@ print('stderr path', file=sys.stderr, flush=True)
 
         csr.run(config)
 
-        self.assertNotEqual(run_git(repo, "rev-parse", "HEAD"), head_before)
+        self.assertEqual(run_git(repo, "rev-parse", f"{run_git(repo, 'rev-parse', 'HEAD')}^"), head_before)
         self.assertEqual(run_git(repo, "log", "-1", "--pretty=%s"), "structured-review: add reviewer comments for plan")
-        self.assertIn("codex reviewer", (repo / "docs/plan.md").read_text(encoding="utf-8"))
+        plan_text = (repo / "docs/plan.md").read_text(encoding="utf-8")
+        self.assertIn("### Reviewer pass 1 (impl-plan, codex reviewer)\n\nNo blocking issues.\n", plan_text)
+        self.assertEqual(run_git(repo, "status", "--porcelain"), "")
         metadata = json.loads((self.root / "logs/metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["outcome"], "success")
         self.assertEqual(metadata["backend"], "codex")
+
+    def test_run_claude_write_mode_runner_appends_and_commits(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol, extra=["--run-log-dir", str(self.root / "logs")])
+
+        def fake_run_claude(config: csr.RunConfig, prompt: str, logs: csr.RunLogs, redactor: csr.Redactor) -> csr.ClaudeRunResult:
+            logs.prompt.write_text(prompt, encoding="utf-8")
+            logs.stdout.write_text("{}", encoding="utf-8")
+            logs.stderr.write_text("", encoding="utf-8")
+            return self.result(review_text="### Reviewer pass 1 (impl-plan, claude reviewer)\n\nNo blocking issues.\n")
+
+        with mock.patch.object(csr, "run_claude", fake_run_claude):
+            csr.run(config)
+
+        self.assertEqual(run_git(repo, "log", "-1", "--pretty=%s"), "structured-review: add reviewer comments for plan")
+        self.assertIn("claude reviewer", (repo / "docs/plan.md").read_text(encoding="utf-8"))
+
+    def test_append_inserts_inside_threads_section_before_later_sections(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        plan = repo / "docs/plan.md"
+        plan.write_text(
+            "# Plan\n\n## Review Threads\n\nExisting.\n\n## Appendix\n\nKeep me last.\n",
+            encoding="utf-8",
+        )
+        run_git(repo, "add", "docs/plan.md")
+        run_git(repo, "commit", "-m", "add appendix")
+        config = self.config_for(repo, protocol)
+        before = csr.git_snapshot(repo)
+
+        csr.append_and_commit_review(config, "### Reviewer pass 9 (impl-plan, codex reviewer)\n\nNo blockers.")
+
+        text = plan.read_text(encoding="utf-8")
+        self.assertLess(text.index("Reviewer pass 9"), text.index("## Appendix"))
+        self.assertTrue(text.endswith("Keep me last.\n"))
+        after = csr.git_snapshot(repo)
+        csr.verify_write_mode(config, before, after, self.result())
+
+    def test_write_mode_rejects_reviewer_worktree_modification(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+        before = csr.git_snapshot(repo)
+        (repo / "docs/plan.md").write_text("# Plan\n\nDirtied by reviewer.\n", encoding="utf-8")
+        after = csr.git_snapshot(repo)
+
+        with self.assertRaisesRegex(csr.RunnerError, "read-only reviewer output"):
+            csr.verify_reviewer_output(config, before, after, self.result())
+
+    def test_write_mode_rejects_non_review_like_output(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+        before = csr.git_snapshot(repo)
+
+        with self.assertRaisesRegex(csr.RunnerError, "review-thread content"):
+            csr.verify_reviewer_output(config, before, before, self.result(review_text="Just some notes.\n"))
+
+    def test_write_mode_rejects_local_path_in_review_output(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+        before = csr.git_snapshot(repo)
+        leaked = "/" + "Users/example/work/repo/"
+
+        with self.assertRaisesRegex(csr.RunnerError, "local absolute path"):
+            csr.verify_reviewer_output(
+                config,
+                before,
+                before,
+                self.result(review_text=f"### Reviewer pass 1 (impl, codex reviewer)\n\nLeak: {leaked}\n"),
+            )
+
+    def test_write_prompt_forbids_reviewer_writes(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+
+        prompt = csr.build_prompt(config)
+
+        self.assertIn("Do not write files, stage changes, or commit anything", prompt)
+        self.assertIn("the runner appends your returned review", prompt)
+        self.assertNotIn("Use commit message", prompt)
 
     def test_codex_version_timeout_is_recorded_as_unknown(self) -> None:
         repo = self.init_target_repo()

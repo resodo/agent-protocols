@@ -295,10 +295,8 @@ def build_prompt(config: RunConfig) -> str:
         assert config.topic is not None
         lines.extend(
             [
-                "- Append review threads near the end of the thread file under its Review Threads section.",
-                "- Commit only the thread-file change.",
-                f"- Use commit message: structured-review: add reviewer comments for {config.topic}",
-                "- Do not modify implementation files or any file other than the thread file.",
+                "- Return the complete review threads as markdown in your final response.",
+                "- Do not write files, stage changes, or commit anything; the runner appends your returned review to the thread file and creates the commit.",
                 "- If there are no blocking issues, say so explicitly in the review thread.",
             ]
         )
@@ -464,6 +462,48 @@ def verify_print_mode(config: RunConfig, before: GitSnapshot, after: GitSnapshot
         raise RunnerError("print-review output contains a local absolute path")
 
 
+def verify_reviewer_output(config: RunConfig, before: GitSnapshot, after: GitSnapshot, result: ClaudeRunResult) -> None:
+    """Require a read-only reviewer run with committable review text."""
+    if result.returncode != 0:
+        raise RunnerError("reviewer run failed")
+    if before.head != after.head:
+        raise RunnerError("reviewer moved HEAD; write mode requires read-only reviewer output")
+    if before.status != after.status:
+        raise RunnerError("reviewer modified the worktree; write mode requires read-only reviewer output")
+    text = result.review_text
+    if not text.strip():
+        raise RunnerError("reviewer produced no review text")
+    if not added_content_is_review_like(text.splitlines()):
+        raise RunnerError("review text does not look like review-thread content")
+    if contains_local_path(text, extra_paths=(config.worktree,)):
+        raise RunnerError("review text contains a local absolute path")
+    if contains_secret_material(text):
+        raise RunnerError("review text contains possible secret material")
+
+
+def append_and_commit_review(config: RunConfig, review_text: str) -> None:
+    """Append the reviewer's output under Review Threads and create the handoff commit."""
+    if config.thread_file is None or config.topic is None:
+        raise RunnerError("internal error: write mode missing thread file or topic")
+    path = config.thread_file.abs
+    text = read_text(path)
+    bounds = review_threads_bounds(text)
+    if bounds is None:
+        raise RunnerError("thread file lost its Review Threads section during the run")
+    _, section_end = bounds
+    head = text[:section_end].rstrip("\n")
+    tail = text[section_end:].lstrip("\n")
+    updated = head + "\n\n" + review_text.strip() + "\n"
+    if tail:
+        updated += "\n" + tail
+    path.write_text(updated, encoding="utf-8")
+    run_git(["add", config.thread_file.rel], root=config.worktree)
+    run_git(
+        ["commit", "-m", f"structured-review: add reviewer comments for {config.topic}"],
+        root=config.worktree,
+    )
+
+
 def verify_write_mode(config: RunConfig, before: GitSnapshot, after: GitSnapshot, result: ClaudeRunResult) -> None:
     if config.thread_file is None or config.topic is None:
         raise RunnerError("internal error: write mode missing thread file or topic")
@@ -581,39 +621,21 @@ def claude_argv(config: RunConfig) -> list[str]:
     ]
 
 
-def codex_git_add_dirs(worktree: Path) -> list[Path]:
-    result = run_git(["rev-parse", "--git-dir", "--git-common-dir"], root=worktree)
-    dirs: list[Path] = []
-    for raw in result.stdout.splitlines():
-        raw = raw.strip()
-        if not raw:
-            continue
-        candidate = Path(raw)
-        resolved = candidate.resolve() if candidate.is_absolute() else (worktree / candidate).resolve()
-        if resolved not in dirs:
-            dirs.append(resolved)
-    return dirs
-
-
 def codex_argv(config: RunConfig, logs: RunLogs) -> list[str]:
-    argv = [config.codex_bin, "exec", "-", "--json"]
-    if config.mode == MODE_WRITE:
-        argv.extend(["--sandbox", "workspace-write"])
-        for path in codex_git_add_dirs(config.worktree):
-            argv.extend(["--add-dir", str(path)])
-    else:
-        argv.extend(["--sandbox", "read-only"])
-    argv.extend(
-        [
-            "-m",
-            config.codex_model,
-            "-c",
-            f"model_reasoning_effort={config.codex_effort}",
-            "--output-last-message",
-            str(logs.root / CODEX_LAST_MESSAGE_NAME),
-        ]
-    )
-    return argv
+    return [
+        config.codex_bin,
+        "exec",
+        "-",
+        "--json",
+        "--sandbox",
+        "read-only",
+        "-m",
+        config.codex_model,
+        "-c",
+        f"model_reasoning_effort={config.codex_effort}",
+        "--output-last-message",
+        str(logs.root / CODEX_LAST_MESSAGE_NAME),
+    ]
 
 
 def claude_finalize(state: ReviewState, logs: RunLogs) -> str:
@@ -991,6 +1013,9 @@ def run(config: RunConfig) -> None:
             write_metadata(config, logs, result, outcome="timeout", error=f"{config.backend} review timed out{dirty}", before=before, after=after)
             raise RunnerError(f"{config.backend} review timed out{dirty}", exit_code=2)
         if config.mode == MODE_WRITE:
+            verify_reviewer_output(config, before, after, result)
+            append_and_commit_review(config, result.review_text)
+            after = git_snapshot(config.worktree)
             verify_write_mode(config, before, after, result)
         else:
             verify_print_mode(config, before, after, result)
