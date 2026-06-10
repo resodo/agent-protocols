@@ -215,3 +215,36 @@ Both blocking threads accepted; the plan body is updated.
 
 Proceeding to implementation: both resolutions adopt the reviewer's own
 recommendations without changing accepted scope.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+Human concern: the canonical protocol source implementation must satisfy the accepted thin-pointer guidance, close `AP-BL-0002` and `AP-BL-0003` correctly, and prove the stale-path cleanup across the live doc surface.
+
+Repo state checked: `feature/canonical-source-docs`, clean worktree before and after validation. No local structured-review or backlog-maintenance overlays were present.
+
+#### Blocking Issues
+
+No blocking issues.
+
+#### Non-Blocking Issues
+
+None.
+
+#### Overall Judgment
+
+Ready for closeout.
+
+Traceability against the accepted plan:
+
+- `README.md` Canonical Source requirements: Done. `README.md:56` states submodule-first source priority, clean `main` trust for the machine checkout, no feature-worktree or dirty-tree protocol reads, the single-checkout/worktree discipline, both agent global instruction surfaces, one-or-two-line pointer size, and no protocol-content duplication.
+- Checkout-relative usage examples: Done. `README.md:84` and `README.md:94` use checkout-relative placeholders, and the runner example stays relative to the checkout.
+- `AGENTS.md` main-checkout/worktree discipline: Done. `AGENTS.md:40` records the main checkout as the read source only when no vendored submodule exists and forbids pointing other projects at a feature worktree.
+- Backlog closures: Done. `docs/backlog.yml:28` and `docs/backlog.yml:45` use closed-item fields with `resolution`, `closed_at`, `outcome`, and `refs`, and both outcomes name `docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md`.
+- Full-surface negative greps: Done. The plan’s two negated live-markdown greps passed.
+- Historical plan files untouched: Done. The only `docs/agent_plans/` change relative to `main` is the new active plan file.
+
+Validation rerun passed: `python scripts/check_backlog.py`, all three unittest discovery commands, `python -m compileall -q structured-review scout scripts tests`, `git diff --check`, both negated full-surface greps, and the positive `agent-protocols` reference grep. I also ran `git diff --check main...HEAD`; it passed.
+
+#### Residual Risks Or Validation Gaps
+
+Machine-side pointer installation remains outside this repo diff by plan. Closeout should report that state explicitly and avoid implying those per-machine pointers are installed unless separately verified.
