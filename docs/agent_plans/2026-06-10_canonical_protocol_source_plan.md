@@ -45,16 +45,19 @@ discussion that rejected the first draft's direction):
    loudly when the fetch fails. Offline means no work; agent coding is an
    online activity anyway.
 5. Protocol skills mount into both agents' native project-level skill
-   discovery through symlinks committed in the consuming repo
-   (`.claude/skills/<protocol>` and `.codex/skills/<protocol>` ->
-   `external/agent-protocols/<protocol>`). A fresh submodule therefore
+   discovery through symlinks committed in the consuming repo, each on
+   that agent's documented surface: `.claude/skills/<protocol>` for
+   Claude Code and `.agents/skills/<protocol>` for Codex, both pointing
+   at `external/agent-protocols/<protocol>`. A fresh submodule therefore
    makes the protocols load natively at agent startup, which is the
-   answer AP-BL-0003 was looking for. Spike evidence: both Claude Code and
-   Codex catalog symlinked project skills at session start, and Claude
-   Code additionally loads them mid-session via `--add-dir`/`/add-dir`
-   (verified from an unrelated working directory); Codex uses
-   startup-only scans, which matches how it is launched in practice (per
-   task, inside the worktree).
+   answer AP-BL-0003 was looking for. Spike evidence: Claude Code
+   catalogs symlinked `.claude/skills` entries at session start and also
+   mid-session via `--add-dir`/`/add-dir` (verified from an unrelated
+   working directory); Codex catalogs symlinked `.agents/skills` entries
+   at session start (its documented repo-skill path); Claude Code does
+   not scan `.agents/skills` (verified NO), so the two mount directories
+   cannot be merged. Codex uses startup-only scans, which matches how it
+   is launched in practice (per task, inside the worktree).
 6. Ordering rule: the guard runs before the agent enters the worktree.
    After entry the agent self-checks that protocol skills are cataloged
    and falls back to reading `SKILL.md` directly from the submodule path
@@ -89,7 +92,8 @@ truthful, and close AP-BL-0002 and AP-BL-0003.
      stale local branch; if the fetch fails, stop and report the blocker
      instead of starting feature work.
    - Add a native skill mount section: consuming repos commit symlinks
-     `.claude/skills/<protocol>` and `.codex/skills/<protocol>` ->
+     `.claude/skills/<protocol>` (Claude Code) and
+     `.agents/skills/<protocol>` (Codex) ->
      `external/agent-protocols/<protocol>` for the protocols that ship a
      `SKILL.md`; the guard verifies the links resolve after the submodule
      is materialized.
@@ -116,7 +120,7 @@ truthful, and close AP-BL-0002 and AP-BL-0003.
    and linked-worktree discipline as repo hygiene.
 
 5. Self-mount this repo: commit `.claude/skills/<protocol>` and
-   `.codex/skills/<protocol>` symlinks (relative, `../../<protocol>`) for
+   `.agents/skills/<protocol>` symlinks (relative, `../../<protocol>`) for
    the six protocols shipping a `SKILL.md` (backlog-maintenance, closeout,
    planning, retrospective, scout, structured-review), so sessions in this
    repo and its worktrees load the protocols natively.
@@ -147,9 +151,13 @@ truthful, and close AP-BL-0002 and AP-BL-0003.
   pinned submodule + guard as the only documented consumption path, the
   native skill mounts as the agent-facing surface, and human-directed
   ad-hoc use; it names no machine-global path and no pointer files.
-- This repo contains working `.claude/skills/` and `.codex/skills/`
-  symlinks for exactly the six SKILL.md-bearing protocols, and each
-  resolves to a readable `SKILL.md`.
+- This repo contains skill mounts for exactly the six SKILL.md-bearing
+  protocols in both `.claude/skills/` and `.agents/skills/`: each entry is
+  a symlink whose target is exactly `../../<protocol>`, resolving to a
+  readable `SKILL.md`, with no extra entries in either mount directory.
+- Native discovery is validated by driver/reviewer-run probes in this
+  repo (requires both CLIs; not CI): Claude Code and Codex each report
+  the `structured-review` skill as cataloged.
 - `AP-BL-0002` and `AP-BL-0003` are closed with schema-valid fields and
   outcomes matching the decisions above, and
   `python scripts/check_backlog.py` passes.
@@ -168,8 +176,19 @@ git diff --check
 ! grep -rnE "/Users/|/home/" --include="*.md" --exclude-dir=agent_plans .
 grep -rn "agent-protocols" README.md AGENTS.md docs/CURRENT.md docs/README.md
 for p in backlog-maintenance closeout planning retrospective scout structured-review; do
-  test -f ".claude/skills/$p/SKILL.md" && test -f ".codex/skills/$p/SKILL.md"
-done && echo MOUNTS-OK
+  for d in .claude/skills .agents/skills; do
+    test -L "$d/$p" || exit 1
+    [ "$(readlink "$d/$p")" = "../../$p" ] || exit 1
+    test -f "$d/$p/SKILL.md" || exit 1
+  done
+done && [ "$(ls .claude/skills | wc -l)" -eq 6 ] \
+     && [ "$(ls .agents/skills | wc -l)" -eq 6 ] && echo MOUNTS-OK
+
+# Driver/reviewer-run native discovery probes (require both CLIs; not CI):
+echo "Is a skill named 'structured-review' in your skills list? YES or NO" \
+  | claude -p --model haiku
+echo "Is a skill named 'structured-review' in your skills list? YES or NO" \
+  | codex exec --sandbox read-only -
 ```
 
 The two negated greps are the full-surface negative checks: every live
@@ -353,3 +372,30 @@ Not ready for implementation until the two blocking issues are resolved. The des
 #### Residual Risks Or Validation Gaps
 
 Consumer repo adoption remains deferred by plan, so closeout should avoid implying downstream guards already enforce freshness or mounts. The symlink approach remains POSIX-specific as recorded in the plan.
+
+### Driver response 2 (to pass 3)
+
+Both blocking threads accepted; the plan body is updated.
+
+- Thread 1: the Codex mount moves to its documented repo-skill path,
+  `.agents/skills/<protocol>`. A fresh spike confirmed Codex catalogs a
+  symlinked skill there (probe answered YES), and a counter-spike
+  confirmed Claude Code does not scan `.agents/skills` (probe answered
+  NO), so the two agents keep separate documented mount directories and
+  cannot share one. The Validation Plan gains repeatable driver/
+  reviewer-run discovery probes for both agents in this repo, recorded as
+  requiring both CLIs and excluded from CI; AP-BL-0003 closure now rests
+  on documented paths plus these probes rather than on an undocumented
+  surface.
+- Thread 2: mount validation now proves the contract directly: each of
+  the six entries in both mount directories must be a symlink, its
+  readlink target must equal `../../<protocol>` exactly, the resolved
+  `SKILL.md` must be readable, and each mount directory must contain
+  exactly six entries (no extras). The acceptance criterion states the
+  same.
+- The non-blocking note is adopted operationally: the README/AGENTS
+  rewrites are full-section replacements, and implementation review can
+  grep the final text for leftover first-design pointer language.
+
+Proceeding to implementation: both resolutions adopt the reviewer's own
+prescriptions, backed by fresh spike evidence recorded in Context.
