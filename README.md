@@ -53,6 +53,28 @@ must not override a generic `SAFETY` rule.
 structure. The heading text is the contract; overlays must not weaken those
 rules.
 
+## Canonical Source
+
+1. Inside a repo that vendors these protocols through an
+   `external/agent-protocols` submodule, always use the vendored copy at
+   its pinned version.
+2. Anywhere else, use the machine's agent-protocols checkout. Trust it only
+   when it is clean and on `main`; never read protocols from a feature
+   worktree or a dirty tree.
+
+Keep exactly one checkout per machine and develop in linked worktrees, so
+the main checkout stays a trustworthy read source. Do not write
+machine-specific absolute paths into this repo's docs; the
+project-local `.agent-protocols/` overlay directory described above is
+unrelated to where the protocols themselves live.
+
+Each coding agent finds the checkout through a thin pointer in its global
+instructions: `~/.claude/CLAUDE.md` for Claude Code, `~/.codex/AGENTS.md`
+for Codex. A pointer is one or two lines naming the machine's checkout
+path plus the trust rule above (submodule first; otherwise the clean
+`main` checkout). Do not copy protocol content into agent configuration;
+pointers only.
+
 ## Usage
 
 Point an agent at the relevant `SKILL.md` file and provide the requested role, artifact, and type.
@@ -60,7 +82,7 @@ Point an agent at the relevant `SKILL.md` file and provide the requested role, a
 Example:
 
 ```text
-Please read ~/.agent-protocols/structured-review/SKILL.md
+Please read <your agent-protocols checkout>/structured-review/SKILL.md
 Role: reviewer
 Artifact: docs/some_plan.md
 Type: impl-plan
@@ -69,7 +91,7 @@ Type: impl-plan
 For implementation closeout:
 
 ```text
-Please read ~/.agent-protocols/closeout/SKILL.md
+Please read <your agent-protocols checkout>/closeout/SKILL.md
 Scope: current implementation task
 ```
 

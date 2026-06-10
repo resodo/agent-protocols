@@ -26,40 +26,38 @@ items:
       storage location, promotion criteria, and closeout expectations.
 
   - id: AP-BL-0002
-    status: open
+    status: closed
     priority: P1
     kind: process
     title: Decide the global canonical source for structured review
-    why: >
-      Codex, Claude, and downstream repos need one reliable source for the
-      structured-review protocol to avoid drift between global skills, submodule
-      copies, wrappers, and local checkouts.
-    next: >
-      Decide where the canonical global structured-review project should live
-      and how Codex and Claude should read or synchronize the same source.
-    done_when: >
-      The canonical source, sync or wrapper strategy, and expected read path for
-      Codex and Claude are documented and no agent needs to infer which copy is
-      authoritative.
+    resolution: completed
+    closed_at: 2026-06-10
+    outcome: >
+      The canonical source per machine is the single development checkout of
+      this repo, trusted only when clean on main; repos vendoring
+      external/agent-protocols keep priority on their pinned submodule. The
+      stale user-home clone was deleted, README documents the source-priority
+      rule with checkout-relative usage examples, and per-agent global
+      pointers own discovery.
+    refs:
+      - docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md
 
   - id: AP-BL-0003
-    status: open
+    status: closed
     priority: P2
     kind: process
     title: Design agent-specific protocol wrappers
-    why: >
-      After the canonical source is stable, Codex and Claude may still need
-      small wrapper instructions or commands so each agent loads the shared
-      protocol consistently.
-    next: >
-      Define the Codex global skill wrapper shape, the Claude global skill or
-      command wrapper shape, and how much wrapper text is needed versus direct
-      file reading.
-    done_when: >
-      Codex and Claude wrapper guidance exists, stays thin, and points back to
-      the canonical protocol source without duplicating stable protocol content.
-    blocked_by:
-      - AP-BL-0002
+    resolution: completed
+    closed_at: 2026-06-10
+    outcome: >
+      The wrapper shape is a thin pointer of one or two lines in each agent's
+      global instructions (Claude Code ~/.claude/CLAUDE.md, Codex
+      ~/.codex/AGENTS.md) naming the machine's checkout and the
+      submodule-first, clean-main trust rule, never duplicating protocol
+      content. README's Canonical Source section documents the pattern;
+      installing pointers is per-machine configuration, not repo content.
+    refs:
+      - docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md
 
   - id: AP-BL-0004
     status: open
