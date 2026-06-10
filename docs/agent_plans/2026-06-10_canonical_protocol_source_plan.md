@@ -98,7 +98,13 @@ pattern, and close AP-BL-0002 and AP-BL-0003.
   `docs/CURRENT.md`, protocol `SKILL.md` files, `agent-readiness/`)
   references `~/.agent-protocols` or any user-home absolute path.
 - `README.md` states the source-priority rule (submodule first, then the
-  machine checkout at clean `main`) and the thin-pointer pattern.
+  machine checkout at clean `main`) and concrete thin-pointer guidance for
+  both agent surfaces, requiring all of: the pointer lives in the agent's
+  global instructions (`~/.claude/CLAUDE.md` for Claude Code,
+  `~/.codex/AGENTS.md` for Codex), stays one or two lines, names the
+  machine's main checkout, defers to `external/agent-protocols` inside
+  vendoring repos, requires the checkout to be clean on `main`, and never
+  duplicates protocol content.
 - `AGENTS.md` records the main-checkout/worktree discipline.
 - `AP-BL-0002` and `AP-BL-0003` are closed with schema-valid fields and
   outcomes naming this plan, and `python scripts/check_backlog.py` passes.
@@ -113,11 +119,20 @@ python -m unittest discover -s structured-review/tests
 python -m unittest discover -s scout/tests
 python -m compileall -q structured-review scout scripts tests
 git diff --check
+! grep -rn "~/.agent-protocols" --include="*.md" --exclude-dir=agent_plans .
+! grep -rnE "/Users/|/home/" --include="*.md" --exclude-dir=agent_plans .
 grep -rn "agent-protocols" README.md AGENTS.md docs/CURRENT.md docs/README.md
 ```
 
-The grep confirms remaining references are submodule paths, overlay-dir
-paths (`.agent-protocols/` inside a repo), or checkout-relative wording.
+The two negated greps are the full-surface negative checks: every live
+markdown file in the repo (all protocol `SKILL.md` files, references,
+templates, `agent-readiness/`, root and `docs/` indexes) must be free of
+the stale user-home protocol path and of any machine-specific absolute
+home path, with only historical `docs/agent_plans/` excluded. They match
+literal path strings, so policy prose about avoiding user-home paths does
+not trip them. The final grep is a positive review aid: remaining
+references must be submodule paths, overlay-dir paths (`.agent-protocols/`
+inside a repo), or checkout-relative wording.
 
 ## Review Gates
 
@@ -175,3 +190,28 @@ Not ready for implementation until the two blocking issues are resolved. After t
 #### Residual Risks Or Validation Gaps
 
 Machine-side pointer installation is outside the repo diff. Closeout should not claim those pointers are installed unless the owner verifies that separately.
+
+### Driver response 1
+
+Both blocking threads accepted; the plan body is updated.
+
+- Thread 1: the Validation Plan now runs two negated full-surface greps
+  over every live markdown file (protocol `SKILL.md` files, references,
+  templates, `agent-readiness/`, root and `docs/` indexes), excluding only
+  historical `docs/agent_plans/`, matching the literal stale path and any
+  `/Users/` or `/home/` absolute path. A pre-implementation probe of the
+  same surface found exactly the two known `README.md` lines and no
+  absolute paths, so the checks are implementable and meaningful.
+- Thread 2: the acceptance criterion for the pointer pattern now
+  enumerates the concrete wrapper requirements for both agent surfaces
+  (location in each agent's global instructions, one-to-two-line size,
+  names the machine's main checkout, submodule precedence, clean-main
+  trust rule, no protocol-content duplication). `AP-BL-0003` closes only
+  against that concrete guidance; its `outcome` text mirrors the same
+  elements.
+- The residual-risk note is adopted into execution order: machine pointers
+  are installed and verified after the repo change lands, and closeout
+  will report their state explicitly rather than assuming it.
+
+Proceeding to implementation: both resolutions adopt the reviewer's own
+recommendations without changing accepted scope.
