@@ -317,3 +317,39 @@ global path); reviewer pass 2's "ready for closeout" verdict applied to
 the superseded body and does not carry over. A fresh plan re-review pass
 gates the revision, followed by re-implementation and a new
 implementation review.
+
+### Reviewer pass 3 (impl-plan, codex reviewer)
+
+Human concern: the revised plan must replace the rejected local-folder/global-pointer design with mechanical freshness and native skill discovery that work for both agents.
+
+Repo state checked: `feature/canonical-source-docs`, clean worktree. No local structured-review overlays were present.
+
+#### Blocking Issues
+
+**Thread 1 — Codex native mount path is not proven against the Codex source of truth.**
+
+The revised plan closes `AP-BL-0003` on committed `.codex/skills/<protocol>` symlinks, but the official Codex Agent Skills docs currently describe repo skills under `.agents/skills`, with symlinked skill folders supported there. The plan records spike evidence for `.codex/skills`, but acceptance and validation only prove that `.codex/skills/$p/SKILL.md` is readable, not that Codex catalogs it.
+
+This leaves the core AP-BL-0003 claim unproven and could miss the Codex startup-only cataloging gap: a filesystem mount can pass while Codex never sees it.
+
+Please either change the Codex repo-skill mount to the documented `.agents/skills` path, or record why `.codex/skills` is the intended supported surface here and add a repeatable Codex discovery validation. If no repeatable validation is available, the plan should not close AP-BL-0003 solely on native Codex cataloging.
+
+**Thread 2 — Mount validation does not prove the accepted symlink contract.**
+
+The acceptance criteria require working symlinks for exactly the six `SKILL.md`-bearing protocols, but the validation loop only runs `test -f` for those six paths. That would pass for copied directories, non-symlink folders, incorrect symlink targets that happen to resolve, or extra stale skill mounts.
+
+Please strengthen validation to prove the contract directly: check `test -L`, verify each target is the expected relative target, verify each target resolves to readable `SKILL.md`, and verify there are no extra entries in each skill mount directory. If Thread 1 changes the Codex mount directory, apply the same exactness check to the corrected directory.
+
+#### Non-Blocking Issues
+
+The revised plan does explicitly supersede the first-design edits to `README.md`, `AGENTS.md`, and `docs/backlog.yml`; the planned rewrites are pointed at the right surfaces. A targeted stale-design grep for old pointer language would make implementation review easier, but manual review against the existing acceptance criteria can cover it.
+
+The guard sequencing is directionally sound: fetch/base before worktree use, materialize/verify mounts before agent entry, then self-check and direct-read fallback after entry.
+
+#### Overall Judgment
+
+Not ready for implementation until the two blocking issues are resolved. The design direction is close, but AP-BL-0003 closure depends on a Codex mount path and discovery behavior that the current plan does not prove.
+
+#### Residual Risks Or Validation Gaps
+
+Consumer repo adoption remains deferred by plan, so closeout should avoid implying downstream guards already enforce freshness or mounts. The symlink approach remains POSIX-specific as recorded in the plan.
