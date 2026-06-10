@@ -79,6 +79,8 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             "docs/plan.md",
             "--focus",
             "Review the plan.",
+            "--reviewer-backend",
+            "claude",
         ]
         if mode == csr.MODE_WRITE:
             args.extend(["--thread-file", "docs/plan.md"])
@@ -261,7 +263,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         for text in forbidden:
             self.assertNotIn(text, skill)
 
-        self.assertIn("Default Claude Runner Rule", skill)
+        self.assertIn("Default Runner Rule", skill)
         self.assertIn("accepted", skill)
         self.assertIn("rejected", skill)
         self.assertIn("deferred", skill)
@@ -570,7 +572,8 @@ print('stderr path', file=sys.stderr, flush=True)
         self.assertIn("stderr path", logs.stderr.read_text(encoding="utf-8"))
         self.assertEqual(logs.review.read_text(encoding="utf-8"), "Review done.")
         metadata = json.loads(logs.metadata.read_text(encoding="utf-8"))
-        self.assertEqual(metadata["claude_version"], "2.1.143 (Claude Code)")
+        self.assertEqual(metadata["reviewer_version"], "2.1.143 (Claude Code)")
+        self.assertEqual(metadata["backend"], "claude")
         self.assertEqual(metadata["malformed_stream_lines"], 1)
 
     def test_run_reports_timeout_with_dirty_state(self) -> None:
@@ -607,6 +610,270 @@ print('stderr path', file=sys.stderr, flush=True)
         self.assertEqual(metadata["outcome"], "error")
         self.assertEqual(metadata["error"], "boom")
 
+    def logs_for(self, root: Path) -> csr.RunLogs:
+        return csr.RunLogs(
+            root=root,
+            prompt=root / "prompt.md",
+            stdout=root / "stdout.stream.jsonl",
+            stderr=root / "stderr.log",
+            metadata=root / "metadata.json",
+            review=root / "review.md",
+        )
+
+    def write_fake_codex(self, body: str) -> Path:
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir(exist_ok=True)
+        fake_codex = fake_bin / "codex"
+        fake_codex.write_text(
+            "#!/usr/bin/env python3\n"
+            "import subprocess, sys\n"
+            "\n"
+            "if '--version' in sys.argv:\n"
+            "    print('codex-cli 0.137.0')\n"
+            "    raise SystemExit(0)\n"
+            "\n"
+            "out_path = sys.argv[sys.argv.index('--output-last-message') + 1]\n"
+            "sys.stdin.read()\n" + body,
+            encoding="utf-8",
+        )
+        fake_codex.chmod(0o755)
+        return fake_codex
+
+    def test_resolve_reviewer_backend_cross_vendor_auto(self) -> None:
+        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CLAUDECODE": "1"}), ("codex", True))
+        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CODEX_THREAD_ID": "t"}), ("claude", True))
+        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CODEX_SANDBOX": "seatbelt"}), ("claude", True))
+        self.assertEqual(csr.resolve_reviewer_backend("auto", {}), ("claude", False))
+        self.assertEqual(csr.resolve_reviewer_backend("codex", {"CLAUDECODE": "1"}), ("codex", False))
+
+    def test_resolve_reviewer_backend_both_markers_error(self) -> None:
+        with self.assertRaisesRegex(csr.RunnerError, "--reviewer-backend"):
+            csr.resolve_reviewer_backend("auto", {"CLAUDECODE": "1", "CODEX_SANDBOX": "seatbelt"})
+
+    def test_auto_marker_resolved_missing_binary_errors(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        args = csr.parse_args(
+            [
+                "--protocol-dir",
+                str(protocol),
+                "--worktree",
+                str(repo),
+                "--mode",
+                csr.MODE_PRINT,
+                "--type",
+                "impl-plan",
+                "--artifact",
+                "docs/plan.md",
+                "--focus",
+                "Review.",
+            ]
+        )
+        with mock.patch.object(csr.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(csr.RunnerError, "--reviewer-backend"):
+                csr.config_from_args(args, env={"CLAUDECODE": "1"})
+
+    def test_auto_neither_marker_skips_preflight(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        args = csr.parse_args(
+            [
+                "--protocol-dir",
+                str(protocol),
+                "--worktree",
+                str(repo),
+                "--mode",
+                csr.MODE_PRINT,
+                "--type",
+                "impl-plan",
+                "--artifact",
+                "docs/plan.md",
+                "--focus",
+                "Review.",
+            ]
+        )
+        with mock.patch.object(csr.shutil, "which", return_value=None):
+            config = csr.config_from_args(args, env={})
+        self.assertEqual(config.backend, "claude")
+
+    def test_explicit_backend_skips_preflight(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        with mock.patch.object(csr.shutil, "which", return_value=None):
+            config = self.config_for(repo, protocol, extra=["--reviewer-backend", "codex"])
+        self.assertEqual(config.backend, "codex")
+
+    def test_codex_argv_write_mode_sandbox_git_dirs_and_defaults(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol, extra=["--reviewer-backend", "codex"])
+        logs = self.logs_for(self.root / "codex-logs")
+
+        argv = csr.codex_argv(config, logs)
+
+        self.assertEqual(argv[:4], ["codex", "exec", "-", "--json"])
+        self.assertIn("workspace-write", argv)
+        add_dirs = [argv[i + 1] for i, flag in enumerate(argv) if flag == "--add-dir"]
+        self.assertEqual(add_dirs, [str((repo / ".git").resolve())])
+        self.assertIn("gpt-5.5", argv)
+        self.assertIn("model_reasoning_effort=xhigh", argv)
+        self.assertEqual(argv[argv.index("--output-last-message") + 1], str(logs.root / "last-message.txt"))
+
+    def test_codex_argv_linked_worktree_adds_both_git_dirs(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        linked = self.root / "linked"
+        run_git(repo, "worktree", "add", str(linked), "-b", "linked")
+        config = self.config_for(linked, protocol, extra=["--reviewer-backend", "codex"])
+        logs = self.logs_for(self.root / "codex-logs")
+
+        argv = csr.codex_argv(config, logs)
+
+        add_dirs = [argv[i + 1] for i, flag in enumerate(argv) if flag == "--add-dir"]
+        self.assertEqual(len(add_dirs), 2)
+        self.assertIn(str((repo / ".git").resolve()), add_dirs)
+
+    def test_codex_argv_print_mode_is_read_only_without_add_dir(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol, mode=csr.MODE_PRINT, topic=None, extra=["--reviewer-backend", "codex"])
+        logs = self.logs_for(self.root / "codex-logs")
+
+        argv = csr.codex_argv(config, logs)
+
+        self.assertIn("read-only", argv)
+        self.assertNotIn("workspace-write", argv)
+        self.assertNotIn("--add-dir", argv)
+
+    def test_codex_model_and_effort_overrides(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(
+            repo,
+            protocol,
+            extra=["--reviewer-backend", "codex", "--codex-model", "gpt-9", "--codex-effort", "high"],
+        )
+        logs = self.logs_for(self.root / "codex-logs")
+
+        argv = csr.codex_argv(config, logs)
+
+        self.assertIn("gpt-9", argv)
+        self.assertIn("model_reasoning_effort=high", argv)
+        self.assertNotIn("gpt-5.5", argv)
+
+    def test_codex_stream_line_extracts_agent_message_and_usage(self) -> None:
+        message = csr.process_codex_stream_line(
+            '{"type":"item.completed","item":{"id":"i1","type":"agent_message","text":"No blockers."}}'
+        )
+        usage = csr.process_codex_stream_line('{"type":"turn.completed","usage":{"input_tokens":10,"output_tokens":5}}')
+        other = csr.process_codex_stream_line('{"type":"item.completed","item":{"id":"i2","type":"command_execution","command":"ls"}}')
+        malformed = csr.process_codex_stream_line("{not json")
+
+        self.assertEqual(message.message_text, "No blockers.")
+        self.assertEqual(usage.usage, {"input_tokens": 10, "output_tokens": 5})
+        self.assertEqual(other.message_text, "")
+        self.assertTrue(malformed.malformed)
+
+    def test_prompt_names_reviewer_backend_for_both_backends(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        claude_config = self.config_for(repo, protocol)
+        codex_config = self.config_for(repo, protocol, extra=["--reviewer-backend", "codex"])
+
+        self.assertIn("You are the claude reviewer backend", csr.build_prompt(claude_config))
+        self.assertIn("claude reviewer).", csr.build_prompt(claude_config))
+        self.assertIn("You are the codex reviewer backend", csr.build_prompt(codex_config))
+
+    def test_run_codex_prefers_last_message_file_and_records_metadata(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        fake_codex = self.write_fake_codex(
+            "print('{\"type\":\"item.completed\",\"item\":{\"id\":\"i1\",\"type\":\"agent_message\",\"text\":\"Partial note.\"}}', flush=True)\n"
+            "print('{not json', flush=True)\n"
+            "print('{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":10,\"output_tokens\":5}}', flush=True)\n"
+            "with open(out_path, 'w') as fh:\n"
+            "    fh.write('Codex review done.')\n"
+            "print('codex stderr path', file=sys.stderr, flush=True)\n"
+        )
+        config = self.config_for(
+            repo,
+            protocol,
+            mode=csr.MODE_PRINT,
+            topic=None,
+            extra=["--reviewer-backend", "codex", "--codex-bin", str(fake_codex), "--run-log-dir", str(self.root / "logs")],
+        )
+        logs = csr.prepare_run_logs(config)
+
+        result = csr.run_claude(config, "prompt", logs, csr.Redactor([repo]))
+        csr.write_metadata(config, logs, result, outcome="success")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.review_text, "Codex review done.")
+        self.assertEqual(result.malformed_stream_lines, 1)
+        self.assertEqual(result.reviewer_version, "codex-cli 0.137.0")
+        metadata = json.loads(logs.metadata.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["backend"], "codex")
+        self.assertEqual(metadata["model"], "gpt-5.5")
+        self.assertEqual(metadata["effort"], "xhigh")
+        self.assertEqual(metadata["reviewer_version"], "codex-cli 0.137.0")
+        self.assertEqual(metadata["token_usage"], {"input_tokens": 10, "output_tokens": 5})
+
+    def test_run_codex_falls_back_to_accumulated_messages(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        fake_codex = self.write_fake_codex(
+            "print('{\"type\":\"item.completed\",\"item\":{\"id\":\"i1\",\"type\":\"agent_message\",\"text\":\"First note.\"}}', flush=True)\n"
+            "print('{\"type\":\"item.completed\",\"item\":{\"id\":\"i2\",\"type\":\"agent_message\",\"text\":\"Second note.\"}}', flush=True)\n"
+        )
+        config = self.config_for(
+            repo,
+            protocol,
+            mode=csr.MODE_PRINT,
+            topic=None,
+            extra=["--reviewer-backend", "codex", "--codex-bin", str(fake_codex), "--run-log-dir", str(self.root / "logs")],
+        )
+        logs = csr.prepare_run_logs(config)
+
+        result = csr.run_claude(config, "prompt", logs, csr.Redactor([repo]))
+
+        self.assertEqual(result.review_text, "First note.\n\nSecond note.")
+
+    def test_run_codex_write_mode_end_to_end(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        fake_codex = self.write_fake_codex(
+            "with open('docs/plan.md', 'a') as fh:\n"
+            "    fh.write('\\n### Reviewer pass 1 (impl-plan, codex reviewer)\\n\\nNo blocking issues.\\n')\n"
+            "subprocess.run(['git', 'add', 'docs/plan.md'], check=True)\n"
+            "subprocess.run(['git', 'commit', '-m', 'structured-review: add reviewer comments for plan'], check=True)\n"
+            "print('{\"type\":\"item.completed\",\"item\":{\"id\":\"i1\",\"type\":\"agent_message\",\"text\":\"Committed review.\"}}', flush=True)\n"
+            "with open(out_path, 'w') as fh:\n"
+            "    fh.write('Committed review.')\n"
+        )
+        config = self.config_for(
+            repo,
+            protocol,
+            extra=["--reviewer-backend", "codex", "--codex-bin", str(fake_codex), "--run-log-dir", str(self.root / "logs")],
+        )
+        head_before = run_git(repo, "rev-parse", "HEAD")
+
+        csr.run(config)
+
+        self.assertNotEqual(run_git(repo, "rev-parse", "HEAD"), head_before)
+        self.assertEqual(run_git(repo, "log", "-1", "--pretty=%s"), "structured-review: add reviewer comments for plan")
+        self.assertIn("codex reviewer", (repo / "docs/plan.md").read_text(encoding="utf-8"))
+        metadata = json.loads((self.root / "logs/metadata.json").read_text(encoding="utf-8"))
+        self.assertEqual(metadata["outcome"], "success")
+        self.assertEqual(metadata["backend"], "codex")
+
+    def test_codex_version_timeout_is_recorded_as_unknown(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol, extra=["--reviewer-backend", "codex"])
+
+        with mock.patch.object(csr.subprocess, "run", side_effect=subprocess.TimeoutExpired("codex", 10)):
+            self.assertEqual(csr.codex_version(config), "unknown: codex --version timed out")
+
     def result(
         self,
         *,
@@ -623,7 +890,7 @@ print('stderr path', file=sys.stderr, flush=True)
             timed_out=timed_out,
             started_at="2026-06-04T00:00:00Z",
             ended_at="2026-06-04T00:00:01Z",
-            claude_version="2.1.143 (Claude Code)",
+            reviewer_version="2.1.143 (Claude Code)",
             argv=["claude", "-p"],
         )
 

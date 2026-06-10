@@ -19,8 +19,8 @@ avoid treating historical plans as current instructions.
 
 - `structured-review/SKILL.md` - structured review for plans,
   implementations, optional closeout evidence reviews, and review-response
-  passes. Repo-backed review gates default to the bundled Claude runner when
-  available.
+  passes. Repo-backed review gates default to the bundled runner when
+  available, with cross-vendor Claude and Codex reviewer backends.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work.
 - `planning/SKILL.md` - discussion-to-plan workflow before implementation.
