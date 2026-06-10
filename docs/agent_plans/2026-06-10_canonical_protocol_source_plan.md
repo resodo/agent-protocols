@@ -1,6 +1,6 @@
 # Canonical Protocol Source Plan (AP-BL-0002 / AP-BL-0003)
 
-Status: draft for plan review
+Status: historical - implemented via PR #16 (2026-06-10)
 Branch: `feature/canonical-source-docs`
 Worktree: `agent-protocols-canonical-source`
 
