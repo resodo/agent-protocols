@@ -23,3 +23,8 @@ responses, and closeout evidence for changes to this repo's protocols.
   default and structured-review refactor plan.
 - `2026-06-05_review_closeout_boundary_plan.md` - review/closeout boundary and
   documentation organization plan.
+- `2026-06-05_scout_skill_plan.md` - Scout discovery protocol plan.
+- `2026-06-06_scout_validation_provenance_plan.md` - Scout validation
+  provenance hardening plan.
+- `2026-06-10_scout_validation_provenance_closeout.md` - closeout report for
+  the Scout validation provenance work (PR #13).
