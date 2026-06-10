@@ -30,3 +30,5 @@ responses, and closeout evidence for changes to this repo's protocols.
   the Scout validation provenance work (PR #13).
 - `2026-06-10_codex_reviewer_backend_plan.md` - Codex reviewer backend and
   cross-vendor default runner plan.
+- `2026-06-10_canonical_protocol_source_plan.md` - canonical protocol source
+  rule and per-agent pointer pattern plan.
