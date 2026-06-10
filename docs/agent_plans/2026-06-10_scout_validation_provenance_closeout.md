@@ -38,8 +38,9 @@ No `Partial`, `Missing`, or `Deferred` rows.
 
 ## Validation
 
-Rerun in this closeout worktree at `main` (3a9f24c), provenance: driver-rerun,
-matching the CI command set:
+Rerun against the merged code state (`3a9f24c`) from the closeout branch tip,
+whose extra commits are docs-only so the code under test is identical.
+Provenance: driver-reported, matching the CI command set:
 
 - `python scripts/check_backlog.py` - pass (exit 0).
 - `python -m unittest discover -s tests` - 15 tests OK.
@@ -219,3 +220,27 @@ closeout gate.
   surviving remote feature branch (deletion is a human decision).
 - Downstream submodule-bump PRs are owned by the adopting repos' workflows; this
   closeout verifies dispatch success only, as the report states.
+
+### Driver response 1
+
+Classification of reviewer pass 1 findings:
+
+- N1 accepted. The Validation section now says the rerun ran from the closeout
+  branch tip against the merged code state (`3a9f24c`), with the docs-only
+  delta made explicit.
+- N2 accepted as conscious ownership. The driver keeps the four older plan
+  header fixes bundled in this closeout PR: they are one-line status edits
+  caught by the same checklist-4.1 stale-status scan, each backed by its merged
+  PR, and splitting them into a separate PR would duplicate review overhead for
+  no risk reduction. The human can still reject the bundling at the merge gate.
+- N3 accepted. The provenance label now uses the canonical `driver-reported`
+  term instead of `driver-rerun`.
+
+An earlier reviewer pass attempt was invalidated by the runner because the
+reviewer deleted the thread-section placeholder comment while appending, which
+the write-mode verification correctly rejected; the placeholder was removed in
+`docs: drop review-threads placeholder before gate` and the gate was rerun
+cleanly. Recorded here so the gate history in this PR is complete.
+
+No blocking findings; closeout resumes. Merge readiness remains the human's
+call.
