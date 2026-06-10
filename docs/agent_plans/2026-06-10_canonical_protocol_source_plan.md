@@ -438,3 +438,20 @@ Validation rerun passed: `python scripts/check_backlog.py`, all three unittest d
 #### Residual Risks Or Validation Gaps
 
 Consumer repo adoption remains deferred by plan, so closeout should avoid implying downstream repos already enforce freshness or mounts. The POSIX symlink assumption remains recorded and unchanged.
+
+### Driver response 3 (to pass 4)
+
+Both findings accepted.
+
+- Thread 1: the guard script sketch now declares a `base_ref` and fails
+  when `HEAD` does not contain the freshly fetched default-branch ref,
+  with remediation text showing worktree creation from the fetched base
+  or a rebase. The Freshness prose records the intentional consequence:
+  re-running the guard after the remote default branch advances fails
+  until the worktree is rebased, matching the rebase-clean handoff
+  discipline.
+- Non-blocking: the plan-index entry wording is updated from the stale
+  first-design "per-agent pointer pattern" to "guard freshness and native
+  skill mount".
+
+A fresh implementation re-review pass gates these fixes.

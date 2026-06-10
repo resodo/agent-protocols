@@ -66,6 +66,11 @@ assumed:
 
 - If the fetch fails (offline, auth, remote unavailable), stop and report
   the blocker. Do not start feature work against an unverified base.
+- The guard verifies the base after creation as well: it fails when `HEAD`
+  does not contain the freshly fetched default-branch ref. Re-running the
+  guard after the remote default branch has advanced therefore fails until
+  the worktree is rebased onto the fetched base; this is intentional and
+  matches a rebase-clean handoff discipline.
 - After the worktree exists, materialize the vendored protocols at their
   pinned version with `git submodule update --init --recursive`.
 
@@ -167,9 +172,18 @@ cd "$repo_root"
 
 protocol_path="external/agent-protocols"
 required_protocols=(planning structured-review closeout)
+base_ref="origin/main"  # adjust to the repo's default branch
 
 if ! git fetch origin; then
   echo "git fetch origin failed; refusing to start feature work on an unverified base" >&2
+  exit 1
+fi
+
+if ! git merge-base --is-ancestor "$base_ref" HEAD; then
+  echo "stale base: HEAD does not contain freshly fetched $base_ref" >&2
+  echo "create feature worktrees from the fetched base:" >&2
+  echo "  git worktree add ../repo-feature -b feature/topic $base_ref" >&2
+  echo "or rebase this worktree onto $base_ref before continuing" >&2
   exit 1
 fi
 
