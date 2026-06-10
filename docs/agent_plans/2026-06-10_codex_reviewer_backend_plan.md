@@ -522,3 +522,44 @@ git diff --check
 ```
 
 All five commands passed locally.
+
+### Reviewer pass 3 (impl, codex reviewer)
+
+Original concern: re-review commit `083f42c` against the human-approved Scope Addendum for runner-owned write mode and closeout runner-policy delegation.
+
+**Blocking issues**
+
+1. `append_and_commit_review` does not preserve the reviewer output verbatim. The addendum requires the runner-created commit’s added lines to be the reviewer’s output verbatim inside `## Review Threads` (`docs/agent_plans/2026-06-10_codex_reviewer_backend_plan.md:295`). The implementation writes `review_text.strip()` and normalizes surrounding newlines (`structured-review/scripts/claude_structured_review.py:494`-`498`), so leading/trailing reviewer text is changed before commit. The current tests check insertion before a later `##` section, but not exact equality of the committed block to the returned reviewer text (`structured-review/tests/test_claude_structured_review.py:859`). This weakens the addendum’s central “zero transcription / verbatim append” guarantee.
+
+**Non-blocking issues**
+
+None.
+
+**Traceability**
+
+- Done: closeout now keeps the Closeout Review trigger list and delegates runner/backend/mode policy to structured-review (`closeout/SKILL.md:46`).
+- Partial: runner-owned write mode appends inside `## Review Threads`, including before later `##` sections, but not verbatim because of whitespace normalization.
+- Done: write mode rejects reviewer HEAD/worktree changes before append (`structured-review/scripts/claude_structured_review.py:465`).
+- Done: non-review-like, local-path, and secret-like output is rejected before append by `verify_reviewer_output`.
+- Done: Codex argv is `--sandbox read-only` with no `--add-dir` in both modes (`structured-review/scripts/claude_structured_review.py:624`).
+- Done: `verify_write_mode` remains as the post-commit self-check.
+- Done: the write-mode prompt tells reviewers not to write files, stage, or commit (`structured-review/scripts/claude_structured_review.py:298`).
+- Done: structured-review and closeout text are consistent on runner-policy delegation.
+
+**Overall judgment**
+
+Not ready for closeout until the verbatim append contract is fixed and covered by an exact-output test.
+
+**Residual risks / validation gaps**
+
+Reviewer validation was environment-blocked for the unittest commands: all three unittest suites failed before assertions because the read-only sandbox provided no writable temporary directory. `python -m compileall -q structured-review scout scripts tests` and `git diff --check` returned 0.
+
+Commands attempted:
+
+```bash
+python -m unittest discover -s structured-review/tests
+python -m unittest discover -s tests
+python -m unittest discover -s scout/tests
+python -m compileall -q structured-review scout scripts tests
+git diff --check
+```
