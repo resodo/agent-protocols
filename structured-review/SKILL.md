@@ -1,6 +1,6 @@
 ---
 name: structured-review
-description: Use when a written reviewable artifact needs structured human-agent review, including plans, implementation plans, implementation reviews, optional closeout evidence reviews, and review-response passes. Defaults repo-backed review gates to the bundled Claude runner when available, with explicit reviewer/driver roles and driver-owned post-review decisions.
+description: Use when a written reviewable artifact needs structured human-agent review, including plans, implementation plans, implementation reviews, optional closeout evidence reviews, and review-response passes. Defaults repo-backed review gates to the bundled runner when available, with Claude and Codex reviewer backends, explicit reviewer/driver roles, and driver-owned post-review decisions.
 ---
 
 # Structured Review
@@ -48,18 +48,31 @@ skill manually, read these references before judging readiness.
 For high-touch product UI, dashboards, charts, data review tools, and operator
 consoles, also apply `references/ui-review.md`.
 
-## Default Claude Runner Rule
+## Default Runner Rule
 
 For repo-backed Plan Review, Plan Re-review, Implementation Review, and
 Implementation Re-review gates, the driver defaults to invoking the bundled
-Claude runner for the reviewer pass when it is available.
+runner for the reviewer pass when it is available.
 
 `Closeout Review` is not part of this default gate list. If closeout explicitly
 triggers a repo-backed Closeout Review, use the bundled runner when available;
 the trigger comes from closeout, not from structured-review by default.
 
+The runner supports two reviewer backends: `claude` (Claude Code) and `codex`
+(Codex CLI). `--reviewer-backend` defaults to `auto`, which selects the
+cross-vendor reviewer from the driver's environment: a Claude Code driver gets
+the `codex` reviewer and a Codex driver gets the `claude` reviewer. When both
+driver markers are present the runner fails and requires an explicit
+`--reviewer-backend`; when neither is present it uses `claude`. Review threads
+record the reviewer backend in each pass heading.
+
+If an auto-selected backend binary is unavailable, the runner fails with an
+actionable error. Substituting the same-vendor reviewer is an explicit
+human/driver decision via `--reviewer-backend`, never a silent fallback.
+
 `Default` means use the runner unless:
-- the human explicitly says not to use Claude;
+- the human explicitly says not to use the runner or a specific reviewer
+  backend;
 - the review is not repo-backed;
 - the runner is unavailable and the blocker is reported.
 
@@ -67,7 +80,8 @@ The runner is available when:
 - the runner script exists in this protocol checkout or submodule;
 - the target worktree is a git repository;
 - Python can run the script;
-- `claude` is available through the configured `--claude-bin`.
+- the selected reviewer backend binary is available through the configured
+  `--claude-bin` or `--codex-bin`.
 
 Do not silently substitute driver self-review, chat-only commentary, or a
 manually constructed reviewer prompt for a required repo-backed review gate. If
@@ -99,6 +113,9 @@ provides a thread file that already has a `## Review Threads` section.
 
 The explicit runner `--mode` is the write-back authorization for that run. The
 driver still owns the decision after receiving reviewer output.
+
+Pass `--reviewer-backend claude|codex` to pin the reviewer backend; the
+default `auto` selects the cross-vendor reviewer for the detected driver.
 
 Use `--protocol-dir` only when testing or intentionally running against a
 different checkout of this protocol. By default the runner uses the
@@ -199,7 +216,7 @@ Pause and discuss with the human before editing when a reviewer finding:
 
 After applying or rejecting reviewer feedback, the driver summary must
 distinguish:
-- Claude reviewer suggestions;
+- reviewer suggestions, named by reviewer backend;
 - driver decisions;
 - human decisions;
 - remaining risks;

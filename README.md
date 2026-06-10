@@ -73,7 +73,7 @@ Please read ~/.agent-protocols/closeout/SKILL.md
 Scope: current implementation task
 ```
 
-For Claude Code structured-review reviewer passes, use the bundled runner:
+For structured-review reviewer passes, use the bundled runner:
 
 ```bash
 python structured-review/scripts/claude_structured_review.py \
@@ -88,6 +88,11 @@ python structured-review/scripts/claude_structured_review.py \
 
 The runner loads the shared skill from this repo and target-repo overlays from
 the explicit `--worktree`.
+
+The runner drives either Claude Code or Codex as the reviewer.
+`--reviewer-backend` defaults to `auto`, which picks the cross-vendor
+reviewer for the detected driver (Claude Code driver -> Codex reviewer, Codex
+driver -> Claude reviewer); pass `--reviewer-backend claude|codex` to pin it.
 
 `--protocol-dir` is optional and mainly for tests or intentional alternate
 checkouts; normal usage relies on the script's own `structured-review`

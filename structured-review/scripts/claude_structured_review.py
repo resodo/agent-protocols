@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Claude Code as a structured-review reviewer for a target worktree."""
+"""Run Claude Code or Codex as a structured-review reviewer for a target worktree."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ import os
 import re
 import secrets
 import selectors
+import shutil
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TextIO, cast
@@ -23,8 +24,17 @@ MODE_PRINT = "print-review"
 REVIEW_TYPES = ("other-plan", "impl-plan", "impl", "closeout-review")
 DEFAULT_MODEL = "opus"
 DEFAULT_EFFORT = "xhigh"
+DEFAULT_CODEX_MODEL = "gpt-5.5"
+DEFAULT_CODEX_EFFORT = "xhigh"
 DEFAULT_TIMEOUT_SEC = 1800
 DEFAULT_HEARTBEAT_SEC = 30
+
+BACKEND_AUTO = "auto"
+BACKEND_CLAUDE = "claude"
+BACKEND_CODEX = "codex"
+CLAUDE_DRIVER_MARKERS = ("CLAUDECODE",)
+CODEX_DRIVER_MARKERS = ("CODEX_THREAD_ID", "CODEX_SANDBOX")
+CODEX_LAST_MESSAGE_NAME = "last-message.txt"
 
 CONTEXT_OVERLAY = Path(".agent-protocols/context.md")
 STRUCTURED_REVIEW_OVERLAY = Path(".agent-protocols/structured-review.md")
@@ -87,9 +97,13 @@ class RunConfig:
     focus: str
     thread_file: ResolvedPath | None
     topic: str | None
+    backend: str
     model: str
     effort: str
     claude_bin: str
+    codex_bin: str
+    codex_model: str
+    codex_effort: str
     timeout_sec: int
     heartbeat_sec: int
     run_log_dir: Path | None
@@ -117,6 +131,14 @@ class StreamLineResult:
     malformed: bool
     text_delta: str = ""
     message_text: str = ""
+    usage: dict[str, Any] | None = None
+
+
+@dataclass
+class ReviewState:
+    text_deltas: list[str] = field(default_factory=list)
+    final_message: str = ""
+    messages: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -129,8 +151,9 @@ class ClaudeRunResult:
     timed_out: bool
     started_at: str
     ended_at: str
-    claude_version: str
+    reviewer_version: str
     argv: list[str]
+    token_usage: dict[str, Any] | None = None
 
 
 class Redactor:
@@ -264,6 +287,7 @@ def build_prompt(config: RunConfig) -> str:
             "Instructions:",
             "- The structured-review protocol below is mandatory. Do not substitute a generic code review style.",
             "- Inspect the requested artifacts before judging readiness.",
+            f"- You are the {config.backend} reviewer backend. Name the backend in each reviewer pass heading, for example: ### Reviewer pass 1 ({config.review_type}, {config.backend} reviewer).",
         ]
     )
     if config.mode == MODE_WRITE:
@@ -429,7 +453,7 @@ def contains_secret_material(text: str) -> bool:
 
 def verify_print_mode(config: RunConfig, before: GitSnapshot, after: GitSnapshot, result: ClaudeRunResult) -> None:
     if result.returncode != 0:
-        raise RunnerError("claude review failed")
+        raise RunnerError("reviewer run failed")
     if before.head != after.head:
         raise RunnerError("print-review changed HEAD")
     if before.status != after.status:
@@ -444,7 +468,7 @@ def verify_write_mode(config: RunConfig, before: GitSnapshot, after: GitSnapshot
     if config.thread_file is None or config.topic is None:
         raise RunnerError("internal error: write mode missing thread file or topic")
     if result.returncode != 0:
-        raise RunnerError("claude review failed")
+        raise RunnerError("reviewer run failed")
     if after.status.strip():
         raise RunnerError("reviewer left uncommitted worktree changes")
     new_commits = commits_between(config.worktree, before.head, after.head)
@@ -515,6 +539,30 @@ def process_stream_line(line: str) -> StreamLineResult:
     return StreamLineResult(malformed=False, text_delta=stream_text_delta(event), message_text=stream_message_text(event))
 
 
+def codex_agent_message(value: Any) -> str:
+    if not isinstance(value, dict) or value.get("type") != "item.completed":
+        return ""
+    item = value.get("item")
+    if isinstance(item, dict) and item.get("type") == "agent_message" and isinstance(item.get("text"), str):
+        return item["text"]
+    return ""
+
+
+def codex_turn_usage(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict) or value.get("type") != "turn.completed":
+        return None
+    usage = value.get("usage")
+    return usage if isinstance(usage, dict) else None
+
+
+def process_codex_stream_line(line: str) -> StreamLineResult:
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        return StreamLineResult(malformed=True)
+    return StreamLineResult(malformed=False, message_text=codex_agent_message(event), usage=codex_turn_usage(event))
+
+
 def claude_argv(config: RunConfig) -> list[str]:
     return [
         config.claude_bin,
@@ -531,6 +579,54 @@ def claude_argv(config: RunConfig) -> list[str]:
         "--include-hook-events",
         "--verbose",
     ]
+
+
+def codex_git_add_dirs(worktree: Path) -> list[Path]:
+    result = run_git(["rev-parse", "--git-dir", "--git-common-dir"], root=worktree)
+    dirs: list[Path] = []
+    for raw in result.stdout.splitlines():
+        raw = raw.strip()
+        if not raw:
+            continue
+        candidate = Path(raw)
+        resolved = candidate.resolve() if candidate.is_absolute() else (worktree / candidate).resolve()
+        if resolved not in dirs:
+            dirs.append(resolved)
+    return dirs
+
+
+def codex_argv(config: RunConfig, logs: RunLogs) -> list[str]:
+    argv = [config.codex_bin, "exec", "-", "--json"]
+    if config.mode == MODE_WRITE:
+        argv.extend(["--sandbox", "workspace-write"])
+        for path in codex_git_add_dirs(config.worktree):
+            argv.extend(["--add-dir", str(path)])
+    else:
+        argv.extend(["--sandbox", "read-only"])
+    argv.extend(
+        [
+            "-m",
+            config.codex_model,
+            "-c",
+            f"model_reasoning_effort={config.codex_effort}",
+            "--output-last-message",
+            str(logs.root / CODEX_LAST_MESSAGE_NAME),
+        ]
+    )
+    return argv
+
+
+def claude_finalize(state: ReviewState, logs: RunLogs) -> str:
+    return "".join(state.text_deltas) if state.text_deltas else state.final_message
+
+
+def codex_finalize(state: ReviewState, logs: RunLogs) -> str:
+    last_message = logs.root / CODEX_LAST_MESSAGE_NAME
+    if last_message.exists():
+        file_text = last_message.read_text(encoding="utf-8")
+        if file_text.strip():
+            return file_text
+    return "\n\n".join(message for message in state.messages if message.strip())
 
 
 def git_dir(root: Path) -> Path:
@@ -559,20 +655,91 @@ def prepare_run_logs(config: RunConfig) -> RunLogs:
     )
 
 
-def claude_version(config: RunConfig) -> str:
+def binary_version(bin_path: str, label: str, cwd: Path) -> str:
     try:
         result = subprocess.run(
-            [config.claude_bin, "--version"],
-            cwd=config.worktree,
+            [bin_path, "--version"],
+            cwd=cwd,
             capture_output=True,
             text=True,
             check=False,
             timeout=10,
         )
     except subprocess.TimeoutExpired:
-        return "unknown: claude --version timed out"
+        return f"unknown: {label} --version timed out"
     value = (result.stdout or result.stderr).strip()
     return value or f"unknown returncode={result.returncode}"
+
+
+def claude_version(config: RunConfig) -> str:
+    return binary_version(config.claude_bin, BACKEND_CLAUDE, config.worktree)
+
+
+def codex_version(config: RunConfig) -> str:
+    return binary_version(config.codex_bin, BACKEND_CODEX, config.worktree)
+
+
+@dataclass(frozen=True)
+class ReviewerBackend:
+    name: str
+    bin_for: Callable[[RunConfig], str]
+    argv_for: Callable[[RunConfig, RunLogs], list[str]]
+    parse_line: Callable[[str], StreamLineResult]
+    finalize: Callable[[ReviewState, RunLogs], str]
+    version_for: Callable[[RunConfig], str]
+    driver_markers: tuple[str, ...]
+
+
+BACKENDS: dict[str, ReviewerBackend] = {
+    BACKEND_CLAUDE: ReviewerBackend(
+        name=BACKEND_CLAUDE,
+        bin_for=lambda config: config.claude_bin,
+        argv_for=lambda config, logs: claude_argv(config),
+        parse_line=process_stream_line,
+        finalize=claude_finalize,
+        version_for=claude_version,
+        driver_markers=CLAUDE_DRIVER_MARKERS,
+    ),
+    BACKEND_CODEX: ReviewerBackend(
+        name=BACKEND_CODEX,
+        bin_for=lambda config: config.codex_bin,
+        argv_for=codex_argv,
+        parse_line=process_codex_stream_line,
+        finalize=codex_finalize,
+        version_for=codex_version,
+        driver_markers=CODEX_DRIVER_MARKERS,
+    ),
+}
+
+
+def detect_driver_markers(env: Mapping[str, str]) -> tuple[bool, bool]:
+    claude_marker = any(name in env for name in CLAUDE_DRIVER_MARKERS)
+    codex_marker = any(name in env for name in CODEX_DRIVER_MARKERS)
+    return claude_marker, codex_marker
+
+
+def resolve_reviewer_backend(raw: str, env: Mapping[str, str]) -> tuple[str, bool]:
+    """Resolve the reviewer backend name and whether a driver marker chose it."""
+    if raw != BACKEND_AUTO:
+        return raw, False
+    claude_marker, codex_marker = detect_driver_markers(env)
+    if claude_marker and codex_marker:
+        raise RunnerError(
+            "driver environment carries both Claude and Codex markers; pass --reviewer-backend explicitly"
+        )
+    if claude_marker:
+        return BACKEND_CODEX, True
+    if codex_marker:
+        return BACKEND_CLAUDE, True
+    return BACKEND_CLAUDE, False
+
+
+def active_model(config: RunConfig) -> str:
+    return config.model if config.backend == BACKEND_CLAUDE else config.codex_model
+
+
+def active_effort(config: RunConfig) -> str:
+    return config.effort if config.backend == BACKEND_CLAUDE else config.codex_effort
 
 
 def write_metadata(
@@ -593,8 +760,9 @@ def write_metadata(
         "artifacts": [artifact.rel for artifact in config.artifacts],
         "thread_file": config.thread_file.rel if config.thread_file else None,
         "topic": config.topic,
-        "model": config.model,
-        "effort": config.effort,
+        "backend": config.backend,
+        "model": active_model(config),
+        "effort": active_effort(config),
         "timeout_sec": config.timeout_sec,
         "heartbeat_sec": config.heartbeat_sec,
         "run_log_dir": str(logs.root),
@@ -606,31 +774,34 @@ def write_metadata(
         payload.update(
             {
                 "argv": result.argv,
-                "claude_version": result.claude_version,
+                "reviewer_version": result.reviewer_version,
                 "returncode": result.returncode,
                 "timed_out": result.timed_out,
                 "malformed_stream_lines": result.malformed_stream_lines,
                 "started_at": result.started_at,
                 "ended_at": result.ended_at,
+                "token_usage": result.token_usage,
             }
         )
     logs.metadata.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor) -> ClaudeRunResult:
-    argv = claude_argv(config)
-    version = claude_version(config)
+    """Run the selected reviewer backend; the name is kept for compatibility."""
+    backend = BACKENDS[config.backend]
+    argv = backend.argv_for(config, logs)
+    version = backend.version_for(config)
     logs.prompt.write_text(prompt, encoding="utf-8")
     started_at = utc_now()
     started = time.monotonic()
     last_event = started
     stdout_parts: list[str] = []
     stderr_parts: list[str] = []
-    text_delta_parts: list[str] = []
-    message_text_candidate = ""
+    state = ReviewState()
+    token_usage: dict[str, Any] | None = None
     malformed = 0
     print(
-        f"claude review start mode={config.mode} type={config.review_type} model={config.model} effort={config.effort} artifacts={','.join(a.rel for a in config.artifacts)}",
+        f"{config.backend} review start mode={config.mode} type={config.review_type} model={active_model(config)} effort={active_effort(config)} artifacts={','.join(a.rel for a in config.artifacts)}",
         file=sys.stderr,
     )
     proc = subprocess.Popen(
@@ -662,7 +833,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
             if not events:
                 if now - last_event >= config.heartbeat_sec:
                     elapsed = int(now - started)
-                    print(f"claude review heartbeat elapsed_sec={elapsed}", file=sys.stderr)
+                    print(f"{config.backend} review heartbeat elapsed_sec={elapsed}", file=sys.stderr)
                     last_event = now
                 continue
             for key, _ in events:
@@ -676,14 +847,17 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
                     stdout_parts.append(line)
                     stdout_log.write(line)
                     stdout_log.flush()
-                    stream_result = process_stream_line(line)
+                    stream_result = backend.parse_line(line)
                     if stream_result.malformed:
                         malformed += 1
                     if stream_result.text_delta:
-                        text_delta_parts.append(stream_result.text_delta)
+                        state.text_deltas.append(stream_result.text_delta)
                     elif stream_result.message_text:
-                        message_text_candidate = stream_result.message_text
-                    print("claude review event", file=sys.stderr)
+                        state.final_message = stream_result.message_text
+                        state.messages.append(stream_result.message_text)
+                    if stream_result.usage is not None:
+                        token_usage = stream_result.usage
+                    print(f"{config.backend} review event", file=sys.stderr)
                 else:
                     stderr_parts.append(line)
                     stderr_log.write(line)
@@ -695,7 +869,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     proc.stderr.close()
     if timed_out:
         returncode = -9
-    review_text = "".join(text_delta_parts) if text_delta_parts else message_text_candidate
+    review_text = backend.finalize(state, logs)
     logs.review.write_text(review_text, encoding="utf-8")
     return ClaudeRunResult(
         returncode=returncode,
@@ -706,8 +880,9 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
         timed_out=timed_out,
         started_at=started_at,
         ended_at=utc_now(),
-        claude_version=version,
+        reviewer_version=version,
         argv=argv,
+        token_usage=token_usage,
     )
 
 
@@ -723,9 +898,18 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     focus.add_argument("--focus-file")
     parser.add_argument("--thread-file")
     parser.add_argument("--topic")
+    parser.add_argument(
+        "--reviewer-backend",
+        default=BACKEND_AUTO,
+        choices=(BACKEND_AUTO, BACKEND_CLAUDE, BACKEND_CODEX),
+        dest="reviewer_backend",
+    )
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--effort", default=DEFAULT_EFFORT)
     parser.add_argument("--claude-bin", default="claude")
+    parser.add_argument("--codex-bin", default="codex")
+    parser.add_argument("--codex-model", default=DEFAULT_CODEX_MODEL)
+    parser.add_argument("--codex-effort", default=DEFAULT_CODEX_EFFORT)
     parser.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
     parser.add_argument("--heartbeat-sec", type=int, default=DEFAULT_HEARTBEAT_SEC)
     parser.add_argument("--run-log-dir")
@@ -733,7 +917,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def config_from_args(args: argparse.Namespace) -> RunConfig:
+def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = None) -> RunConfig:
     protocol_dir = resolve_protocol_dir(args.protocol_dir)
     worktree = resolve_worktree(args.worktree)
     focus = args.focus if args.focus else read_text(resolve_repo_path(worktree, args.focus_file).abs)
@@ -749,6 +933,16 @@ def config_from_args(args: argparse.Namespace) -> RunConfig:
     if args.timeout_sec <= 0 or args.heartbeat_sec <= 0:
         raise RunnerError("timeout and heartbeat must be positive")
     run_log_dir = Path(args.run_log_dir).expanduser().resolve() if args.run_log_dir else None
+    backend, marker_resolved = resolve_reviewer_backend(
+        args.reviewer_backend, os.environ if env is None else env
+    )
+    if marker_resolved:
+        backend_bin = args.claude_bin if backend == BACKEND_CLAUDE else args.codex_bin
+        if shutil.which(backend_bin) is None:
+            raise RunnerError(
+                f"reviewer backend '{backend}' was auto-selected from the driver environment "
+                "but its binary is unavailable; install it or pass --reviewer-backend explicitly"
+            )
     return RunConfig(
         protocol_dir=protocol_dir,
         worktree=worktree,
@@ -758,9 +952,13 @@ def config_from_args(args: argparse.Namespace) -> RunConfig:
         focus=focus,
         thread_file=thread_file,
         topic=args.topic,
+        backend=backend,
         model=args.model,
         effort=args.effort,
         claude_bin=args.claude_bin,
+        codex_bin=args.codex_bin,
+        codex_model=args.codex_model,
+        codex_effort=args.codex_effort,
         timeout_sec=args.timeout_sec,
         heartbeat_sec=args.heartbeat_sec,
         run_log_dir=run_log_dir,
@@ -790,15 +988,15 @@ def run(config: RunConfig) -> None:
         after = git_snapshot(config.worktree)
         if result.timed_out:
             dirty = " with uncommitted changes" if after.status.strip() else ""
-            write_metadata(config, logs, result, outcome="timeout", error=f"claude review timed out{dirty}", before=before, after=after)
-            raise RunnerError(f"claude review timed out{dirty}", exit_code=2)
+            write_metadata(config, logs, result, outcome="timeout", error=f"{config.backend} review timed out{dirty}", before=before, after=after)
+            raise RunnerError(f"{config.backend} review timed out{dirty}", exit_code=2)
         if config.mode == MODE_WRITE:
             verify_write_mode(config, before, after, result)
         else:
             verify_print_mode(config, before, after, result)
             print(redactor.redact(result.review_text).rstrip())
         write_metadata(config, logs, result, outcome="success", before=before, after=after)
-        print(f"claude structured review completed run_log={redactor.redact(str(logs.root))}", file=sys.stderr)
+        print(f"{config.backend} structured review completed run_log={redactor.redact(str(logs.root))}", file=sys.stderr)
     except RunnerError as exc:
         if result is not None and not result.timed_out:
             if after is None:
@@ -808,7 +1006,7 @@ def run(config: RunConfig) -> None:
     except Exception as exc:
         after = git_snapshot(config.worktree)
         write_metadata(config, logs, result, outcome="error", error=str(exc), before=before, after=after)
-        raise RunnerError(f"claude review errored: {exc}") from exc
+        raise RunnerError(f"reviewer run errored: {exc}") from exc
 
 
 def main(argv: Sequence[str] | None = None) -> int:
