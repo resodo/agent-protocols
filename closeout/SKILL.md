@@ -44,10 +44,9 @@ This trigger list is the canonical Closeout Review trigger list. Maintain it
 through structured-review skill self-evolution when protocol rules change.
 
 When Closeout Review is triggered, use the `structured-review` protocol with
-`Type: closeout-review`. For repo-backed Closeout Review, use the bundled
-Claude runner when available. Default to `print-review` for durable closeout
-reports or reference artifacts; use `write-commit-to-plan` only when the driver
-explicitly provides a thread file with `## Review Threads`.
+`Type: closeout-review`. The structured-review skill's default runner rule and
+runner-mode guidance decide how the reviewer pass runs; this protocol does not
+duplicate that policy.
 
 Closeout Review checks whether the closeout evidence or report is accurate and
 complete. It returns to closeout with `ready to resume closeout` or named

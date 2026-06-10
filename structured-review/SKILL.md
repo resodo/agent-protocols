@@ -103,6 +103,11 @@ python structured-review/scripts/claude_structured_review.py \
   --topic "example plan"
 ```
 
+In both modes the reviewer runs read-only and returns the review text. In
+`write-commit-to-plan` the runner itself appends that text verbatim under the
+thread file's `Review Threads` section and creates the `structured-review:`
+commit, so the append-only thread contract holds by construction.
+
 Use `print-review` when appending review threads would pollute a durable
 reference artifact, such as a published doc, skill, protocol overlay, or other
 reference file.
