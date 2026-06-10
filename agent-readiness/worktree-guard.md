@@ -32,9 +32,9 @@ not protect the earlier failure mode where the vendored protocol submodule is
 missing.
 
 Division of labor: the worktree guard proves required protocol files are
-available; the repo bootstrap receipt proves the agent has established repo
-coordinates, ownership, and production/access posture. Neither should silently
-cover for the other.
+available, fresh, and mounted; the repo bootstrap receipt proves the agent has
+established repo coordinates, ownership, and production/access posture.
+Neither should silently cover for the other.
 
 ## Declaration
 
@@ -46,6 +46,66 @@ A consumer repo declares that it vendors shared protocols by either:
 
 The guard should use that local declaration instead of assuming every repo has
 the same submodule layout.
+
+## Freshness
+
+Availability checks alone cannot catch a stale clone: a checkout that is
+clean on `main` can still sit weeks behind `origin/main`, especially when
+the same human works across multiple machines. Freshness is part of the
+guard contract and is checked mechanically at the moment of use, never
+assumed:
+
+- Before creating a feature worktree, run `git fetch origin` in the parent
+  clone and base the new worktree on `origin/<default-branch>`, never on a
+  possibly stale local branch:
+
+  ```bash
+  git fetch origin
+  git worktree add ../repo-feature -b feature/topic origin/main
+  ```
+
+- If the fetch fails (offline, auth, remote unavailable), stop and report
+  the blocker. Do not start feature work against an unverified base.
+- After the worktree exists, materialize the vendored protocols at their
+  pinned version with `git submodule update --init --recursive`.
+
+## Native Skill Mounts
+
+Consumer repos commit symlinks that mount the vendored protocols into each
+agent's documented project-level skill discovery path:
+
+```text
+.claude/skills/<protocol> -> ../../external/agent-protocols/<protocol>
+.agents/skills/<protocol> -> ../../external/agent-protocols/<protocol>
+```
+
+`.claude/skills/` is Claude Code's project skill path; `.agents/skills/`
+is Codex's documented repository skill path. Claude Code does not scan
+`.agents/skills`, so both mount directories are required. Mount every
+vendored protocol that ships a `SKILL.md`. Do not copy protocol content
+into mount directories; symlinks only.
+
+The links resolve only after the submodule is materialized, so the guard
+verifies them: each mount entry must be a symlink resolving to a readable
+`SKILL.md`. A dangling mount means the submodule step was skipped or the
+mount target moved; fail loudly.
+
+## Ordering And Fallback
+
+Run the guard before the agent enters the worktree: create the worktree,
+run the guard inside it, and only then start or attach the agent there.
+Claude Code entering through `--add-dir` or a fresh session loads the
+worktree's mounted skills at that moment; Codex catalogs skills only at
+session start, so launch it inside the worktree after the guard.
+
+After entry the agent self-checks that the protocol skills are cataloged.
+When they are not - wrong ordering, or an agent without dynamic skill
+loading - the deterministic fallback is reading the protocol `SKILL.md`
+files directly from the vendored submodule path. Native cataloging is a
+convenience layer; direct file reading is the floor. Repo `AGENTS.md`
+keeps the guard step and the repo's obligations (which gates are mandatory
+when); it does not need path-navigation text for skills the mounts already
+surface.
 
 ## Baseline Checks
 
@@ -108,6 +168,11 @@ cd "$repo_root"
 protocol_path="external/agent-protocols"
 required_protocols=(planning structured-review closeout)
 
+if ! git fetch origin; then
+  echo "git fetch origin failed; refusing to start feature work on an unverified base" >&2
+  exit 1
+fi
+
 git submodule update --init --recursive "$protocol_path"
 
 for protocol in "${required_protocols[@]}"; do
@@ -116,6 +181,12 @@ for protocol in "${required_protocols[@]}"; do
     echo "missing required agent protocol: $skill" >&2
     exit 1
   fi
+  for mount in ".claude/skills/$protocol" ".agents/skills/$protocol"; do
+    if [[ ! -L "$mount" || ! -f "$mount/SKILL.md" ]]; then
+      echo "broken or missing protocol skill mount: $mount" >&2
+      exit 1
+    fi
+  done
 done
 ```
 
@@ -135,3 +206,7 @@ or otherwise non-destructive setup:
 2. Missing-submodule fail case: with `external/agent-protocols` unavailable or
    missing required files, the guard exits non-zero before the agent starts
    feature work.
+3. Fetch-failure case: with the origin unreachable, the guard exits non-zero
+   instead of proceeding against an unverified base.
+4. Mount fail case: with a dangling or missing skill-mount symlink, the guard
+   exits non-zero.

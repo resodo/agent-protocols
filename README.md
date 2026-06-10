@@ -55,25 +55,27 @@ rules.
 
 ## Canonical Source
 
-1. Inside a repo that vendors these protocols through an
-   `external/agent-protocols` submodule, always use the vendored copy at
-   its pinned version.
-2. Anywhere else, use the machine's agent-protocols checkout. Trust it only
-   when it is clean and on `main`; never read protocols from a feature
-   worktree or a dirty tree.
+The canonical source of these protocols is this repository's `origin/main`.
 
-Keep exactly one checkout per machine and develop in linked worktrees, so
-the main checkout stays a trustworthy read source. Do not write
-machine-specific absolute paths into this repo's docs; the
+1. Repos that consume the protocols pin them as an
+   `external/agent-protocols` submodule and run a worktree guard that
+   fetches from origin before branching, bases feature worktrees on the
+   fresh default branch, materializes the pinned submodule, and verifies
+   the skill mounts (see `agent-readiness/worktree-guard.md`). When the
+   fetch fails, work stops: freshness is checked mechanically, never
+   assumed.
+2. The protocols surface inside each coding agent through committed skill
+   mounts - `.claude/skills/<protocol>` for Claude Code and
+   `.agents/skills/<protocol>` for Codex, symlinked into the vendored
+   submodule - so a fresh submodule makes the agents load the protocols
+   natively at startup. No pointer files, and no copied protocol content.
+3. There is no machine-global read path. Outside a vendoring repo, the
+   human directs the agent to a checkout explicitly in session.
+
+Do not write machine-specific absolute paths into this repo's docs. The
 project-local `.agent-protocols/` overlay directory described above is
-unrelated to where the protocols themselves live.
-
-Each coding agent finds the checkout through a thin pointer in its global
-instructions: `~/.claude/CLAUDE.md` for Claude Code, `~/.codex/AGENTS.md`
-for Codex. A pointer is one or two lines naming the machine's checkout
-path plus the trust rule above (submodule first; otherwise the clean
-`main` checkout). Do not copy protocol content into agent configuration;
-pointers only.
+unrelated to where the protocols themselves live; it holds per-repo
+refinements only.
 
 ## Usage
 

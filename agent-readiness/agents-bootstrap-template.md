@@ -12,9 +12,9 @@ source of truth because each repo has different entrypoints, ownership,
 production posture, and current-state anchors.
 
 Division of labor: the worktree guard proves required protocol files are
-available; the bootstrap receipt proves the agent has established repo
-coordinates, ownership, and production/access posture. Neither should silently
-cover for the other.
+available, fresh, and mounted; the bootstrap receipt proves the agent has
+established repo coordinates, ownership, and production/access posture.
+Neither should silently cover for the other.
 
 ## Template Block
 
@@ -29,9 +29,13 @@ given a concrete task:
 1. Identify the current repo root, branch, and worktree status.
 2. Read this `AGENTS.md`.
 3. Follow only the minimal startup routing in this file.
-4. If this repo declares `external/agent-protocols`, make sure the shared
-   protocols are available. If they are missing, initialize the submodule or
-   report the blocker instead of skipping protocol usage.
+4. If this repo declares `external/agent-protocols`, run the repo's worktree
+   guard before relying on shared protocols: it fetches from origin, bases
+   feature worktrees on the fresh default branch, materializes the pinned
+   submodule, and verifies the protocol skill mounts. If the guard fails,
+   report the blocker instead of skipping protocol usage. After entry,
+   confirm the protocol skills are cataloged; if not, read the protocol
+   `SKILL.md` files directly from the submodule path.
 5. If this repo has identity metadata such as `.skynet/catalog.yml`, read it to
    understand repo identity, companion repo ownership, and production/access
    posture.
@@ -53,7 +57,8 @@ The receipt should be concise:
 Project receipt:
 - Repo/worktree/branch: <repo>, <worktree>, <branch>, <clean-or-dirty>
 - Entrypoints read: AGENTS.md, <minimal routed files>
-- Shared protocols: <available|missing|not declared>
+- Shared protocols: <available+fresh|missing|not declared>; skills
+  <natively cataloged|direct-read fallback>
 - Repo identity: <declared source or unknown>
 - Companion ownership: <declared source or unknown>
 - Production/access posture: <declared posture or unknown>

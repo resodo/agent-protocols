@@ -33,12 +33,13 @@ items:
     resolution: completed
     closed_at: 2026-06-10
     outcome: >
-      The canonical source per machine is the single development checkout of
-      this repo, trusted only when clean on main; repos vendoring
-      external/agent-protocols keep priority on their pinned submodule. The
-      stale user-home clone was deleted, README documents the source-priority
-      rule with checkout-relative usage examples, and per-agent global
-      pointers own discovery.
+      The canonical source is this repo's origin/main. The only documented
+      consumption path is the pinned external/agent-protocols submodule plus
+      the worktree guard, which checks freshness mechanically: fetch-first
+      worktree creation based on the fresh default branch, with a loud stop
+      when the fetch fails. No machine-global read path exists; the stale
+      user-home clone was deleted, and ad-hoc non-submodule use is
+      human-directed in session.
     refs:
       - docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md
 
@@ -50,12 +51,13 @@ items:
     resolution: completed
     closed_at: 2026-06-10
     outcome: >
-      The wrapper shape is a thin pointer of one or two lines in each agent's
-      global instructions (Claude Code ~/.claude/CLAUDE.md, Codex
-      ~/.codex/AGENTS.md) naming the machine's checkout and the
-      submodule-first, clean-main trust rule, never duplicating protocol
-      content. README's Canonical Source section documents the pattern;
-      installing pointers is per-machine configuration, not repo content.
+      The agent-specific wrapper is the native skill mount: consuming repos
+      commit symlinks (.claude/skills/<protocol> for Claude Code,
+      .agents/skills/<protocol> for Codex) into the pinned submodule, so a
+      fresh submodule makes the protocols load through each agent's
+      documented project-level skill discovery at startup. No pointer files
+      and no duplicated protocol content; spikes verified symlinked skill
+      cataloging in both agents on their documented paths.
     refs:
       - docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md
 
