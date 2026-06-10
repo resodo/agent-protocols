@@ -455,3 +455,33 @@ Both findings accepted.
   skill mount".
 
 A fresh implementation re-review pass gates these fixes.
+
+### Reviewer pass 5 (impl, codex reviewer)
+
+Human concern: the pass-4 fixes must prove the guard freshness sketch now enforces the fetched base ref, the stale index wording is gone, and earlier accepted work did not regress.
+
+Repo state checked: `feature/canonical-source-docs`, clean worktree, ahead of `origin/main` by 12 commits. No local structured-review overlays were present.
+
+#### Blocking Issues
+
+No blocking issues.
+
+#### Non-Blocking Issues
+
+None.
+
+#### Overall Judgment
+
+Ready for closeout.
+
+Pass-4 Thread 1 is resolved. `agent-readiness/worktree-guard.md:69` now states the post-creation base verification and intentional rebase-forcing consequence, and `agent-readiness/worktree-guard.md:175` declares `base_ref="origin/main"` before failing when `HEAD` does not contain the freshly fetched ref, with both create-from-base and rebase remediation text.
+
+The pass-4 non-blocking index wording is fixed. `docs/agent_plans/README.md:33` now describes the plan as “canonical protocol source rule, guard freshness, and native skill mount plan,” with the stale first-design pointer-pattern wording removed.
+
+No earlier acceptance regressed in the reviewed surface. The bootstrap template still records guard-before-use, freshness, mount verification, catalog self-check, and direct-read fallback; backlog closures for `AP-BL-0002` and `AP-BL-0003` still match the revised canonical-source and native-mount decisions; both `.claude/skills/` and `.agents/skills/` still contain exactly the six expected symlink mounts.
+
+Validation rerun passed for: `python scripts/check_backlog.py`, `python -m unittest discover -s tests`, `python -m unittest discover -s structured-review/tests`, `python -m unittest discover -s scout/tests`, `python -m compileall -q structured-review scout scripts tests`, `git diff --check`, `git diff --check main...HEAD`, both full-surface negated greps, the positive `agent-protocols` reference grep, and the strict mount check (`MOUNTS-OK`).
+
+#### Residual Risks Or Validation Gaps
+
+The live CLI discovery probes could not be rerun in this backend environment: Claude Code reported it was not logged in, and nested `codex exec` failed during sandbox app-server initialization. Treat native CLI discovery provenance as prior driver/reviewer-supplied evidence, not as rerun successfully in pass 5.
