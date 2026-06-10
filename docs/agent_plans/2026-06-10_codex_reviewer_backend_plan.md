@@ -396,3 +396,76 @@ blocking issues and judged the plan ready for implementation; every change
 above adopts the reviewer's own recommendations without altering accepted
 scope. The human-mandated gate chain continues with the implementation
 review dogfooding the Codex backend.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+Original concern: does commit `fba6a45` implement the accepted Codex reviewer
+backend plan, including the driver response 1 refinements, without weakening
+the structured-review runner contract?
+
+**Blocking issues**
+
+None.
+
+**Non-blocking issues**
+
+None.
+
+**Traceability**
+
+- Done: the backend seam is finalized with preserved helper names.
+  `structured-review/scripts/claude_structured_review.py` keeps
+  `claude_argv`, `process_stream_line`, `claude_version`, and `run_claude`,
+  while adding `ReviewerBackend`, per-backend `finalize`, and Codex-specific
+  stream handling. The Claude path still prefers streamed text deltas and then
+  the last assistant message.
+- Done: cross-vendor `auto` resolution matches the accepted rules.
+  `resolve_reviewer_backend` maps Claude markers to `codex`, Codex markers to
+  `claude`, neither marker to `claude`, and both marker kinds to a hard error
+  naming `--reviewer-backend`. Marker-resolved missing binaries preflight with
+  `shutil.which` and name the same flag.
+- Done: Codex argv shape matches the plan for plain and linked worktrees.
+  Write mode uses `codex exec - --json --sandbox workspace-write` plus
+  `--add-dir` entries from `git rev-parse --git-dir --git-common-dir`; print
+  mode uses `--sandbox read-only` and no `--add-dir`. The tests cover normal
+  and linked worktree git-dir behavior.
+- Done: Codex text capture prefers `last-message.txt` and falls back to
+  accumulated `agent_message` items. The malformed-line counter and
+  best-effort `turn.completed` usage capture are covered by the new tests.
+- Done: metadata is backend-aware and uses `reviewer_version`. Metadata now
+  records `backend`, active backend model and effort, `reviewer_version`, and
+  optional token usage; the old `claude_version` test is updated
+  deterministically.
+- Done: reviewer identity is injected into the prompt, including the required
+  backend-named pass heading example for both backends.
+- Done: `structured-review/SKILL.md`, `README.md`, and `docs/CURRENT.md` are
+  backend-neutral and state the cross-vendor default and no-silent-fallback
+  rule.
+- Done: Claude path behavior is preserved for the accepted surface. Legacy
+  helper callers are pinned to `--reviewer-backend claude`, `--claude-bin`
+  behavior remains path-based, and the existing verification functions keep the
+  same write/print gate semantics.
+
+**Overall judgment**
+
+Ready for closeout. The implementation matches the accepted plan and the
+driver response 1 refinements, and I found no blocking or non-blocking issues.
+
+**Residual risks / validation gaps**
+
+The local suite uses fake Claude and Codex binaries, so real Codex CLI sandbox
+semantics for `--output-last-message` and `--add-dir` remain the spike-backed
+risk already documented in the plan. I did not check PR CI status in this
+review pass.
+
+Validation rerun by reviewer:
+
+```bash
+python -m unittest discover -s structured-review/tests
+python -m unittest discover -s tests
+python -m unittest discover -s scout/tests
+python -m compileall -q structured-review scout scripts tests
+git diff --check
+```
+
+All five commands passed locally.
