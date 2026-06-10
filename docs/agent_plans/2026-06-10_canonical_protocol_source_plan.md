@@ -141,3 +141,37 @@ paths (`.agent-protocols/` inside a repo), or checkout-relative wording.
   wording distinguishes them explicitly.
 
 ## Review Threads
+
+### Reviewer pass 1 (impl-plan, codex reviewer)
+
+Human concern: the plan must prevent agents from loading stale protocol copies while keeping the single-checkout model simple.
+
+Repo state checked: `feature/canonical-source-docs`, clean worktree, plan file committed.
+
+#### Blocking Issues
+
+**Thread 1 — Validation does not cover the declared live-doc surface.**
+
+`docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md` says acceptance covers `README.md`, `AGENTS.md`, `docs/README.md`, `docs/CURRENT.md`, protocol `SKILL.md` files, and `agent-readiness/`, but the validation grep only scans the first four files. A stale old tilde agent-protocols source reference in a protocol `SKILL.md` or `agent-readiness/` would be missed.
+
+Please expand validation to run a negative search over the whole accepted live-doc surface, excluding historical `docs/agent_plans/`. The check should distinguish actual stale path strings from policy prose such as “do not use user-home absolute paths.”
+
+**Thread 2 — Closing `AP-BL-0003` is not yet provable from acceptance.**
+
+The thin-pointer decision is reasonable, but `AP-BL-0003` asked for agent-specific wrapper guidance. Current acceptance only says `README.md` states the “thin-pointer pattern,” which could be satisfied by vague generic wording while still leaving Codex and Claude wrapper shape ambiguous.
+
+To close `AP-BL-0003` as completed, make acceptance require concrete `README.md` guidance for both agent surfaces: the pointer is thin, names the machine’s main checkout, gives precedence to `external/agent-protocols` inside vendoring repos, requires clean `main` for the machine checkout, and avoids duplicating protocol content. Otherwise, leave `AP-BL-0003` open and track the wrapper guidance or machine-side activation separately.
+
+#### Non-Blocking Issues
+
+The no-freshness-automation rationale holds for this plan: the stale-checkout risk is named, the human decision is recorded, and the fallback is to revisit only if staleness recurs. No extra automation is required for this slice.
+
+The planned README/AGENTS direction is pointed at the right failure mode. A broader non-historical search currently finds the old stale source examples only in `README.md`; the issue is that the plan’s validation would not prove that after implementation.
+
+#### Overall Judgment
+
+Not ready for implementation until the two blocking issues are resolved. After that, the plan should be ready for implementation review with ordinary doc/backlog validation.
+
+#### Residual Risks Or Validation Gaps
+
+Machine-side pointer installation is outside the repo diff. Closeout should not claim those pointers are installed unless the owner verifies that separately.
