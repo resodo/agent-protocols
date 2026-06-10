@@ -37,10 +37,10 @@ For structured review gates in this repo, use
 not substitute user-home absolute paths, sibling checkouts, self-review, or
 chat-only review when the shared protocol says the runner is available.
 
-The main checkout of this repo doubles as the machine's protocol read source
-for contexts without a vendored submodule (see `README.md` Canonical Source).
-Keep the main checkout clean and on `main`, do feature work in linked
-worktrees, and never point other projects at a feature worktree.
+Keep the main checkout clean and on `main` and do feature work in linked
+worktrees. Consumption of these protocols happens through pinned submodules
+and committed skill mounts, not through this checkout's path; see
+`README.md` (Canonical Source).
 
 ## Documentation Rules
 
