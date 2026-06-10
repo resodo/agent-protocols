@@ -493,7 +493,8 @@ def append_and_commit_review(config: RunConfig, review_text: str) -> None:
     _, section_end = bounds
     head = text[:section_end].rstrip("\n")
     tail = text[section_end:].lstrip("\n")
-    updated = head + "\n\n" + review_text.strip() + "\n"
+    block = review_text if review_text.endswith("\n") else review_text + "\n"
+    updated = head + "\n\n" + block
     if tail:
         updated += "\n" + tail
     path.write_text(updated, encoding="utf-8")
@@ -622,13 +623,17 @@ def claude_argv(config: RunConfig) -> list[str]:
 
 
 def codex_argv(config: RunConfig, logs: RunLogs) -> list[str]:
+    # workspace-write (without any .git --add-dir grant) lets the reviewer run
+    # tests, which need writable temp dirs, while commits stay impossible and
+    # stray worktree writes are rejected by the runner's untouched-worktree
+    # check before any append happens.
     return [
         config.codex_bin,
         "exec",
         "-",
         "--json",
         "--sandbox",
-        "read-only",
+        "workspace-write",
         "-m",
         config.codex_model,
         "-c",

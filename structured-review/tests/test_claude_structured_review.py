@@ -703,7 +703,7 @@ print('stderr path', file=sys.stderr, flush=True)
             config = self.config_for(repo, protocol, extra=["--reviewer-backend", "codex"])
         self.assertEqual(config.backend, "codex")
 
-    def test_codex_argv_is_read_only_in_both_modes_with_defaults(self) -> None:
+    def test_codex_argv_is_workspace_write_without_git_grant_in_both_modes(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         logs = self.logs_for(self.root / "codex-logs")
@@ -713,12 +713,25 @@ print('stderr path', file=sys.stderr, flush=True)
             argv = csr.codex_argv(config, logs)
 
             self.assertEqual(argv[:4], ["codex", "exec", "-", "--json"])
-            self.assertIn("read-only", argv)
-            self.assertNotIn("workspace-write", argv)
+            self.assertIn("workspace-write", argv)
             self.assertNotIn("--add-dir", argv)
             self.assertIn("gpt-5.5", argv)
             self.assertIn("model_reasoning_effort=xhigh", argv)
             self.assertEqual(argv[argv.index("--output-last-message") + 1], str(logs.root / "last-message.txt"))
+
+    def test_append_preserves_review_text_byte_for_byte(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+        review = "### Reviewer pass 1 (impl-plan, codex reviewer)\n\nIndented:\n    code line\n\n- bullet  \n\nNo blockers."
+        before = csr.git_snapshot(repo)
+
+        csr.append_and_commit_review(config, review)
+
+        text = (repo / "docs/plan.md").read_text(encoding="utf-8")
+        self.assertTrue(text.endswith("\n\n" + review + "\n"))
+        after = csr.git_snapshot(repo)
+        csr.verify_write_mode(config, before, after, self.result())
 
     def test_codex_model_and_effort_overrides(self) -> None:
         repo = self.init_target_repo()

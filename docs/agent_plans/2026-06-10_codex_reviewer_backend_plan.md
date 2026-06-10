@@ -290,18 +290,26 @@ this PR during closeout discussion:
      land in the durable thread verbatim with zero driver transcription
      burden, which the by-construction append guarantees.
 
-Updated acceptance for the addendum:
+Updated acceptance for the addendum (as amended after reviewer pass 3):
 
-- Write mode produces exactly one runner-created commit whose added lines
-  are the reviewer's output verbatim inside the `## Review Threads` section,
-  for both backends, including when other `##` sections follow the threads
-  section.
+- Write mode produces exactly one runner-created commit whose added block is
+  the reviewer's returned text byte-for-byte inside the `## Review Threads`
+  section, for both backends, including when other `##` sections follow the
+  threads section. The runner adds only the separating blank line before the
+  block and a terminating newline when the returned text lacks one; an
+  exact-output test pins this.
 - A reviewer that modifies the worktree or HEAD in write mode fails the run
   before any append happens.
 - Non-review-like, local-path-bearing, or secret-bearing reviewer output
   fails before any commit, with the text preserved in run logs.
-- Codex argv contains `--sandbox read-only` and no `--add-dir` in both
-  modes.
+- Codex argv contains `--sandbox workspace-write` and no `--add-dir` in both
+  modes. Pass 3 ran under `read-only` and was environment-blocked from
+  running the unittest suites (no writable temp dir), which would
+  permanently remove reviewer-rerun validation from Codex reviews;
+  `workspace-write` without any `.git` grant restores test execution (a
+  sandbox probe confirmed writable temp dirs) while commits remain
+  impossible and stray worktree writes still fail the run via the
+  untouched-worktree check.
 - `closeout/SKILL.md` keeps the trigger list and no longer states runner,
   backend, or mode policy.
 
@@ -563,3 +571,27 @@ python -m unittest discover -s scout/tests
 python -m compileall -q structured-review scout scripts tests
 git diff --check
 ```
+
+### Driver response 2
+
+Pass 3 findings, classified:
+
+- B1 accepted. `append_and_commit_review` no longer strips the reviewer
+  text: the returned text is appended byte-for-byte, with only a separating
+  blank line before it and a terminating newline added when the text lacks
+  one. The addendum acceptance wording is amended to state that exact
+  contract, and a new exact-output test asserts the committed file contains
+  the returned text unchanged.
+- The environment-blocked validation in pass 3's residuals is treated as a
+  finding in its own right: `--sandbox read-only` would permanently remove
+  reviewer-rerun validation from Codex reviews because unittest needs
+  writable temp dirs. Codex now runs `--sandbox workspace-write` with no
+  `.git` grant in both modes: a sandbox probe confirmed temp dirs are
+  writable, commits remain impossible (the original spike showed the sandbox
+  blocks `.git`), and any stray worktree write still fails the run through
+  `verify_reviewer_output`'s untouched-worktree check before any append.
+  The addendum acceptance is amended accordingly.
+- Validation after the fixes: full local suite green (structured-review,
+  tests, scout, backlog checker, compileall, `git diff --check`),
+  driver-reported; pass 4 should be able to rerun the suites under the new
+  sandbox.
