@@ -1,6 +1,6 @@
 # Canonical Protocol Source Plan (AP-BL-0002 / AP-BL-0003)
 
-Status: historical - implemented via PR #16 (2026-06-10)
+Status: revised draft for plan re-review (PR #16 rework)
 Branch: `feature/canonical-source-docs`
 Worktree: `agent-protocols-canonical-source`
 
@@ -22,92 +22,137 @@ the development machine made the problem concrete:
 Repos that vendor `external/agent-protocols` as a submodule are unaffected:
 pinned versions plus the dispatch auto-bump close that loop.
 
-Decisions converged with the human (2026-06-10):
+Decisions converged with the human (2026-06-10, revised after a second
+discussion that rejected the first draft's direction):
 
-1. The stale user-home clone is deleted, not repaired. There is exactly one
-   local copy of this repo per machine: the development checkout. (The
-   deletion already happened; it carried no dirty files, stashes, or
-   unpushed commits.)
-2. Repo docs stop naming any user-home or machine-specific absolute path.
-   The Usage guidance describes reading the protocols from "your local
-   checkout of this repo", with the submodule path taking priority inside
-   vendoring repos.
-3. The discipline that makes a single checkout safe as a read source is
-   written down: the main checkout stays clean on `main`; all development
-   happens in linked worktrees; agents must not treat a feature worktree as
-   a protocol source.
-4. Per-machine discovery is owned by thin pointers in each agent's global
-   instructions (for example `~/.claude/CLAUDE.md` for Claude Code and
-   `~/.codex/AGENTS.md` for Codex), which name the machine's checkout path
-   and the trust rule. The pointers are machine configuration, not repo
-   content; the repo documents the pattern generically. This is the
-   "thin wrapper" AP-BL-0003 asked for.
+1. Record correction. The first draft's non-goal said freshness automation
+   was skipped "accepted by the human over automation complexity". The
+   human never made that decision; the driver wrote it in. The human
+   rejected the underlying assumption on review: "a local folder is always
+   up to date" is a hidden assumption that fails on multi-machine setups
+   (a Mac mini and a MacBook used interchangeably), which is exactly how
+   the 93-commit-stale clone happened. Freshness must be checked
+   mechanically at the moment of use, never assumed.
+2. The stale user-home clone stays deleted (verified free of dirty files,
+   stashes, and unpushed commits before removal).
+3. The canonical source is this repo's `origin/main`. The only documented
+   consumption path is the pinned `external/agent-protocols` submodule
+   plus the worktree guard. There is no machine-global read path and no
+   per-agent pointer files; ad-hoc use outside vendoring repos is directed
+   by the human in session when needed.
+4. The guard contract gains freshness: fetch from origin before creating a
+   feature worktree, base the worktree on `origin/main`, and stop work
+   loudly when the fetch fails. Offline means no work; agent coding is an
+   online activity anyway.
+5. Protocol skills mount into both agents' native project-level skill
+   discovery through symlinks committed in the consuming repo
+   (`.claude/skills/<protocol>` and `.codex/skills/<protocol>` ->
+   `external/agent-protocols/<protocol>`). A fresh submodule therefore
+   makes the protocols load natively at agent startup, which is the
+   answer AP-BL-0003 was looking for. Spike evidence: both Claude Code and
+   Codex catalog symlinked project skills at session start, and Claude
+   Code additionally loads them mid-session via `--add-dir`/`/add-dir`
+   (verified from an unrelated working directory); Codex uses
+   startup-only scans, which matches how it is launched in practice (per
+   task, inside the worktree).
+6. Ordering rule: the guard runs before the agent enters the worktree.
+   After entry the agent self-checks that protocol skills are cataloged
+   and falls back to reading `SKILL.md` directly from the submodule path
+   when they are not. Native cataloging is a convenience layer; direct
+   file reading is the deterministic floor. Repo `AGENTS.md` files keep
+   obligations (which gates are mandatory when) and the guard step, and
+   drop path-navigation text.
 
 ## Goal
 
-Make the repo's documented read path truthful and machine-neutral, codify
-the single-checkout + worktree discipline, document the thin-pointer
-pattern, and close AP-BL-0002 and AP-BL-0003.
+Make freshness a mechanical property of the consumption path (guard
+contract), make the protocols load natively in both agents from the pinned
+submodule (committed skill mounts), make the repo's documented read path
+truthful, and close AP-BL-0002 and AP-BL-0003.
 
 ## Non-Goals
 
-- No runner, protocol-logic, or test changes.
-- No automation for keeping checkouts fresh (no cron, no pull-on-load
-  scripting). Freshness comes from the owner's normal development rhythm;
-  revisit only if staleness recurs in practice.
-- No multi-machine or team distribution story; this slice covers the
-  single-developer machine model this repo currently serves.
+- No runner, protocol-logic, or Python test changes.
+- No machine-global read path, no per-agent global pointer files, and no
+  edits to any agent's global configuration.
+- Consumer repos' guard-script and mount adoption (skynet-v2, skynet-data)
+  are follow-ups in those repos, not this PR; this PR updates the shared
+  contract and templates they adopt from.
 - Do not rewrite historical plan documents that mention the old path.
 
 ## Changes
 
-1. `README.md` Usage section:
-   - Replace both `~/.agent-protocols/...` examples with checkout-relative
-     wording (`<your agent-protocols checkout>/structured-review/SKILL.md`).
-   - State the source-priority rule: inside a repo that vendors
-     `external/agent-protocols`, always use the vendored submodule;
-     otherwise use the machine's agent-protocols checkout, which must be
-     clean and on `main`.
-   - State the worktree discipline and the thin-pointer pattern: each
-     agent's global instructions name the machine's checkout path; repo
-     docs never carry machine-specific absolute paths.
+1. `agent-readiness/worktree-guard.md`:
+   - Add a freshness section to the contract: before creating a feature
+     worktree, run `git fetch origin` and base the worktree on
+     `origin/main` (or the repo's default branch), never on a possibly
+     stale local branch; if the fetch fails, stop and report the blocker
+     instead of starting feature work.
+   - Add a native skill mount section: consuming repos commit symlinks
+     `.claude/skills/<protocol>` and `.codex/skills/<protocol>` ->
+     `external/agent-protocols/<protocol>` for the protocols that ship a
+     `SKILL.md`; the guard verifies the links resolve after the submodule
+     is materialized.
+   - Add the ordering rule (guard before agent entry) and the post-entry
+     self-check with the direct-file-read fallback.
+   - Update the consumer script sketch to include fetch, base-ref check,
+     and link verification.
 
-2. `AGENTS.md`:
-   - Add the canonical-source rule to Protocol Work: the main checkout
-     stays clean on `main`, feature work happens in linked worktrees, and
-     a feature worktree is never a protocol source for other projects.
+2. `agent-readiness/agents-bootstrap-template.md`:
+   - Reflect the same ordering in the bootstrap steps and receipt: guard
+     (fresh + materialized + links) before protocol use; record protocol
+     skills as natively cataloged or fallen back to direct reads; repo
+     `AGENTS.md` carries obligations, not navigation text.
 
-3. `docs/backlog.yml` (per `backlog-maintenance/SKILL.md`):
-   - Close `AP-BL-0002` (`resolution: completed`): canonical source is the
-     machine's single development checkout read at clean `main`, submodule
-     takes priority in vendoring repos, docs no longer name user-home
-     paths, per-agent global pointers own discovery.
-   - Close `AP-BL-0003` (`resolution: completed`): the wrapper shape is the
-     thin one-line pointer in each agent's global instructions, documented
-     generically in `README.md`; per-machine pointers are installed as
-     machine config, not repo content.
+3. `README.md` Canonical Source section (rewrite of the current branch
+   state): canonical source is `origin/main` of this repo; consumption is
+   the pinned submodule + guard; protocols surface in agents through the
+   committed skill mounts; no machine-global path exists, and non-vendored
+   ad-hoc use is human-directed in session. Usage examples stay
+   checkout-relative.
 
-4. Machine-side (this machine, outside the repo, after the repo change
-   lands): add the pointer section to `~/.claude/CLAUDE.md` and create
-   `~/.codex/AGENTS.md` with the same pointer. Not part of the PR diff;
-   recorded here as the activation step the pattern requires.
+4. `AGENTS.md`: drop the "main checkout doubles as the machine's protocol
+   read source" wording from the current branch state; keep the clean-main
+   and linked-worktree discipline as repo hygiene.
+
+5. Self-mount this repo: commit `.claude/skills/<protocol>` and
+   `.codex/skills/<protocol>` symlinks (relative, `../../<protocol>`) for
+   the six protocols shipping a `SKILL.md` (backlog-maintenance, closeout,
+   planning, retrospective, scout, structured-review), so sessions in this
+   repo and its worktrees load the protocols natively.
+
+6. `docs/backlog.yml` (per `backlog-maintenance/SKILL.md`):
+   - `AP-BL-0002` closes as `completed`: canonical source is
+     `origin/main`, consumed through pinned submodules with guard-enforced
+     freshness; no global fallback path.
+   - `AP-BL-0003` closes as `completed`: the agent-specific wrapper is the
+     native skill mount (committed symlinks into the submodule picked up
+     by each agent's project-level skill discovery); no pointer files and
+     no duplicated protocol content.
 
 ## Acceptance Criteria
 
 - No live doc (`README.md`, `AGENTS.md`, `docs/README.md`,
   `docs/CURRENT.md`, protocol `SKILL.md` files, `agent-readiness/`)
   references `~/.agent-protocols` or any user-home absolute path.
-- `README.md` states the source-priority rule (submodule first, then the
-  machine checkout at clean `main`) and concrete thin-pointer guidance for
-  both agent surfaces, requiring all of: the pointer lives in the agent's
-  global instructions (`~/.claude/CLAUDE.md` for Claude Code,
-  `~/.codex/AGENTS.md` for Codex), stays one or two lines, names the
-  machine's main checkout, defers to `external/agent-protocols` inside
-  vendoring repos, requires the checkout to be clean on `main`, and never
-  duplicates protocol content.
-- `AGENTS.md` records the main-checkout/worktree discipline.
+- `worktree-guard.md` states all four new contract elements: fetch-first
+  worktree creation based on `origin/main` with loud stop on fetch
+  failure; committed skill-mount symlinks for SKILL.md-bearing protocols;
+  guard-time link verification; guard-before-entry ordering with the
+  post-entry self-check and direct-read fallback. The script sketch shows
+  fetch, base ref, and link checks.
+- `agents-bootstrap-template.md` reflects the ordering and reports
+  protocol-skill availability in the receipt.
+- `README.md` Canonical Source names `origin/main` as canonical, the
+  pinned submodule + guard as the only documented consumption path, the
+  native skill mounts as the agent-facing surface, and human-directed
+  ad-hoc use; it names no machine-global path and no pointer files.
+- This repo contains working `.claude/skills/` and `.codex/skills/`
+  symlinks for exactly the six SKILL.md-bearing protocols, and each
+  resolves to a readable `SKILL.md`.
 - `AP-BL-0002` and `AP-BL-0003` are closed with schema-valid fields and
-  outcomes naming this plan, and `python scripts/check_backlog.py` passes.
+  outcomes matching the decisions above, and
+  `python scripts/check_backlog.py` passes.
 - Historical plan files are untouched.
 
 ## Validation Plan
@@ -122,6 +167,9 @@ git diff --check
 ! grep -rn "~/.agent-protocols" --include="*.md" --exclude-dir=agent_plans .
 ! grep -rnE "/Users/|/home/" --include="*.md" --exclude-dir=agent_plans .
 grep -rn "agent-protocols" README.md AGENTS.md docs/CURRENT.md docs/README.md
+for p in backlog-maintenance closeout planning retrospective scout structured-review; do
+  test -f ".claude/skills/$p/SKILL.md" && test -f ".codex/skills/$p/SKILL.md"
+done && echo MOUNTS-OK
 ```
 
 The two negated greps are the full-surface negative checks: every live
@@ -145,12 +193,19 @@ inside a repo), or checkout-relative wording.
 
 ## Risks
 
-- A future agent on a different machine has no pointer until its owner
-  installs one; the repo README documents the pattern, and the failure mode
-  is loud (no protocol found) rather than silently stale.
-- The development checkout can lag origin/main when merges happen off the
-  machine; the lag window is bounded by the owner's normal usage of this
-  repo, accepted by the human over automation complexity.
+- Codex catalogs skills only at session start; a long-lived Codex session
+  that switches worktrees mid-session would keep a stale catalog. Bounded
+  by its per-launch usage model (the runner and herdr panes launch it
+  inside the worktree) and by the post-entry self-check with direct-read
+  fallback.
+- Symlinked mounts assume a POSIX filesystem; this is a macOS/Linux
+  workflow. Recorded, not solved.
+- Until the skynet repos adopt the updated guard contract (follow-ups),
+  their guards check availability but not freshness or mounts; the shared
+  contract update does not by itself change consumer behavior.
+- Native cataloging makes protocol skill names visible to every session in
+  mounted repos; the six names are distinctive and collide with no bundled
+  agent skills today. New protocols must keep distinctive names.
 - The overlay directory name (`.agent-protocols/` inside repos) remains
   similar to the deleted home-clone path (`~/.agent-protocols`); README
   wording distinguishes them explicitly.
@@ -248,3 +303,17 @@ Validation rerun passed: `python scripts/check_backlog.py`, all three unittest d
 #### Residual Risks Or Validation Gaps
 
 Machine-side pointer installation remains outside this repo diff by plan. Closeout should report that state explicitly and avoid implying those per-machine pointers are installed unless separately verified.
+
+### Driver revision note (after pass 2)
+
+The human reviewed the implemented first design and rejected its core
+assumption before merge: relying on any local folder being fresh fails on
+multi-machine setups, and the first draft's claim that the human had
+accepted "no freshness automation" was a driver fabrication, corrected in
+the revised Context. The human also redirected the wrapper question to
+both agents' native project-level skill discovery. The plan body above is
+the revised design (guard freshness + committed native skill mounts + no
+global path); reviewer pass 2's "ready for closeout" verdict applied to
+the superseded body and does not carry over. A fresh plan re-review pass
+gates the revision, followed by re-implementation and a new
+implementation review.
