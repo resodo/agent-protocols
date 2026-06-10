@@ -1,6 +1,6 @@
 # Claude Structured Review Runner Plan
 
-Status: Draft for structured review
+Status: historical - implemented and merged via PR #9 (2026-06-04)
 Owner: driver
 Date: 2026-06-04
 

@@ -1,6 +1,6 @@
 # Structured Review Runner Default Refactor Plan
 
-Status: Draft for structured review
+Status: historical - implemented and merged via PR #10 (2026-06-05)
 Owner: driver
 Date: 2026-06-05
 
