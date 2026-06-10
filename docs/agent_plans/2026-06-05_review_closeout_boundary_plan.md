@@ -1,6 +1,6 @@
 # Review / Closeout Boundary Plan
 
-Status: Draft for structured review
+Status: historical - implemented and merged via PR #11 (2026-06-05)
 
 ## Human Concern
 

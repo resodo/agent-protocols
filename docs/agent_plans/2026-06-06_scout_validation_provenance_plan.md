@@ -1,6 +1,6 @@
 # Scout Validation Provenance Plan
 
-Status: draft for plan review
+Status: historical - implemented and merged via PR #13 (2026-06-06)
 Branch: `feature/scout-validation-provenance-v2`
 Worktree: `agent-protocols-scout-validation-provenance-v2`
 

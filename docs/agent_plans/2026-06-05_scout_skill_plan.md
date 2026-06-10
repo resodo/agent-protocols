@@ -1,6 +1,6 @@
 # Scout Skill Plan
 
-Status: accepted plan / implementation in progress
+Status: historical - implemented and merged via PR #12 (2026-06-06)
 Date: 2026-06-05
 
 ## Context
