@@ -1,6 +1,6 @@
 # Codex Reviewer Backend Plan
 
-Status: draft for plan review
+Status: accepted plan - implementation in progress
 Branch: `feature/codex-reviewer-backend`
 Worktree: `agent-protocols-codex-reviewer`
 
@@ -79,8 +79,20 @@ write/print verification contract.
    only). A small registry keyed by backend name providing:
    - `argv(config, logs)`: full reviewer CLI argv;
    - `parse_line(line) -> StreamLineResult`: per-backend JSONL parsing;
+   - `finalize(state, logs) -> review_text`: per-backend final text capture.
+     Claude keeps the current delta-preference / last-message-wins behavior
+     byte-for-byte; Codex accumulates `agent_message` items during the run and
+     then prefers the `--output-last-message` file when present and non-empty;
    - `version(bin)`: version probe (`claude --version` / `codex --version`);
    - driver env markers for auto-detection.
+
+   The existing module-level helpers keep their names: `claude_argv`,
+   `process_stream_line`, and `claude_version` become the Claude backend's
+   implementations, and the shared invocation loop keeps the `run_claude`
+   name, so existing tests that reference or patch them stay valid. Existing
+   tests are touched only where this plan requires it: pinning
+   `--reviewer-backend claude` (or a marker-free env) for determinism, and
+   the `reviewer_version` metadata rename below.
 
 2. Codex backend specifics:
    - argv (write mode):
@@ -90,13 +102,20 @@ write/print verification contract.
      <run-log-dir>/last-message.txt`, run with `cwd=worktree`, prompt on
      stdin. Resolve git dirs via `git rev-parse --git-dir --git-common-dir`
      and pass both when they differ (linked worktrees).
-   - argv (print mode): same minus `--add-dir`, with `--sandbox read-only`.
+   - argv (print mode): same minus `--add-dir`, with `--sandbox read-only`,
+     keeping `--output-last-message`. The file is written by the codex
+     harness outside the sandbox, not by a sandboxed child command: a spike
+     probe under `--sandbox read-only` wrote the `-o` file successfully
+     (codex-cli 0.137.0). For the same reason a caller-supplied
+     `--run-log-dir` outside the worktree needs no extra `--add-dir`.
    - Review text: accumulate `agent_message` items from `item.completed`
-     events; prefer the `--output-last-message` file as the authoritative
-     final text when present and non-empty. Malformed JSONL lines keep using
-     the existing malformed-line counter.
+     events; `finalize` prefers the `--output-last-message` file as the
+     authoritative final text when present and non-empty, with the
+     accumulated messages as fallback. Malformed JSONL lines keep using the
+     existing malformed-line counter.
    - Stderr progress: print the existing heartbeat/event lines so long runs
-     stay observable; record `turn.completed` usage in metadata.
+     stay observable; record `turn.completed` usage in metadata as
+     best-effort observability, not an acceptance contract.
 
 3. Backend selection:
    - New flag `--reviewer-backend {auto,claude,codex}`, default `auto`.
@@ -105,8 +124,17 @@ write/print verification contract.
      both kinds of markers set -> hard error instructing an explicit
      `--reviewer-backend`; neither -> `claude` (today's behavior for humans
      invoking from a plain terminal).
-   - The selected backend, binary version, argv, and (for Codex) token usage
-     are recorded in `metadata.json`.
+   - When `auto` resolves through a detected driver marker, the runner
+     preflights the selected backend binary (`shutil.which`) and fails with
+     an actionable error naming `--reviewer-backend`, mirroring the
+     both-markers error. The neither-marker default deliberately keeps
+     today's no-preflight behavior so plain-terminal and CI invocations are
+     unchanged.
+   - `metadata.json` records the selected `backend`, the active backend's
+     effective model and effort values in the existing `model`/`effort`
+     fields, and a backend-neutral `reviewer_version` (renaming
+     `claude_version`; the existing test asserting that key is updated).
+     Codex token usage is recorded when seen, best-effort.
 
 4. Flags and defaults:
    - Existing `--model` (default `opus`), `--effort` (default `xhigh`), and
@@ -138,7 +166,10 @@ write/print verification contract.
 
 7. Tests (`structured-review/tests/test_claude_structured_review.py`):
    - Backend selection: explicit flags; `auto` under each env-marker case,
-     including the both-markers hard error (env patched per test).
+     including the both-markers hard error and the marker-resolved
+     preflight-unavailable error (env and `shutil.which` patched per test).
+     Legacy tests pin `--reviewer-backend claude` or a marker-free env so
+     they stay deterministic regardless of which agent runs them.
    - Codex argv construction: write vs print sandbox flags, `--add-dir`
      resolution for linked worktrees, pinned model/effort and overrides.
    - Codex stream parsing: agent_message extraction, last-message-file
@@ -155,13 +186,18 @@ write/print verification contract.
   all existing verification rules pass unchanged.
 - `auto` resolves: Claude driver env -> codex, Codex driver env -> claude,
   both -> hard error naming the flag, neither -> claude.
+- A marker-resolved `auto` selection whose backend binary is missing fails
+  with an error naming `--reviewer-backend`; the neither-marker default and
+  explicit selections keep today's failure behavior.
 - Codex defaults are `gpt-5.5` / `xhigh`, overridable via `--codex-model` /
   `--codex-effort`; Claude defaults and flags are byte-for-byte unchanged.
 - Write-mode Codex argv includes the git-dir `--add-dir` entries; print-mode
   argv uses `--sandbox read-only` and no `--add-dir`.
 - The reviewer prompt instructs backend-named pass headings for both
   backends.
-- `metadata.json` records the backend and its version.
+- `metadata.json` records the selected backend, the active backend's
+  effective model/effort, and a backend-neutral `reviewer_version`. Token
+  usage recording is best-effort and not part of acceptance.
 - `structured-review/SKILL.md`, `README.md`, and `docs/CURRENT.md` are
   backend-neutral and state the cross-vendor default and no-silent-fallback
   rule.
@@ -211,6 +247,10 @@ by tests; both are faked, as today.
   flag, and the staleness signal is Codex rejecting the model name.
 - `--json` is marked experimental upstream; tolerant parsing, the
   malformed-line counter, and the last-message file keep text capture robust.
+- Fake-bin tests cannot exercise real Codex sandbox semantics (read-only
+  blocking, `--add-dir` scope, harness-side `-o` writes); those claims rest
+  on the spike evidence at codex-cli 0.137.0 and are re-validated live by the
+  dogfooded implementation-review gate.
 
 ## Review Threads
 
@@ -321,3 +361,38 @@ clarity and edge-case tightenings.
 - Token-usage recording (`turn.completed`) appears in the design and risks but
   not in the acceptance criteria or the test list; if it is a contract, add
   coverage, otherwise mark it best-effort.
+
+### Driver response 1
+
+All five findings accepted; the plan body is updated accordingly.
+
+- N1: the registry now names a `finalize(state, logs)` hook; Claude keeps its
+  delta-preference/last-wins capture byte-for-byte, Codex accumulates then
+  prefers the `-o` file. Module-level helper names (`claude_argv`,
+  `process_stream_line`, `claude_version`, `run_claude`) are preserved as the
+  Claude backend/shared loop, so name-coupled tests stay valid; tests change
+  only for backend pinning and the `reviewer_version` rename.
+- N2: resolved empirically rather than by fallback wording. An existing spike
+  probe ran `codex exec --sandbox read-only` with `--output-last-message`
+  targeting a path the sandbox could not have written, and the file was
+  written: the codex harness writes `-o` outside the sandbox. Print mode
+  keeps the flag, with accumulated `agent_message` text as fallback.
+  Provenance: driver-reported spike at codex-cli 0.137.0.
+- N3: the same harness-side `-o` evidence dissolves the custom
+  `--run-log-dir` concern; no extra `--add-dir` is needed. The fake-bin
+  masking caveat the reviewer raised is now recorded in Risks, with the
+  dogfooded impl-review gate as the live re-validation.
+- N4: metadata semantics specified: `backend`, active model/effort in the
+  existing fields, backend-neutral `reviewer_version` (renamed from
+  `claude_version`, updating the one asserting test), usage best-effort.
+- N5: preflight added for marker-resolved `auto` selections with an error
+  naming `--reviewer-backend`. Scope refinement: the neither-marker default
+  and explicit selections keep today's no-preflight failure behavior, so
+  plain-terminal and CI invocations do not change. Both-markers error stays
+  as planned. A preflight test is added to the test plan.
+
+Proceeding to implementation without a re-review pass: the reviewer found no
+blocking issues and judged the plan ready for implementation; every change
+above adopts the reviewer's own recommendations without altering accepted
+scope. The human-mandated gate chain continues with the implementation
+review dogfooding the Codex backend.
