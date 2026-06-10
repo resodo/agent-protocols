@@ -595,3 +595,42 @@ Pass 3 findings, classified:
   tests, scout, backlog checker, compileall, `git diff --check`),
   driver-reported; pass 4 should be able to rerun the suites under the new
   sandbox.
+
+### Reviewer pass 4 (impl, codex reviewer)
+
+Original concern: implementation re-review of the pass-3 fixes in Driver response 2: verbatim runner append with exact-output coverage, and Codex `workspace-write` without `.git` grant so reviewer validation can run.
+
+**Blocking issues**
+
+None.
+
+**Non-blocking issues**
+
+None.
+
+**Traceability**
+
+- Done: pass-3 B1 is resolved. `append_and_commit_review` now appends `review_text` without stripping it, adding only the separator before the block and a final newline when missing.
+- Done: exact-output coverage was added in `test_append_preserves_review_text_byte_for_byte`, including indentation and trailing spaces inside the returned review text.
+- Done: Codex argv uses `--sandbox workspace-write` in both write and print modes and does not include `--add-dir`.
+- Done: the runner still verifies reviewer output before appending and runs `verify_write_mode` after the runner-created commit.
+- Done: earlier accepted backend-selection, prompt, metadata, fake Codex, and protocol-text behavior did not regress in the inspected artifacts.
+
+**Overall judgment**
+
+Ready for closeout. The amended addendum acceptance is satisfied, and there are no blocking issues.
+
+**Residual risks / validation gaps**
+
+Reviewer-rerun validation passed locally. I ran:
+
+```bash
+python -m unittest discover -s structured-review/tests
+python -m unittest discover -s tests
+python -m unittest discover -s scout/tests
+python -m compileall -q structured-review scout scripts tests
+git diff --check
+python scripts/check_backlog.py --root .
+```
+
+All passed. The worktree remained clean after validation.
