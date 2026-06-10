@@ -118,3 +118,104 @@ post-merge docs follow-up is expected; this report's wording remains true
 after merge.
 
 ## Review Threads
+
+### Reviewer pass 1 (closeout-review)
+
+Human concern restated: confirm this closeout report's delivery-state,
+traceability, validation-provenance, mechanism-lifecycle, and stale-status-scan
+claims are accurate and complete against repo state, that fixing the four older
+merged plans' Status headers here is correctly scoped and evidenced, and that no
+tracked-doc wording becomes false after this closeout PR merges.
+
+Scope of this pass: independent verification against PR #13 metadata, the commit
+graph, GitHub Actions run history, the cited tests, the runner constants, and the
+working tree on `feature/scout-provenance-closeout`. The validation suite was
+rerun in this worktree (reviewer-rerun provenance).
+
+#### Blocking
+
+None. Every load-bearing claim checked out:
+
+- Delivery state. PR #13 `Scout: require validation provenance in run artifacts`
+  (`feature/scout-validation-provenance-v2` -> `main`) is MERGED at
+  2026-06-06T19:27:48Z; merge commit `3a9f24c`. The four PR-introduced commits
+  `806d517..3a9f24c` are single-parent and linear with `74b9249` as the parent
+  of `806d517`, and `origin/feature/scout-validation-provenance-v2` (`710e2ce`)
+  is not an ancestor of `main` — consistent with the report's rebase-merge and
+  `74b9249..3a9f24c` claims. Post-merge `CI` run on `3a9f24c` is `success` at
+  2026-06-06T19:27:51Z, and both `Dispatch Skynet V2 Protocol Update` and
+  `Dispatch Skynet Data Protocol Update` are `success` on the same SHA/timestamp.
+- Traceability. All seven rows resolve: the cited test names sit at the cited
+  lines in `scout/tests/test_scout_runner.py` (186, 153, 92, 247, 312, 335,
+  286), and plan review passes 3 and 4 both record `#### Blocking: None` with an
+  `Overall judgment` of `Ready for closeout`.
+- Validation. Reviewer-rerun in this worktree reproduces the report exactly:
+  `python scripts/check_backlog.py` exit 0; `tests` 15 OK;
+  `structured-review/tests` 41 OK; `scout/tests` 15 OK; `compileall` clean;
+  `git diff --check` clean.
+- Mechanism lifecycle. `RUNNER_CHECK_PROVENANCE_TOKENS` and
+  `WRITE_ENABLED_BACKLOG_PROVENANCE_TOKEN` exist in
+  `scout/scripts/scout_runner.py` (lines 42-43) and gate
+  `require_validation_provenance`; owner/update-trigger/staleness-signal and the
+  syntactic-boundary caveat are accurate.
+- Stale-status scan. The five plan Status headers were each rewritten to
+  `historical - implemented and merged via PR #N (date)`, and the PR/date pairs
+  match GitHub: #9 (2026-06-04), #10 (2026-06-05), #11 (2026-06-05),
+  #12 (2026-06-06), #13 (2026-06-06). Each diff touches only the one-line
+  `Status:` header. A full sweep of `docs/agent_plans/*.md` shows no remaining
+  `Draft`/`in progress` header, so the scan is complete. `historical` matches the
+  status vocabulary documented in `docs/README.md`. The `docs/agent_plans/README.md`
+  index gained exactly the three missing entries the report names.
+- Post-merge wording. The closeout diff is docs-only (five plan headers, the
+  index, this report); `README.md`, `AGENTS.md`, `docs/README.md`,
+  `docs/CURRENT.md`, and `docs/backlog.yml` carry no stale merge-readiness or
+  lifecycle wording for this work, matching the "no changes required" claim. No
+  claim in this report becomes false once this PR merges.
+
+#### Non-blocking
+
+**N1. "Rerun ... at main (3a9f24c)" is a shorthand, not the literal worktree
+HEAD.** This worktree's HEAD is the closeout branch tip (`6f680e5`), three
+docs-only commits ahead of `3a9f24c`. Because those three commits touch only
+`docs/agent_plans/`, the code under test (`scout/`, `tests/`,
+`structured-review/`) is byte-identical to `3a9f24c`, so the rerun results are
+equivalent and the numbers reproduce. Accurate in substance; the phrasing just
+elides that the run happened on the closeout tip carrying the merged code
+unchanged. Optional: say "against the merged code state (`3a9f24c`), rerun from
+the closeout tip". Not gating.
+
+**N2. Fixing the four older plans' headers is scope-adjacent to a PR #13
+closeout, but defensibly placed and well-evidenced.** It broadens this PR from
+"PR #13 plan + report" to five plans + index + report. The report is transparent
+about it, frames it as the closeout stale-status scan (checklist 4.1), and each
+edit is a one-line header backed by a real merged PR — so I read this as correct
+scoping for a documentation-consistency pass rather than scope creep. Flagging
+only so the human/driver consciously owns the slightly wider blast radius; no
+change required.
+
+**N3. Provenance label wording.** The Validation section labels the rerun
+`driver-rerun`; the skill's canonical taxonomy is CI-backed / reviewer-rerun /
+driver-reported / human acceptance. The meaning is unambiguous (the driver reran
+the command set), so this is a wording nit, not an accuracy problem. This pass
+adds reviewer-rerun provenance on top.
+
+#### Overall judgment
+
+Ready to resume closeout. No blocking issues. The report's delivery-state,
+traceability, validation, mechanism-lifecycle, and stale-status-scan claims are
+accurate and complete against repo state, and the older-plan header fixes are
+correctly scoped and evidenced. N1-N3 are optional polish the driver may take or
+leave; none change merge readiness, which remains the human's call at the
+closeout gate.
+
+#### Residual risks / validation provenance
+
+- Validation provenance for this pass: reviewer-rerun (suite reproduced green in
+  this worktree) plus CI-backed (the same command set passed on `main` at
+  2026-06-06T19:27:51Z); delivery/merge facts confirmed against PR #13 metadata
+  and the commit graph.
+- Carried-forward and unchanged by this report: syntactic looseness and
+  `--mode`-keyed backlog checking (documented and accepted in the plan), and the
+  surviving remote feature branch (deletion is a human decision).
+- Downstream submodule-bump PRs are owned by the adopting repos' workflows; this
+  closeout verifies dispatch success only, as the report states.
