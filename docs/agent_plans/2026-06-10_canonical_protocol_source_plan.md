@@ -399,3 +399,42 @@ Both blocking threads accepted; the plan body is updated.
 
 Proceeding to implementation: both resolutions adopt the reviewer's own
 prescriptions, backed by fresh spike evidence recorded in Context.
+
+### Reviewer pass 4 (impl, codex reviewer)
+
+Human concern: the revised implementation must replace the rejected pointer/global-folder design with guard-enforced freshness, documented native skill mounts, direct-read fallback, clean README/AGENTS wording, exact self-mount symlinks, and matching AP-BL-0002/AP-BL-0003 closures.
+
+Repo state checked: `feature/canonical-source-docs`, clean worktree, ahead of `origin/main` by 10 commits. No local structured-review overlays were present.
+
+#### Blocking Issues
+
+**Thread 1 — The guard script sketch still does not show the accepted base-ref check.**
+
+The plan requires `agent-readiness/worktree-guard.md` to update the consumer script sketch to include “fetch, base-ref check, and link verification” (`docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md:102` and `docs/agent_plans/2026-06-10_canonical_protocol_source_plan.md:146`). The prose freshness section does state the right contract and shows `git worktree add ... origin/main` (`agent-readiness/worktree-guard.md:58`), but the reusable shell sketch at `agent-readiness/worktree-guard.md:157` only runs `git fetch origin`, then submodule and mount checks. It never creates the worktree from `origin/<default-branch>` and never verifies that an already-created feature worktree is based on the freshly fetched remote base.
+
+That leaves the copied script path able to pass after a stale local-branch worktree has already been created, which is the exact failure mode the revised plan is meant to close. Please make the script sketch either wrap worktree creation from a fetched `origin/<default-branch>` ref, or fail post-creation when the current branch is not based on the freshly fetched base.
+
+#### Non-Blocking Issues
+
+`docs/agent_plans/README.md` is changed in this branch but was not listed in the review artifacts. Its new entry still calls this the “per-agent pointer pattern plan,” which is stale first-design wording. Since it is outside the explicit artifact list I am not treating it as the core acceptance blocker, but it should be changed to “native skill mount” wording before closeout.
+
+#### Overall Judgment
+
+Not ready for closeout until the guard script sketch matches the accepted freshness/base-ref contract.
+
+Traceability against the accepted plan:
+
+- Live-doc stale path cleanup: Done. The negated greps for `~/.agent-protocols` and user-home absolute paths passed.
+- `worktree-guard.md`: Partial. Freshness prose, loud fetch failure, native mount contract, link verification, ordering, fallback, and validation cases are present; the script sketch is missing the base-ref/worktree-base part.
+- `agents-bootstrap-template.md`: Done. It reflects guard-before-use ordering, mount verification, native cataloging, and direct-read fallback.
+- `README.md` Canonical Source rewrite: Done. The final README/AGENTS pointer-language grep found only acceptable “no pointer files” and native mount wording.
+- `AGENTS.md` rewording: Done. The old main-checkout read-source wording is gone.
+- Self-mount symlinks: Done. Both `.claude/skills/` and `.agents/skills/` contain exactly the six expected entries, each a symlink to `../../<protocol>` with readable `SKILL.md`.
+- Backlog closures: Done. `AP-BL-0002` and `AP-BL-0003` use valid closed-item fields and match the revised decisions.
+- Historical dated plans: Done for dated historical plan files; only the current plan and plan index changed.
+
+Validation rerun passed: `python scripts/check_backlog.py`, all three unittest discovery commands, `python -m compileall -q structured-review scout scripts tests`, `git diff --check`, `git diff --check main...HEAD`, both negated greps, the positive `agent-protocols` grep, and the strict mount check. Live Claude Code and Codex discovery probes were supplied as validation context; I did not rerun those CLIs in this pass.
+
+#### Residual Risks Or Validation Gaps
+
+Consumer repo adoption remains deferred by plan, so closeout should avoid implying downstream repos already enforce freshness or mounts. The POSIX symlink assumption remains recorded and unchanged.
