@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-06-06
+Last updated: 2026-06-10
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to

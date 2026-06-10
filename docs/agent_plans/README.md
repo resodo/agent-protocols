@@ -28,3 +28,5 @@ responses, and closeout evidence for changes to this repo's protocols.
   provenance hardening plan.
 - `2026-06-10_scout_validation_provenance_closeout.md` - closeout report for
   the Scout validation provenance work (PR #13).
+- `2026-06-10_codex_reviewer_backend_plan.md` - Codex reviewer backend and
+  cross-vendor default runner plan.

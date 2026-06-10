@@ -1,6 +1,6 @@
 # Codex Reviewer Backend Plan
 
-Status: accepted plan - implementation in progress
+Status: historical - implemented via PR #15 (2026-06-10)
 Branch: `feature/codex-reviewer-backend`
 Worktree: `agent-protocols-codex-reviewer`
 
