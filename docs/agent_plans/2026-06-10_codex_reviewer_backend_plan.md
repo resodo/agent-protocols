@@ -213,3 +213,111 @@ by tests; both are faked, as today.
   malformed-line counter, and the last-message file keep text capture robust.
 
 ## Review Threads
+
+### Reviewer pass 1 (impl-plan, claude reviewer)
+
+Original concern: is this plan concrete enough to implement a Codex reviewer
+backend in the single-file runner without guessing, and does it keep the
+write/print verification contract sound?
+
+**Blocking issues**
+
+None. Goal, non-goals, spike-backed assumptions, acceptance, and validation are
+specific and executable; scope is right-sized to exactly two backends. The
+items below are non-blocking refinements, not gaps that block starting.
+
+**Non-blocking issues**
+
+1. Backend-abstraction seam for review-text capture is under-specified against
+   the current run loop. The enumerated registry interface (Proposed Design 1:
+   `argv`, `parse_line`, `version`, env markers) does not name where Codex's
+   documented text-capture behavior lives, and the existing loop is more
+   entangled with backend specifics than that interface implies:
+   - `run_claude` assembles `review_text` inline
+     (`structured-review/scripts/claude_structured_review.py:698`) and
+     *overwrites* `message_text_candidate` per line (`:684-685`, last-wins).
+     Codex must *accumulate* multiple `agent_message` items and then *prefer the
+     `--output-last-message` file* — a post-run step `parse_line` cannot do (it
+     sees one line and cannot read a file). Name this seam (for example a
+     backend `finalize(state, logs) -> review_text` hook) so the Claude path's
+     delta-preference / last-wins behavior stays byte-for-byte while Codex gets
+     accumulate-then-file.
+   - Existing unit tests call `csr.claude_argv(...)`,
+     `csr.process_stream_line(...)`, and `csr.claude_version(...)` by name
+     (`structured-review/tests/test_claude_structured_review.py:237,290,298,301,308,313,319`).
+     Acceptance says "full existing test suite keeps passing" and "Claude ...
+     byte-for-byte unchanged." A registry refactor that renames these breaks
+     those tests. State that these module-level helpers are preserved (wrapped
+     as the Claude backend) or that the affected tests are updated, so the
+     acceptance is not self-contradictory.
+
+2. Print-mode `--output-last-message` under `--sandbox read-only` is unverified.
+   Proposed Design 2 lists `--output-last-message` in the write-mode
+   (workspace-write) argv and says print mode is "same minus `--add-dir`, with
+   `--sandbox read-only`." If the sandboxed child writes that file, `read-only`
+   blocks the write; if the codex harness writes it post-sandbox, it is fine.
+   The spike covered workspace-write only. Pin whether print mode keeps
+   `--output-last-message`, and if so confirm it works under `read-only`, or
+   document the `agent_message` accumulation as the print-mode fallback. As
+   written this ambiguity forces an implementer to guess.
+
+3. A custom `--run-log-dir` can fall outside the Codex sandbox grant. The
+   default run-log dir lives under the git-dir (`:542-546`), which write-mode
+   `--add-dir <git-dir>` covers. But a caller-supplied `--run-log-dir` outside
+   the worktree and git-dirs is in neither `workspace-write` (cwd) nor
+   `--add-dir`, so the real sandbox would block
+   `--output-last-message <run-log-dir>/last-message.txt`. Existing tests pass
+   `--run-log-dir` to a temp path (`tests:558`), and a fake `codex` is not
+   sandboxed, so the fake-bin e2e cannot catch this. Add the run-log dir as an
+   `--add-dir` entry in write mode (or document `--output-last-message` as
+   best-effort with the `agent_message` fallback), and call out that the faked
+   bin masks real-sandbox-only failures.
+
+4. Metadata semantics under Codex. `write_metadata` records `model`, `effort`,
+   and `claude_version` (`:588-617`). On a Codex run, `--model`/`--effort`
+   default to `opus`/`xhigh` and are unused; recording them verbatim mislabels a
+   `gpt-5.5` run, and the `claude_version` key name is backend-specific.
+   Acceptance says metadata records "the backend and its version" but is silent
+   on these existing fields. Specify that metadata reflects the active backend's
+   model/effort/version (namespaced or backend-keyed) and whether the
+   `claude_version` key is preserved for backward compatibility or renamed.
+
+5. An `auto`-selected-but-unavailable backend should fail with an actionable
+   message. The no-silent-fallback property holds by construction: `auto`
+   resolves to exactly one backend from env markers and the design has no
+   substitution path, so the SKILL rule is enforceable as written. But Proposed
+   Design 3 crafts a helpful hard error only for the both-markers case; an
+   `auto`->codex resolution when `codex` is absent would surface as a raw
+   `FileNotFoundError` ("fails loudly" but not clearly, and without naming the
+   flag). Add a preflight availability check that mirrors the both-markers error
+   and instructs an explicit `--reviewer-backend`, plus a test — the test plan
+   currently omits this case.
+
+**Overall judgment**
+
+Ready for implementation. The plan is detailed, correctly scoped, and its
+acceptance and validation are executable by the next agent. The write contract
+is sound: `--add-dir <git-dir>` brings Codex to parity with the existing Claude
+`--permission-mode auto` path, which already has full git-dir write access and
+commits today, and `verify_write_mode` (`:443-478`) remains the single shared
+gate bounding the HEAD movement, single-commit, thread-file-only, append-only,
+no-local-path, and no-secret outcomes — so the `codex exec` exit-0-on-failure
+behavior does not weaken the gate. Keeping `--model`/`--effort` Claude-only
+while adding `--codex-*` is the right backward-compatibility call and preserves
+existing callers that pin `--model opus`. The cross-vendor `auto` rule
+(both-markers hard error, neither->claude) is coherent and reads the driver's
+own inherited env, not the reviewer child's. The non-blocking items above are
+clarity and edge-case tightenings.
+
+**Residual risks / validation gaps**
+
+- Git-dir side effects outside HEAD (refs, config, hooks, stash) are not
+  verified by `verify_write_mode` for either backend; unchanged from today,
+  parity preserved, acceptable.
+- The fake-`codex` e2e cannot exercise real sandbox semantics (read-only
+  writes, `--add-dir` scope, `--output-last-message` placement); those rest on
+  the spike's empirical claims at codex-cli 0.137.0 plus the print-mode
+  confirmation requested in item 2.
+- Token-usage recording (`turn.completed`) appears in the design and risks but
+  not in the acceptance criteria or the test list; if it is a contract, add
+  coverage, otherwise mark it best-effort.
