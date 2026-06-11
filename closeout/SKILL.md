@@ -1,6 +1,6 @@
 ---
 name: closeout
-description: Use at the end of an implementation, documentation, review, or phase task to make sure the work is actually finished: tests pass, human-facing behavior is checked, docs are consistent, git state is clean, and the next step is clear.
+description: "Use at the end of an implementation, documentation, review, or phase task to make sure the work is actually finished: tests pass, human-facing behavior is checked, docs are consistent, git state is clean, and the next step is clear."
 ---
 
 # Closeout
