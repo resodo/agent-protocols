@@ -72,3 +72,35 @@ closeout is the only failing file.
 - The regression test exists and runs in the default CI test discovery.
 
 ## Review Threads
+
+### Reviewer pass 1 (impl-plan, codex reviewer)
+
+Human concern: `closeout/SKILL.md` has frontmatter that strict YAML parsing rejects, causing Codex skill discovery to drop the closeout skill in consumer repos.
+
+#### Blocking issues
+
+No blocking issues.
+
+#### Non-blocking issues
+
+No non-blocking issues requiring a plan revision.
+
+#### Overall judgment
+
+Ready for implementation. The plan is narrowly scoped, identifies the exact failing field in `closeout/SKILL.md`, and keeps the implementation to a quote-only metadata fix plus a regression test in `tests/test_skill_frontmatter.py`.
+
+I checked the repo-visible assumptions behind the plan:
+
+- The branch is `feature/skill-frontmatter-yaml-fix`, based on `origin/main` at `c2fc951`, with a clean worktree and one plan commit ahead.
+- There are exactly six root protocol skill files matching `*/SKILL.md`.
+- `.github/workflows/ci.yml` installs `PyYAML` and runs `python -m unittest discover -s tests`, so the proposed test will run in existing CI without workflow changes.
+- A current strict `yaml.safe_load` scan fails only on `closeout/SKILL.md` with the same `mapping values are not allowed here` class of YAML error.
+- Existing root tests currently pass, so the new failure will be attributable to the planned regression test and frontmatter state.
+
+Implementation should not require guessing. The file to edit, the allowed edit shape, the test location, the path glob, the required assertions, and the validation commands are all specified.
+
+#### Residual risks or validation gaps
+
+The direct Codex skill-load check remains environment-dependent, but the plan explicitly calls out `yaml.safe_load` as the agreed proxy because the observed Codex failure is a YAML parse failure. That is sufficient for this bug fix plan.
+
+During implementation, the evidence should include both the pre-fix failing frontmatter check or failing new test and the post-fix passing `python -m unittest discover -s tests` run.
