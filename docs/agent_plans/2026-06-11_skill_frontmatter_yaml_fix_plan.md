@@ -104,3 +104,42 @@ Implementation should not require guessing. The file to edit, the allowed edit s
 The direct Codex skill-load check remains environment-dependent, but the plan explicitly calls out `yaml.safe_load` as the agreed proxy because the observed Codex failure is a YAML parse failure. That is sufficient for this bug fix plan.
 
 During implementation, the evidence should include both the pre-fix failing frontmatter check or failing new test and the post-fix passing `python -m unittest discover -s tests` run.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+Human concern: strict YAML parsing rejected `closeout/SKILL.md` frontmatter, causing Codex skill discovery to omit the closeout skill.
+
+#### Blocking issues
+
+No blocking issues.
+
+#### Non-blocking issues
+
+No non-blocking issues.
+
+#### Overall judgment
+
+Ready for closeout. The implementation matches the accepted plan exactly:
+
+- Done: `closeout/SKILL.md` quotes the existing `description` value only. The word diff shows no wording change beyond adding opening and closing quotes.
+- Done: `tests/test_skill_frontmatter.py` was added and scans every root `*/SKILL.md`, strict-parses the frontmatter with `yaml.safe_load`, requires non-empty string `name` and `description`, and requires `name` to match the protocol directory.
+- Done: The test would catch the original bug. I reproduced the parent-version strict YAML failure for `closeout/SKILL.md` at line 2, column 130, and the new test exercises that same parser path.
+- Done: Existing CI discovery picks up the new test through `.github/workflows/ci.yml` via `python -m unittest discover -s tests`.
+
+Reviewer-rerun validation passed:
+
+- `python -B -m unittest discover -s tests`: 18 tests passed.
+- `python -B -m unittest discover -s structured-review/tests`: 61 tests passed.
+- `python -B -m unittest discover -s scout/tests`: 15 tests passed.
+- `python -B scripts/check_backlog.py`: passed.
+- In-memory syntax compile for Python files under `structured-review` and `scout`: 4 files compiled.
+
+Branch/process checks:
+
+- Worktree is clean.
+- Branch is `feature/skill-frontmatter-yaml-fix`, ahead of `origin/main` by 3 commits.
+- Touched repo-visible files contain no local user-home absolute paths; the only secret-related scan hits are existing safety-rule text in `closeout/SKILL.md`.
+
+#### Residual risks or validation gaps
+
+Remote PR CI status was not checked in this reviewer pass. The exact bytecode-writing `python -m compileall -q structured-review scout` command remains driver-reported; I used a no-write in-memory compile check for the reviewer rerun.
