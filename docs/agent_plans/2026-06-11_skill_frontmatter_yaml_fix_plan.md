@@ -1,6 +1,6 @@
 # Skill Frontmatter YAML Fix Plan
 
-Status: active - implementation review resolved, PR pending human merge
+Status: historical - implemented and merged via PR #17 (2026-06-11)
 
 ## Human Concern
 
