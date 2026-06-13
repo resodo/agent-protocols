@@ -98,3 +98,28 @@ items:
       sufficient.
     refs:
       - structured-review/references/review-lenses.md
+
+  - id: AP-BL-0006
+    status: open
+    priority: P1
+    kind: bug
+    title: Fix structured-review runner false failure after committing review text
+    why: >
+      During the Skynet V2 Hot Watch driver-clarity gates on 2026-06-13, the
+      structured-review runner appended reviewer comments and created the
+      expected `structured-review:` commit, but then exited non-zero with
+      "review commit additions must be under a review-thread section". This
+      leaves agents in an ambiguous state where the review artifact is real and
+      committed, but the tool reports failure.
+    next: >
+      Reproduce the false failure with a fixture matching the Skynet V2 plan
+      artifact shape, then fix the runner's review-thread-section detection or
+      append placement so a valid committed review returns success. Add a
+      regression test covering the committed-review success path.
+    done_when: >
+      The runner succeeds when it appends valid review text under the accepted
+      review-thread location, still rejects additions outside review-thread
+      sections, and the regression is covered by structured-review tests.
+    refs:
+      - structured-review/scripts/claude_structured_review.py
+      - structured-review/tests/test_claude_structured_review.py
