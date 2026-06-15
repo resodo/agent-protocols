@@ -25,14 +25,16 @@ Two protocol gaps showed up during downstream use:
 3. Define structured-review runner wait discipline: small/medium reviews use a
    15-minute timeout by default, large reviews use 30 minutes by explicit
    timeout, and drivers must not kill the reviewer early just because no output
-   has appeared.
+   has appeared. Any outer shell/tool/agent wait budget must be at least the
+   runner timeout.
 4. Add focused tests for the runner timeout default and timeout behavior.
 
 ## Non-Goals
 
 - Do not change Scout runner schema or require overlays to declare active
   feature surfaces in this PR.
-- Do not auto-detect feature activity mechanically from churn alone.
+- Do not auto-detect feature activity mechanically from churn alone. Recent
+  churn is only one clue; it never proves active feature ownership by itself.
 - Do not change reviewer model defaults.
 - Do not change closeout or backlog-maintenance lifecycle state rules.
 - Do not re-open or rewrite downstream PRs; the downstream Hot Watch backlog PR
@@ -44,22 +46,50 @@ Two protocol gaps showed up during downstream use:
    - Add an active feature suppression rule under candidate rules.
    - Require Scout reports to classify suppressed active-surface cleanup as
      report-only and name the active owner/plan/backlog item when known.
+   - Define "active feature surface" as a maintained surface that is currently
+     being built, stabilized, rolled out, or acceptance-tested, not merely code
+     that is active/in use.
+   - Positive signals include a current plan, current map entry, active PR or
+     worktree, explicit human statement, active backlog/progress entry, recent
+     acceptance/rollout notes, or multiple recent commits tied to the same
+     still-open feature. If activity is plausible but not proven, suppress
+     cleanup/refactor/dead-helper candidates to report-only unless the finding
+     is safety/correctness/data-safety/production-risk/CI-blocking.
 2. Update Scout references:
    - `code-structure`: large/high-churn active feature surfaces are
-     suppressors for cleanup candidates, not automatic split candidates.
+     suppressors for cleanup candidates, not automatic split candidates. Make
+     the maintained-and-stable versus actively-being-built distinction explicit
+     so normal active code can still produce candidates.
    - `code-reachability-backend-python`: unused helpers/payload residue inside
-     active feature surfaces are report-only unless safety/correctness/blocker.
+     active feature surfaces are report-only unless safety, correctness,
+     data-safety, production-risk, CI-blocking, or explicit human direction
+     applies.
    - `script-lifecycle`: active rollout/operator scripts are report-only until
-     the rollout stabilizes unless they pose safety or CI risk.
+     the rollout stabilizes unless safety, correctness, data-safety,
+     production-risk, CI-blocking, or explicit human direction applies.
    - `document-structure`: active plans can be long and messy while they are
      carrying current work; structure cleanup candidates should wait until the
-     active phase stabilizes unless the document is misleading agents today.
+     active phase stabilizes unless the document is misleading agents today or
+     the canonical override list applies.
+   - State that suppressed report-only observations are re-evaluated by later
+     Scout runs after the active signals fade; suppression is deferral, not
+     permanent dismissal.
 3. Update `structured-review/SKILL.md`:
    - Add timeout sizing guidance: 900 seconds for small/medium review gates,
      1800 seconds for large review gates.
    - State that once the driver invokes the runner with a timeout, it must wait
      for completion, timeout, or external interruption; no early kill for
      impatience/no-output.
+   - Define external interruption narrowly as a human stop request, OS/process
+     signal, infrastructure failure, or session/tool crash. A driver-chosen
+     outer timeout shorter than the runner timeout is not an external
+     interruption; it violates the protocol.
+   - Require the outer `exec`/shell/tool wait budget to be greater than or equal
+     to the runner's `--timeout-sec` plus enough buffer for process teardown and
+     metadata writing.
+   - Give large-review heuristics: multi-file implementation reviews, broad
+     protocol changes, production/runtime/deploy reviews, or review artifacts
+     above roughly 1,000 lines should use `--timeout-sec 1800`.
 4. Update `structured-review/scripts/claude_structured_review.py`:
    - Change default timeout from 1800 to 900 seconds.
    - Make the start log include `timeout_sec` so the intended wait budget is
@@ -67,8 +97,10 @@ Two protocol gaps showed up during downstream use:
    - Keep the existing process kill only at actual timeout.
 5. Update `structured-review/tests/test_claude_structured_review.py`:
    - Assert the default timeout is 900 seconds.
-   - Assert the runner waits for a quiet reviewer until it exits before the
-     timeout instead of treating silence as failure.
+   - Add a quiet-reviewer regression test with a small heartbeat, modest sleep,
+     and generous timeout, proving silence is not failure before timeout.
+   - Assert `timeout_sec` appears in the reviewer start log.
+   - Add a cheap SKILL prose assertion for the outer wait-budget rule.
 6. Update indexes if needed:
    - `docs/CURRENT.md` only if runner behavior or reference map changes in a
      way the current map must mention. The likely change is not needed because
@@ -83,6 +115,11 @@ Two protocol gaps showed up during downstream use:
 - `git diff --check`
 - `python scripts/check_backlog.py`
 
+The Scout-side change is primarily prose/reference behavior. The tests above
+validate unchanged runner mechanics and skill frontmatter, but Scout active
+feature suppression itself is validated by review of the edited `SKILL.md` and
+reference prose.
+
 ## Acceptance
 
 - Scout instructions make active feature cleanup/refactor/dead-helper findings
@@ -92,6 +129,8 @@ Two protocol gaps showed up during downstream use:
 - Runner default timeout is 15 minutes, while large reviews can use 30 minutes
   through `--timeout-sec 1800`.
 - Tests cover the changed timeout default and quiet-reviewer wait behavior.
+- Historical dated plans that mention the old 30-minute default are left as
+  historical provenance; no current index encodes that value.
 
 ## Review Threads
 
@@ -179,3 +218,23 @@ Not yet ready for implementation. The timeout half is mostly sound and accuratel
 ---
 
 I have not written to any file or committed; per the runner contract the above is returned for append under `## Review Threads`. The worktree is clean and the baseline suite is green (105 passed), so the implementer starts from a known-good state.
+
+### Driver response 1
+
+Accepted Threads 1 and 2 as blocking. The plan now defines active feature
+surfaces with positive evidence signals, states that plausible-but-unproven
+activity suppresses cleanup/refactor/dead-helper candidates to report-only by
+default, and distinguishes maintained active code from actively-being-built
+feature work.
+
+Accepted Threads 3 through 5. The plan now uses one canonical override list
+across Scout references, adds domain-specific document wording without dropping
+the canonical list, and states that later Scout runs re-evaluate suppressed
+report-only observations after active signals fade.
+
+Accepted Threads 6 through 8. The plan now records that the default reduction to
+900 seconds is intentional, gives large-review heuristics for `--timeout-sec
+1800`, frames the quiet-reviewer test as a regression guard, adds explicit
+timeout-start-log and SKILL prose assertions, and calls out that Scout-side
+suppression is prose/review validated rather than mechanically proven by the
+runner tests.
