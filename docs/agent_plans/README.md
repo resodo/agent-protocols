@@ -32,5 +32,5 @@ responses, and closeout evidence for changes to this repo's protocols.
   cross-vendor default runner plan.
 - `2026-06-10_canonical_protocol_source_plan.md` - canonical protocol source
   rule, guard freshness, and native skill mount plan.
-- `2026-06-15_scout_structure_subskills_plan.md` - draft plan for the
+- `2026-06-15_scout_structure_subskills_plan.md` - implementation plan for the
   `document-structure` and `code-structure` Scout subskills.
