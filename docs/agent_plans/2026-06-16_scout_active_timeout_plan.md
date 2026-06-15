@@ -238,3 +238,49 @@ Accepted Threads 6 through 8. The plan now records that the default reduction to
 timeout-start-log and SKILL prose assertions, and calls out that Scout-side
 suppression is prose/review validated rather than mechanically proven by the
 runner tests.
+
+Verified. The runner-side facts that the plan and Thread 2's resolution depend on still hold:
+- `DEFAULT_TIMEOUT_SEC = 1800` at line 29 (the change target).
+- The kill at lines 855-858 fires only on total elapsed time (`now - started > config.timeout_sec`); silence only emits a heartbeat (lines 862-863) — so the early-kill cannot originate in the runner, confirming the outer-wait sizing rule is the right fix.
+- The stderr start log (lines 830-833) does omit `timeout_sec` (it appears only in the metadata JSON at line 793), so step 4's "make the start log include `timeout_sec`" targets a real gap.
+
+Both blocking threads are resolved and no new blockers were introduced. Here is my review for append.
+
+---
+
+### Reviewer pass 2 (impl-plan, claude reviewer)
+
+Re-review scope: driver response 1 and the revised plan body only — specifically whether blocking Threads 1 and 2 are resolved and whether the delta introduced any new blocker. I re-read the commit `09acb8b` diff and re-verified the runner facts the timeout fix depends on.
+
+#### Thread 1 — Resolved
+
+The revised plan now closes the load-bearing gap. Step 1 adds a single canonical definition ("a maintained surface that is currently being built, stabilized, rolled out, or acceptance-tested, not merely code that is active/in use"), an enumerated positive-signal list (current plan, current map entry, active PR/worktree, explicit human statement, active backlog/progress entry, recent acceptance/rollout notes, or multiple recent commits tied to the same still-open feature), and — critically — the default for the uncertain case: "If activity is plausible but not proven, suppress cleanup/refactor/dead-helper candidates to report-only." That plausible-but-unproven default is what saves the motivating example I flagged in pass 1: even when the Hot Watch surface had no plan or backlog item yet at scan time, plausible activity still routes the finding to report-only, so the rule catches the case it was written for. Both halves I asked for — (1) the positive-signal list and (2) the uncertain-case default — are present. Resolved.
+
+#### Thread 2 — Resolved
+
+The wait-discipline loophole is now closed on both axes. Step 3 narrows "external interruption" to "a human stop request, OS/process signal, infrastructure failure, or session/tool crash" and explicitly states "a driver-chosen outer timeout shorter than the runner timeout is not an external interruption; it violates the protocol" — removing the self-justifying escape hatch. It also adds the actionable rule that was missing: "Require the outer `exec`/shell/tool wait budget to be greater than or equal to the runner's `--timeout-sec` plus enough buffer for process teardown and metadata writing," reinforced in Goal 3. This is grounded correctly: I re-confirmed the runner kills only on total elapsed time and never on silence, so sizing the driver's outer wait `>=` the runner timeout is precisely the lever that prevents the reported early-kill. Resolved.
+
+#### New blockers — None
+
+The delta is additive prose clarification and introduces no contradictions with the runner code or with the rest of the plan. The runner-side claims the plan asserts (default `1800` → `900`; start log currently omits `timeout_sec`; kill only at actual timeout) all still match the script. No new blocking issue.
+
+#### Non-blocking observations on the delta (carry into implementation, not gates)
+
+1. Goal 3 states the outer budget must be "at least the runner timeout," while step 3 states "`>=` runner `--timeout-sec` plus enough buffer." These are not contradictory — step 3 is the precise rule and Goal 3 the floor — but the implementer should treat step 3 (`>=` timeout + teardown buffer) as the operative wording so the SKILL prose doesn't ship the looser Goal-3 phrasing as the rule.
+
+2. Driver response 1 says the plan now "uses one canonical override list across Scout references," but in step 2 the `code-structure` bullet still does not restate the safety/correctness/data-safety/production-risk/CI-blocking list. That is defensible — the canonical override now lives once in the central step-1 SKILL rule, and `code-structure`'s bullet is about split-candidate suppression where the maintained-vs-being-built distinction is the operative concept — but the implementer should not read the response summary as requiring the full list pasted into `code-structure`. Worth a one-line steer in the prose so the four references point back to the single SKILL definition rather than each re-deriving it (which is the divergence Thread 1 was guarding against).
+
+These are tightening notes only; neither blocks implementation.
+
+#### Overall judgment
+
+Ready for implementation. Both blocking threads from pass 1 (the undefined "active feature surface" concept, and the wait-discipline loophole that left the early-kill failure intact) are resolved in the plan body, and the non-blocking threads 3-8 were folded in. The central Scout definition is now single-sourced with an explicit uncertain-case default, and the timeout fix names the actual mechanism (outer wait `>=` runner timeout) instead of only asking the driver to "be patient." The two carry-forward notes above are for the implementing agent to honor, not gates.
+
+#### Residual risks
+
+- Scout-side acceptance remains prose/review-validated with no executable check (acknowledged in the plan's Validation note); correctness depends on the implementer keeping the four references consistent with the single step-1 definition rather than restating it divergently.
+- The default-timeout reduction (1800 → 900) still shifts dev-tooling runtime posture: an under-sized long review now fails at 15 minutes and discards partial output. The plan records this as intentional and adds the large-review heuristic; flag it for explicit human confirmation at implementation since it changes runtime behavior, not just prose.
+
+---
+
+I have not written to any file or committed; per the runner contract the above is returned for append under `## Review Threads`.
