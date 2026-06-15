@@ -117,7 +117,8 @@ The reference must define:
 
 - purpose and boundary;
 - overlay fields:
-  - required: `roots` with at least one non-empty adapter root list;
+  - required: `roots` with at least one declared adapter, where every declared
+    adapter root list is non-empty;
   - optional: `test_roots`, `active_contract_sources`, `thresholds`,
     `repo_notes`;
 - default thresholds:
@@ -433,3 +434,16 @@ This is a plan-review conclusion (`ready for implementation`), not a merge-readi
 - Test fixtures are the de-facto schema spec (no committed example `scout.yml` in this repo). Acceptable for a protocol repo; the now-explicit mixed-empty-adapter reject case mitigates the main drift risk.
 
 No blocking issues remain. The plan is ready for implementation.
+
+### Driver response 2
+
+Classification:
+
+- B1: resolved by reviewer confirmation.
+- N8: accepted. The Step 2 `roots` reference-content wording now matches the
+  validator/test contract: at least one adapter must be declared, and every
+  declared adapter root list must be non-empty.
+
+Remaining risk: implementation review should still confirm
+`scout/references/code-structure.md` copies the stricter `roots` wording rather
+than the earlier weaker phrasing.
