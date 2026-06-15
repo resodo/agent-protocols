@@ -22,6 +22,8 @@ except ImportError as exc:  # pragma: no cover - exercised by environment, not l
 SUBSKILL_REFERENCES = {
     "script-lifecycle": Path("references/script-lifecycle.md"),
     "code-reachability": Path("references/code-reachability-backend-python.md"),
+    "document-structure": Path("references/document-structure.md"),
+    "code-structure": Path("references/code-structure.md"),
 }
 CORE_FIELDS = (
     "version",
@@ -49,6 +51,17 @@ SUBSKILL_SUBHEADINGS = (
     "#### Ignored Noise",
     "#### Inconclusive Items",
 )
+DOCUMENT_STRUCTURE_THRESHOLDS = (
+    "index_review_lines",
+    "doc_review_lines",
+    "doc_large_lines",
+)
+CODE_STRUCTURE_ADAPTERS = ("python", "typescript_react")
+CODE_STRUCTURE_THRESHOLDS = {
+    "python": ("review_lines", "large_lines", "script_review_lines"),
+    "typescript_react": ("review_lines", "large_lines", "route_large_lines"),
+    "shared": ("churn_since_days", "high_churn_commits"),
+}
 
 
 class RunnerError(RuntimeError):
@@ -92,6 +105,45 @@ def require_string_list(value: Any, label: str, *, non_empty: bool = False) -> l
     for index, item in enumerate(raw):
         require_string(item, f"{label}[{index}]")
     return list(raw)
+
+
+def require_positive_int(value: Any, label: str) -> None:
+    if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+        raise RunnerError(f"{label} must be a positive integer")
+
+
+def validate_known_thresholds(raw: Any, label: str, fields: tuple[str, ...]) -> None:
+    thresholds = require_mapping(raw, label)
+    for field in fields:
+        if field in thresholds:
+            require_positive_int(thresholds[field], f"{label}.{field}")
+
+
+def require_adapter_roots(raw: Any, label: str) -> dict[str, list[str]]:
+    adapters = require_mapping(raw, label)
+    if not adapters:
+        raise RunnerError(f"{label} must declare at least one adapter")
+    parsed: dict[str, list[str]] = {}
+    for adapter, roots in adapters.items():
+        if adapter not in CODE_STRUCTURE_ADAPTERS:
+            raise RunnerError(f"{label}.{adapter} is not a supported adapter")
+        parsed[adapter] = require_string_list(roots, f"{label}.{adapter}", non_empty=True)
+    return parsed
+
+
+def validate_adapter_string_lists(raw: Any, label: str) -> None:
+    adapters = require_mapping(raw, label)
+    for adapter, values in adapters.items():
+        if adapter not in CODE_STRUCTURE_ADAPTERS:
+            raise RunnerError(f"{label}.{adapter} is not a supported adapter")
+        require_string_list(values, f"{label}.{adapter}")
+
+
+def validate_code_structure_thresholds(raw: Any, label: str) -> None:
+    thresholds = require_mapping(raw, label)
+    for category, fields in CODE_STRUCTURE_THRESHOLDS.items():
+        if category in thresholds:
+            validate_known_thresholds(thresholds[category], f"{label}.{category}", fields)
 
 
 def validate_version_pin(value: str, label: str) -> None:
@@ -190,6 +242,40 @@ def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
                 require_string_list(vulture["ignore_decorators"], "subskills.code-reachability.python.vulture.ignore_decorators")
             if "ignore_names" in vulture:
                 require_string_list(vulture["ignore_names"], "subskills.code-reachability.python.vulture.ignore_names")
+
+    if "document-structure" in enabled:
+        document = require_mapping(subskills["document-structure"], "subskills.document-structure")
+        require_string_list(document.get("entry_docs"), "subskills.document-structure.entry_docs", non_empty=True)
+        require_string_list(document.get("index_docs"), "subskills.document-structure.index_docs")
+        require_string_list(document.get("doc_roots"), "subskills.document-structure.doc_roots", non_empty=True)
+        if "archive_paths" in document:
+            require_string_list(document["archive_paths"], "subskills.document-structure.archive_paths")
+        if "thresholds" in document:
+            validate_known_thresholds(
+                document["thresholds"],
+                "subskills.document-structure.thresholds",
+                DOCUMENT_STRUCTURE_THRESHOLDS,
+            )
+        if "repo_notes" in document:
+            require_string(document["repo_notes"], "subskills.document-structure.repo_notes")
+
+    if "code-structure" in enabled:
+        structure = require_mapping(subskills["code-structure"], "subskills.code-structure")
+        require_adapter_roots(structure.get("roots"), "subskills.code-structure.roots")
+        if "test_roots" in structure:
+            validate_adapter_string_lists(structure["test_roots"], "subskills.code-structure.test_roots")
+        if "active_contract_sources" in structure:
+            require_string_list(
+                structure["active_contract_sources"],
+                "subskills.code-structure.active_contract_sources",
+            )
+        if "thresholds" in structure:
+            validate_code_structure_thresholds(
+                structure["thresholds"],
+                "subskills.code-structure.thresholds",
+            )
+        if "repo_notes" in structure:
+            require_string(structure["repo_notes"], "subskills.code-structure.repo_notes")
 
     backlog = repo_path(repo_root, repo_context["backlog_path"], "repo_context.backlog_path")
     if not backlog.exists():
