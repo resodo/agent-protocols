@@ -284,3 +284,79 @@ Ready for implementation. Both blocking threads from pass 1 (the undefined "acti
 ---
 
 I have not written to any file or committed; per the runner contract the above is returned for append under `## Review Threads`.
+
+I now have everything I need. The implementation commit (`7f4e06c`) touches exactly the planned files plus a benign self-index entry in `docs/agent_plans/README.md`; the runner diff is precisely the two intended changes with the kill logic untouched; the full suite is green (105 → 109, matching the four planned tests); backlog and `git diff --check` are clean; and `docs/CURRENT.md` is untouched and does not encode the timeout.
+
+Here is my complete review thread for append under `## Review Threads`.
+
+---
+
+### Reviewer pass 1 (impl, claude reviewer)
+
+Human's concern, restated: the committed work should match the accepted plan — Scout must route cleanup/refactor/dead-helper findings on actively-built feature surfaces to report-only by default, and the structured-review runner/SKILL must encode wait discipline (900s default, 1800s for large reviews, outer wait budget ≥ runner timeout, no early kill) — with tests covering the changed behavior and no regressions.
+
+I inspected all nine artifacts in the commit, the runner diff, `docs/CURRENT.md`, and ran the plan's full validation set before judging. The plan reached "Ready for implementation" at reviewer pass 2; my job here is plan-to-implementation traceability plus regression and consistency checks.
+
+#### Validation provenance (reviewer-rerun)
+
+- `python -m pytest` → 109 passed (baseline was 105; the +4 are exactly the planned step-5 tests).
+- `python -m pytest structured-review/tests/test_claude_structured_review.py scout/tests/test_scout_runner.py tests/test_skill_frontmatter.py` → 94 passed.
+- `git diff --check` → clean. `python scripts/check_backlog.py` → exit 0. Worktree clean.
+- `docs/CURRENT.md` unchanged and carries no timeout value; the only live `1800` references are the new `--timeout-sec 1800` large-review guidance in `structured-review/SKILL.md` and its test, which is intended.
+
+#### Traceability against the accepted plan
+
+| Plan item | Status | Evidence |
+|---|---|---|
+| 1. Active-feature suppression rule in `scout/SKILL.md` under Candidate Rules | Done | `scout/SKILL.md:90-114` (`### Active Feature Suppression`) |
+| 1. Classify suppressed cleanup as report-only; name owner/plan/backlog/uncertainty | Done | `scout/SKILL.md:107-110` |
+| 1. Define "active feature surface" vs ordinary active code | Done | `scout/SKILL.md:96-99` |
+| 1. Positive-signal list + plausible-but-unproven default | Done | `scout/SKILL.md:101-105` (signals match plan verbatim; "plausible unresolved activity is enough to suppress") |
+| 2. `code-structure`: suppressor not auto-split; maintained-vs-being-built distinction explicit | Done | `code-structure.md:140-146`, `166-168` |
+| 2. `code-reachability`: unused helpers/payload residue report-only unless override | Done | `code-reachability-backend-python.md:105-110` |
+| 2. `script-lifecycle`: active rollout/operator scripts report-only unless override | Done | `script-lifecycle.md:79-83` |
+| 2. `document-structure`: active plans may be long/messy; wait unless misleading-today or override | Done | `document-structure.md:97-103` |
+| 2. Suppression is deferral; later runs re-evaluate after signals fade | Done | `scout/SKILL.md:110`; restated in `code-structure.md:167-168` |
+| 3. SKILL timeout sizing 900 / 1800 | Done | `structured-review/SKILL.md:131-134` |
+| 3. Must wait for completion/timeout/external interruption; no early kill | Done | `structured-review/SKILL.md:136-146` |
+| 3. Narrow "external interruption"; outer-timeout-shorter is a violation | Done | `structured-review/SKILL.md:138-144` |
+| 3. Outer wait budget ≥ `--timeout-sec` + teardown buffer | Done | `structured-review/SKILL.md:141-143` |
+| 3. Large-review heuristics | Done | `structured-review/SKILL.md:132-134` |
+| 4. Default timeout 1800 → 900 | Done | `claude_structured_review.py:29` |
+| 4. Start log includes `timeout_sec` | Done | `claude_structured_review.py:831` |
+| 4. Kill only at actual timeout | Done | `claude_structured_review.py:855-865` (silence → heartbeat only); diff leaves the kill loop untouched |
+| 5. Assert default timeout 900 | Done | `test_...py:250-255` |
+| 5. Quiet-reviewer regression test | Done | `test_...py:638-684` |
+| 5. Assert `timeout_sec` in start log | Done | `test_...py:596-636` |
+| 5. SKILL prose assertion for outer-wait rule | Done | `test_...py:295-302` |
+| 6. `docs/CURRENT.md` only if needed (not needed) | Done | unchanged; benign self-index entry added in `docs/agent_plans/README.md` |
+
+Every in-scope plan item is Done with concrete evidence. No item is Missing, Partial, or silently deferred.
+
+#### Blocking issues
+
+None. The implementation faithfully matches the accepted plan, both blocking threads from the plan review (the undefined "active feature surface" concept and the wait-discipline loophole) are realized in the committed prose, and the runner change is exactly the two intended lines with no collateral edit to the kill loop.
+
+#### Non-blocking observations
+
+1. The canonical-override consistency is now *better* than reviewer pass 2 anticipated, and that is the right call. Pass-2 note 2 expected `code-structure` to lean on the central SKILL definition without restating the list; the implementer instead carried the full `safety/correctness/data-safety/production-risk/CI-blocking/explicit-human-direction` override into all four references (`code-structure.md:144-146`, `code-reachability-backend-python.md:109-110`, `script-lifecycle.md:82-83`, `document-structure.md:101-103`). This makes driver-response-1's claim that the plan "uses one canonical override list across Scout references" literally true in the code, and it closes Thread 1's divergence risk by construction rather than by cross-reference. No change needed; flagging only so the consistency is on the record.
+
+2. The quiet-reviewer test (`test_...py:638-684`) carries a small real wall-clock dependency: fake reviewer sleeps 0.2s, `--heartbeat-sec 1`, `--timeout-sec 3`, asserting elapsed ≥ 0.15s and `not timed_out`. The 15× timeout margin matches the plan's accepted "modest sleep, generous timeout" design and the lower-bound assertion is safe, so I do not consider it flaky in practice. One honest limitation: because the sleep (0.2s) is under the heartbeat (1s), this test exercises the wait-and-finish path but not the heartbeat-emission path; that is acceptable since the test's stated purpose is "waits for a quiet reviewer before timeout," which it proves. If a future change wants heartbeat coverage too, a clock-injectable loop would remove the wall-clock entirely — not needed now.
+
+3. `docs/agent_plans/README.md` gained a two-line index entry for this plan. It is related housekeeping, not scope drift, and does not mix unrelated changes into the commit. Fine.
+
+#### Overall judgment
+
+Ready for closeout. The committed implementation is a complete and faithful realization of the accepted plan: the Scout half single-sources the "active feature surface" definition in `scout/SKILL.md` and applies it consistently across all four references with the full canonical override list, and the timeout half names the real mechanism (outer wait ≥ runner timeout, narrow "external interruption") rather than only asking the driver to be patient. The runner change is minimal and correct, tests cover every changed behavior the plan promised, and the full suite, backlog checker, and whitespace check are green. No blocking mismatches or regressions.
+
+Per the skill's boundary rule, this is an implementation-review readiness conclusion; final merge-readiness remains a closeout decision after final rechecks and the human's authority.
+
+#### Residual risks and validation gaps
+
+- Scout-side suppression is prose/review-validated only — there is no executable test asserting the reference behavior, which the plan explicitly acknowledges. I mitigated this by reading all four references plus the central SKILL rule and confirming they are mutually consistent and aligned to the single definition; correctness now depends on future edits keeping that consistency.
+- The default-timeout reduction (1800 → 900) shifts dev-tooling runtime posture: an under-sized long review now fails at 15 minutes and discards partial output. The plan records this as intentional with a large-review heuristic; it remains a behavior change worth the human keeping in view, not a defect.
+- The quiet-reviewer test's small wall-clock component (non-blocking item 2) is a low residual flakiness risk under extreme CI load only.
+
+---
+
+I have not written to any file or committed; per the runner contract the above is returned for append under `## Review Threads`.
