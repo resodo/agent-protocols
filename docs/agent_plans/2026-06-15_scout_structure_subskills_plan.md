@@ -508,3 +508,18 @@ No blocking issues. The implementation faithfully realizes the accepted plan and
 ---
 
 人话总结：实现和已通过评审的计划完全对得上。两个新参考文档（document-structure、code-structure）、SKILL 路由、runner 的 overlay 校验、测试、索引（CURRENT.md）这六个文件都改对了，没有多动 README 或 AGENTS.md，计划记录也没重复添加。之前计划评审里唯一的阻塞点 B1（roots 里部分适配器为空时怎么处理）已经按"每个声明的适配器都必须非空"落实到校验代码，并有对应的拒绝测试;N1-N8 全部体现在代码里。我重新跑了计划要求的全部校验：单测 105 全过、`git diff --check` 干净、backlog 检查通过、工作区干净。没有阻塞问题，只有一个无关痛痒的小提示（一个校验函数的返回值没被用到，纯属多余，不影响行为）。结论：可以进入 closeout。注意这只是实现评审结论，分支/PR、CI、最终复查仍归 closeout 处理。
+
+### Driver response 3
+
+Classification:
+
+- Implementation review: accepted. No blocking issues remain.
+- N9: accepted as no-action. `require_adapter_roots` returning the parsed map is
+  harmless and mirrors existing validation-helper style where callers may use a
+  helper for raised-error side effects. It does not affect behavior or
+  acceptance.
+
+Validation provenance remains reviewer-rerun plus driver-reported local checks:
+`python -m pytest scout/tests/test_scout_runner.py`, `python -m pytest
+tests/test_skill_frontmatter.py`, `python -m pytest`, `git diff --check`, and
+`python scripts/check_backlog.py` all passed in this worktree.
