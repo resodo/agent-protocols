@@ -447,3 +447,64 @@ Classification:
 Remaining risk: implementation review should still confirm
 `scout/references/code-structure.md` copies the stricter `roots` wording rather
 than the earlier weaker phrasing.
+
+I have everything I need. The implementation is complete and faithful to the accepted plan, all validation passes. Here is my implementation review thread to be appended.
+
+---
+
+### Reviewer pass 3 (impl, claude reviewer)
+
+Restating the focus in one sentence: compare the committed implementation (`4910e8e scout: add structure subskill protocols`) against the accepted Scout structure subskills plan — references, runner overlay validation, tests, indexes, and validation evidence — and surface any blocker before closeout.
+
+I reviewed the implementation diff (`4910e8e`) file by file against the plan body and the resolved review threads (B1, N1–N8), then ran the plan's full validation suite. The commit touches exactly the six files the plan named — `scout/references/document-structure.md`, `scout/references/code-structure.md`, `scout/SKILL.md`, `scout/scripts/scout_runner.py`, `scout/tests/test_scout_runner.py`, `docs/CURRENT.md` — and nothing else; `README.md` and `AGENTS.md` are untouched, matching Step 6's "only if needed" / "no AGENTS.md change" notes.
+
+#### Blocking issues
+
+None. The implementation matches the accepted plan, all five validation commands pass, and every resolved review thread is reflected in the committed code.
+
+#### Plan-to-implementation traceability
+
+| Plan item | Status | Evidence |
+| --- | --- | --- |
+| Step 1 — `document-structure.md` (purpose/boundary, overlay fields, default thresholds, hints note, evidence loop, admission, report-only/ignore) | Done | `scout/references/document-structure.md` — required `entry_docs`/`index_docs`/`doc_roots` (L19-24), optional fields (L26-30), thresholds 400/800/1200 (L32-36), hints note (L38-40), 8-step evidence loop (L42-58), admission (L84-95), report-only/ignore (L110-122) |
+| Step 2 — `code-structure.md` (purpose/boundary, overlay fields, thresholds, Python + TS/React evidence, admission, report-only/ignore) | Done | `scout/references/code-structure.md` — purpose/boundary (L6-20), required `roots` + adapters (L24-33), optional fields (L34-41), thresholds (L43-55), hints note (L57-59), Python evidence (L81-94), TS/React evidence (L96-111), admission (L129-138), report-only/ignore (L155-167) |
+| Step 3 — SKILL.md routing | Done | `scout/SKILL.md` — both subskills listed in Subskills section (L132-133), adapters-in-one-section note (L139-142), runner-does-not-scan-in-v1 note (L154-156) |
+| Step 4 — overlay validation (option (a) `roots`, lenient thresholds, `test_roots` adapter keys) | Done | `scout_runner.py` — reference map (L24-27 of diff), `require_adapter_roots` rejects empty map/unknown adapter/empty declared root via `non_empty=True` (L122-131), `validate_adapter_string_lists` for `test_roots` (L134-139), `validate_code_structure_thresholds` nested by category (L142-146), `validate_known_thresholds` checks only known fields (L115-119); `document-structure`/`code-structure` blocks gated on `if "<subskill>" in enabled` (L243-279 of diff). No scan commands added. |
+| Step 5 — tests (all-four variant, doc-structure rejects, code-structure rejects incl. mixed empty-adapter, skeleton headings) | Done | `test_scout_runner.py` — separate `overlay_with_structure_subskills` helper (not mutating base `overlay()`); 11 new tests incl. `test_code_structure_rejects_declared_empty_adapter_roots` (the B1 mixed case), unknown-adapter for `roots` and `test_roots`, malformed thresholds, empty-index allowed, and `### document-structure`/`### code-structure` skeleton assertions |
+| Step 6 — indexes (CURRENT.md, no README/agent_plans duplication) | Done | `docs/CURRENT.md` reference map lists all four references; `docs/agent_plans/README.md` record count = 1 (no duplicate); root `README.md`/`AGENTS.md` unchanged |
+
+Validation evidence (reviewer-rerun, this worktree):
+- `python -m pytest scout/tests/test_scout_runner.py tests/test_skill_frontmatter.py` → 29 passed.
+- `python -m pytest` → 105 passed.
+- `git diff --check` → clean.
+- `python scripts/check_backlog.py` → exit 0.
+- `git status` → working tree clean.
+
+Resolved-thread carry-through confirmed:
+- **B1 / N8 (the one plan blocker and its prose residual):** the validator pins option (a) — `require_adapter_roots` requires a non-empty map, rejects unknown adapters, and applies `non_empty=True` per declared adapter — and `code-structure.md:26-27` now states "at least one declared adapter. Every declared adapter root list must be non-empty. Declare only adapters you actually scan," matching the validator rather than the earlier looser wording. The mixed case `{python: [], typescript_react: [...]}` is encoded as a reject test. Closed.
+- **N1 (lenient thresholds):** `validate_known_thresholds` only validates listed fields; the accept fixture deliberately carries unknown keys (`future_threshold` inside `python`, an entire `future_adapter` category, `future_threshold` in document thresholds) and still validates, proving unknown-key leniency with positive evidence. The malformed-threshold tests prove known fields are checked (rejects `0` and `"many"`).
+- **N2/N3/N4/N5/N6/N7:** `index_docs` required-but-may-be-empty (test present); separate all-four overlay variant protects the Slice-1 exact-list assertion; `test_roots` adapter keys restricted to the supported set (test present); no duplicate `agent_plans/README.md` record; both references carry the thresholds-are-hints note; `code-structure.md:16-20` records the frontend-as-adapter vs reachability-as-separate-extension rationale.
+
+#### Non-blocking issues
+
+**Thread N9 — `require_adapter_roots` return value is unused (trivial).**
+
+`require_adapter_roots` builds and returns `parsed: dict[str, list[str]]` (scout_runner.py:126-131), but the only caller (`subskills.code-structure.roots`) discards the return value — validation is purely a side effect. This is harmless and mirrors `require_string_list`, which is likewise sometimes called for its raised-error side effect only; no behavior depends on it. Not worth a change on its own. If a future revision touches this function, the return type and `parsed` accumulation could be dropped to `-> None` for symmetry with the other `validate_*` helpers. No action required for closeout.
+
+#### Overall judgment
+
+The implementation is ready for closeout. It tracks the accepted plan item-for-item with concrete evidence, the runner change is correctly minimal and additive (per-subskill validation gated on `enabled`, `CORE_FIELDS` and existing overlays untouched, no scan helpers), the report/check skeletons surface the new subskill sections via the existing generic iteration (proven by `test_setup_and_check_report_artifacts_with_structure_subskills`), and the one prior blocker (B1) plus its prose residual (N8) are both closed in the committed code. All five plan validation commands pass on a clean worktree. The only open item (N9) is a cosmetic unused-return nit with no behavioral impact.
+
+This is an implementation-review conclusion (`ready for closeout`), not a merge-readiness handoff — branch/PR, required CI checks, and final rechecks belong to closeout.
+
+#### Residual risks / validation gaps
+
+- Reference prose (evidence loops, admission, report-only/ignore) remains review-owned rather than mechanically validated. This was acknowledged at plan time, matches the two existing references, and I read both new references in full this pass; it is an accepted, not new, risk.
+- Test fixtures remain the de-facto schema spec (no committed example `scout.yml` in this protocol repo, since overlays live downstream). Acceptable for a protocol repo, and the now-explicit mixed-empty-adapter reject case plus the unknown-key accept fixture mitigate the main drift risks.
+- The subskills are intentionally not enabled in any downstream repo by this change (a stated non-goal), so there is no live-overlay or live-Scout-run evidence — only validation-level proof. That is the correct scope for this plan; first real-repo enablement is the place to confirm the evidence loops produce usable candidates.
+
+No blocking issues. The implementation faithfully realizes the accepted plan and is ready for closeout.
+
+---
+
+人话总结：实现和已通过评审的计划完全对得上。两个新参考文档（document-structure、code-structure）、SKILL 路由、runner 的 overlay 校验、测试、索引（CURRENT.md）这六个文件都改对了，没有多动 README 或 AGENTS.md，计划记录也没重复添加。之前计划评审里唯一的阻塞点 B1（roots 里部分适配器为空时怎么处理）已经按"每个声明的适配器都必须非空"落实到校验代码，并有对应的拒绝测试;N1-N8 全部体现在代码里。我重新跑了计划要求的全部校验：单测 105 全过、`git diff --check` 干净、backlog 检查通过、工作区干净。没有阻塞问题，只有一个无关痛痒的小提示（一个校验函数的返回值没被用到，纯属多余，不影响行为）。结论：可以进入 closeout。注意这只是实现评审结论，分支/PR、CI、最终复查仍归 closeout 处理。
