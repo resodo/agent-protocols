@@ -373,3 +373,63 @@ Classification:
 Remaining risk: reference prose remains review-owned rather than mechanically
 validated, which matches existing Scout references and is acceptable for this
 plan.
+
+Verified against the runner code. Both grounding claims the revision relies on hold:
+
+- **Lenient convention (N1):** `validate_overlay` (scout_runner.py:151-192) validates only known fields with `if "<key>" in mapping:` guards and never rejects unknown keys inside subskill mappings — so "unknown threshold keys are ignored in v1" is faithful to existing behavior.
+- **Non-empty pattern (B1/N2):** `production_roots` and `vulture.roots` are each `non_empty=True` (lines 169, 182), while `test_roots` is required but may be empty (line 170). The plan's chosen contract — every declared `roots` adapter non-empty, `index_docs` required-but-empty-allowed — mirrors these exactly.
+
+Here is my re-review.
+
+---
+
+### Reviewer pass 2 (impl-plan, claude reviewer)
+
+Restating the focus in one sentence: confirm whether B1 (the `code-structure.roots` partial-empty contract ambiguity) is resolved by the driver's revision, and whether any remaining issue blocks implementation.
+
+I read the diff `ce943cb..e8a8a04` for this plan, the revised plan body, the driver response classification, and re-checked the two grounding claims (lenient unknown-key handling; the non-empty-root precedent) against `scout/scripts/scout_runner.py:120-194`.
+
+#### Blocking issues
+
+None. B1 is resolved (see resolution below), and no new blocking issue was introduced by the revision.
+
+#### Thread B1 — Resolved.
+
+The contract is now pinned to option (a) and test-encoded, as recommended:
+- Step 4 (validation) now reads "`roots`: mapping with at least one declared adapter, and every declared adapter root list must be non-empty," with the guidance "declare `typescript_react` only when TypeScript/React roots should be scanned." This is unambiguous and matches the `production_roots`/`vulture.roots` `non_empty=True` precedent.
+- Step 5 (tests) now requires rejecting "a mixed adapter map where any declared adapter has an empty root list," so `{python: [], typescript_react: ["frontend/src"]}` is encoded as a reject case.
+
+With the validator spec and the reject test both fixed to option (a), the implementer no longer has to guess the public overlay contract, and the de-facto schema (the test fixtures) now encodes intent. Resolved.
+
+#### Non-blocking issues
+
+**Thread N8 — Step 2 reference-content wording still describes the looser rule (residual of B1).**
+
+B1 noted three locations that disagreed; the driver tightened two of them (Step 4 validation, Step 5 tests) to option (a) but left the third — Step 2's reference-doc content description (line 121) — as "required: `roots` with at least one non-empty adapter root list." Read literally, that phrasing is the weaker option (b): "at least one adapter is non-empty." Since overlay authors read the *reference*, not the validator code, a `code-structure.md` that copies this phrasing verbatim would teach a looser contract than the validator enforces, and a downstream author could write a partial-empty map expecting acceptance.
+
+This does not reintroduce an implementation guess — Step 4 and Step 5 are authoritative and unambiguous, so the validator will be built correctly. It is a doc/validator consistency item: when writing `scout/references/code-structure.md` in Step 1/2, the `roots` field description should match Step 4 ("declare only the adapters you scan; every declared adapter root list must be non-empty"). Worth aligning at authoring time and confirming at implementation review; not a plan blocker.
+
+**Threads N1–N7 — driver responses confirmed.**
+
+All seven accepted revisions are present in the body and consistent with the runner:
+- N1: thresholds now "known fields, when present, positive integer; unknown keys ignored" — matches the lenient `if key in mapping` convention. Malformed-threshold test remains writable (negative/non-int rejected).
+- N2: `index_docs` now "required string list, allowed to be empty" — mirrors `test_roots`.
+- N3: separate all-four-subskills overlay variant — protects the `test_validate_overlay_accepts_slice1_schema` exact-list assertion.
+- N4: `test_roots` adapter keys mirror `roots`' supported set.
+- N5: Step 6 now says the `docs/agent_plans/README.md` record exists and must not be duplicated.
+- N6: both reference sections require a "thresholds are scan hints, revisit as norms change" note.
+- N7: Context records the frontend-as-adapter vs reachability-as-separate-extension rationale.
+
+#### Overall judgment
+
+The plan is ready for implementation. B1, the one blocking ambiguity, is resolved with a pinned contract and an encoded reject test; the seven non-blocking tightenings were all folded in and check out against the runner. The single remaining item (N8) is a reference-prose consistency nit carried over from B1, explicitly non-blocking, to be closed when `code-structure.md` is authored and at implementation review. Per the readiness standard: goal, non-goals, assumptions, and acceptance are clear; validation commands are concrete and executable; and the previously blocking thread is resolved.
+
+This is a plan-review conclusion (`ready for implementation`), not a merge-readiness handoff — final rechecks belong to closeout.
+
+#### Residual risks / validation gaps
+
+- N8 wording carryover: if the reference's `roots` description is copied from Step 2 verbatim, the published doc would describe a looser rule than the validator enforces. Low impact, closed by aligning the reference text; flag for the implementation-review docs-consistency pass.
+- Reference prose (evidence loops, admission, report-only/ignore) remains review-owned rather than mechanically validated. The driver acknowledged this; it matches the existing two references and is an accepted, not new, risk.
+- Test fixtures are the de-facto schema spec (no committed example `scout.yml` in this repo). Acceptable for a protocol repo; the now-explicit mixed-empty-adapter reject case mitigates the main drift risk.
+
+No blocking issues remain. The plan is ready for implementation.
