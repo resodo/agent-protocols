@@ -251,3 +251,78 @@ human explicitly accepts proceeding without that gate.
 - Tests and repo checks pass.
 
 ## Review Threads
+
+I've inspected the plan, the existing Scout runner, both existing subskill references, the test suite, the frontmatter test, and the docs the plan says it will touch. I have enough to review. Here is my reviewer pass.
+
+---
+
+### Reviewer pass 1 (impl-plan, claude reviewer)
+
+Restating the focus in one sentence: check whether the two new Scout subskills have clear boundaries, a precise overlay schema, a correctly-scoped runner change, executable validation, and whether an implementer could build this without guessing.
+
+I read the plan against the actual code: `scout/scripts/scout_runner.py` (overlay validation flow, gated per-subskill blocks, generic report/check skeletons), `scout/references/script-lifecycle.md` and `scout/references/code-reachability-backend-python.md` (the two reference exemplars this plan mirrors), `scout/tests/test_scout_runner.py`, `tests/test_skill_frontmatter.py`, `scout/SKILL.md`, `docs/CURRENT.md`, and `docs/agent_plans/README.md`.
+
+#### Blocking issues
+
+**Thread B1 — code-structure `roots`: behavior on a partially-empty adapter map is underspecified (the one real guess).**
+
+The plan gives three statements that do not pin down the same contract:
+- Accepted Decisions: "required: `roots` with at least one non-empty adapter root list";
+- Step 4 validation: "`roots`: mapping with at least one non-empty string-list adapter";
+- Step 5 test: "`code-structure` rejects ... empty adapter root sets".
+
+These leave the mixed case undecided. For `roots: {python: [], typescript_react: ["frontend/src"]}`, two implementations are both consistent with the wording:
+- (a) every *declared* adapter must be non-empty, so this is rejected because `python` is empty;
+- (b) the map only needs *at least one* non-empty adapter, so this is accepted.
+
+The planned tests don't exercise the mixed case, so either implementation would pass them — which means the implementer silently fixes the public overlay contract by guessing, and a downstream overlay could be accepted or rejected depending on which they picked. This is exactly the "implementation requires guessing" risk the focus asks about, and it is a one-sentence fix in the plan. Please state explicitly which holds (I lean toward (a) "each declared adapter root list must be non-empty; declare only adapters you actually scan," mirroring how `production_roots`/`vulture.roots` are each required non-empty in code-reachability), and add the mixed-case overlay to the Step 5 reject/accept tests so the contract is encoded.
+
+#### Non-blocking issues
+
+**Thread N1 — threshold validation: define what "malformed" rejects, and use the existing leniency convention.**
+
+Step 4 says thresholds carry "positive integer values for known threshold fields" (flat for `document-structure`: `index_review_lines`/`doc_review_lines`/`doc_large_lines`; nested for `code-structure` under `python`/`typescript_react`/`shared`). "Positive integer" makes a negative/non-int value clearly malformed, so the Step 5 "malformed thresholds" test is writable. What is left open is unknown-key handling: does an unknown threshold field or unknown threshold category (e.g. a typo `dox_review_lines`, or a `thresholds.rust` block) get rejected or ignored? The established runner convention is to validate known fields and not reject unknown keys inside subskill mappings (it does this for `script-lifecycle`/`code-reachability` today). Recommend the plan state "validate values of known threshold fields; unknown keys are ignored" (or, if you want typo protection, say so explicitly) and confirm the nested category keys are spelled `python`/`typescript_react`/`shared` to match the `roots` adapter keys. Not blocking — a competent implementer can follow precedent — but worth pinning so validator and test author agree.
+
+**Thread N2 — `index_docs` "required" vs "allowed empty" wording.**
+
+Step 1 lists `index_docs` under "required," while Step 4 validates it as a plain "string list" (not non-empty). That's the same shape as code-reachability's `test_roots` (required key, may be empty), which is fine — but the word "required" without "may be empty" reads as non-empty. Recommend matching the reference-doc convention used in `code-reachability-backend-python.md` ("Required ... list, allowed to be empty") so the implementer doesn't add an unintended `non_empty=True`.
+
+**Thread N3 — Step 5 "accepted overlay with all four subskills" must not break the existing exact-list assertion.**
+
+`test_validate_overlay_accepts_slice1_schema` asserts `enabled_subskills == ["script-lifecycle", "code-reachability"]` and is built from the shared `overlay()` helper. If the implementer enables all four subskills by editing that base helper, this test regresses. Recommend the plan say to add a separate overlay variant (or a dedicated fixture) for the four-subskill case rather than mutating the base `overlay()`, so the Slice-1 assertion and the new acceptance test coexist. Low risk (the breakage is obvious on first run) but cheap to call out.
+
+**Thread N4 — code-structure `test_roots` adapter-key validation is unspecified.**
+
+Step 4 calls `test_roots` "mapping of string-list adapters" but doesn't say whether its adapter keys are restricted to the supported `python`/`typescript_react` set the way `roots` is. Recommend stating it mirrors `roots`' adapter-key rule (or is intentionally unrestricted). Minor.
+
+**Thread N5 — Step 6: the `docs/agent_plans/README.md` record already exists.**
+
+`docs/agent_plans/README.md:36` already lists `2026-06-15_scout_structure_subskills_plan.md`. Step 6's "Update `docs/agent_plans/README.md` with this plan record" is therefore effectively already satisfied — the implementer should not add a duplicate. Also, root `README.md:16` has only a one-line Scout summary with no subskill enumeration, and `AGENTS.md` has no subskill/scout routing text, so the "only if needed" README change and "no AGENTS.md change" notes are correct as written. Just flagging so the closeout's docs-consistency check doesn't re-add an existing line.
+
+**Thread N6 — threshold defaults are a maintenance surface; label them as hints in the references.**
+
+The plan rightly makes line-count thresholds overlay-configurable scan hints, not admission rules (Non-Goals + Accepted Decisions). To satisfy the mechanism-lifecycle lens, recommend the two new references include a short note (as `code-reachability-backend-python.md` does for its false-positive defaults) that the default thresholds are interpretation hints to revisit when repo norms change, and that candidates always require agent judgment. This keeps the defaults from being read as silent thresholds later. Non-blocking.
+
+**Thread N7 — record the rationale for the frontend-as-adapter divergence.**
+
+`code-reachability` treats frontend/TypeScript as a *separate future subskill/extension*, while `code-structure` folds it into the *same subskill via a TypeScript/React adapter*. The Context section states this deliberately, so it is not a defect — but the two code subskills now diverge architecturally. A one-line rationale in `code-structure.md` (why structure uses an in-subskill adapter where reachability split frontend out) will prevent a future reader from treating it as an inconsistency. Non-blocking.
+
+#### Overall judgment
+
+The plan is close to ready and mostly does not require guessing. Strengths I confirmed against the code:
+- Runner scope is correctly minimal. The report/check skeletons in `scout_runner.py` iterate `enabled_subskills` generically and apply the standard subskill subheadings, so the acceptance item "skeletons include the new subskill sections when enabled" is satisfied by existing code once overlay validation accepts the subskills — no skeleton code is needed, and the plan correctly does not ask for any. "Do not add scan commands" is consistent with the existing runner boundary.
+- The change is additive and backward compatible: per-subskill validation is gated on `if "<subskill>" in enabled`, and `CORE_FIELDS`/existing overlays are untouched, so current overlays keep validating.
+- Subskill boundaries are clear: document-structure (active index/current doc readability) vs code-structure (active over-large/multi-role code) vs code-reachability (dead/test-only code), with the candidate-admission "no existing backlog item semantically covers the same decision" rule handling cross-subskill overlap.
+- Thresholds-as-hints (not admission rules) is a good answer to the mechanism-lifecycle lens.
+- Reference authoring is well-anchored by two existing exemplars, so the prose content (evidence loop, admission, report-only/ignore) is low-guess.
+- Validation commands are concrete and executable (`pytest` targets, `git diff --check`, `scripts/check_backlog.py` — all present), and the plan correctly avoids any merge-readiness claim, leaving that to closeout.
+
+One blocking clarification (B1) and seven non-blocking tightenings. B1 is a genuine contract ambiguity in the `code-structure.roots` partial-empty case that should be resolved and test-encoded before implementation; the rest can be folded in by the driver or accepted with reason.
+
+#### Residual risks / validation gaps
+
+- The strongest residual risk is contract drift in the `code-structure` overlay (B1 + N1): if the validator's strictness isn't pinned, downstream overlays may be accepted/rejected inconsistently with intent, and the reject-case tests may encode the wrong contract. Resolving B1 and N1 closes this.
+- No example `scout.yml` overlay is committed in this repo (overlays live downstream), so the only executable proof of the new schema is the inline test overlays in `test_scout_runner.py`. That is acceptable for a protocol repo, but it means the test fixtures are the de facto schema spec — another reason to make the accept/reject cases (especially the mixed-empty-adapter case) explicit.
+- The reference prose (evidence loops, admission rules) is not mechanically validated; correctness there rests on reviewer reading at implementation-review time, not on tests. That is inherent to reference-driven subskills and matches the existing two references, so it is an accepted, not a new, risk.
+
+No other blocking issues. Once B1 is resolved (and ideally N1/N3 folded in), this plan is ready for implementation.
