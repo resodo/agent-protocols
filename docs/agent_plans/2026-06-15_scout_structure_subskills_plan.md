@@ -1,6 +1,6 @@
 # Scout Structure Subskills Plan
 
-Status: draft implementation plan
+Status: implemented and reviewed
 Owner: driver
 Date: 2026-06-15
 
