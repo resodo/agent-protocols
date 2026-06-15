@@ -46,9 +46,11 @@ avoid treating historical plans as current instructions.
   `structured-review/references/ui-review.md`
 - Scout runner:
   `scout/scripts/scout_runner.py`
-- Scout Slice 1 references:
-  `scout/references/script-lifecycle.md` and
-  `scout/references/code-reachability-backend-python.md`
+- Scout references:
+  `scout/references/script-lifecycle.md`,
+  `scout/references/code-reachability-backend-python.md`,
+  `scout/references/document-structure.md`, and
+  `scout/references/code-structure.md`
 
 The UI review reference is conditional. It is not part of the runner-loaded
 required reference set unless a future accepted plan changes runner loading.

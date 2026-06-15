@@ -89,6 +89,61 @@ class ScoutRunnerTests(unittest.TestCase):
     def write_overlay(self, data: dict[str, Any]) -> None:
         (self.root / ".agent-protocols/scout.yml").write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
 
+    def overlay_with_structure_subskills(self) -> dict[str, Any]:
+        data = self.overlay()
+        data["enabled_subskills"] = [
+            "script-lifecycle",
+            "code-reachability",
+            "document-structure",
+            "code-structure",
+        ]
+        data["subskills"]["document-structure"] = {
+            "entry_docs": ["AGENTS.md", "README.md"],
+            "index_docs": ["docs/README.md"],
+            "doc_roots": ["docs"],
+            "archive_paths": ["docs/agent_plans/outputs"],
+            "thresholds": {
+                "index_review_lines": 400,
+                "doc_review_lines": 800,
+                "doc_large_lines": 1200,
+                "future_threshold": "ignored",
+            },
+            "repo_notes": "Treat dated plans as historical unless current indexes route them.",
+        }
+        data["subskills"]["code-structure"] = {
+            "roots": {
+                "python": ["backend/app", "scripts"],
+                "typescript_react": ["frontend/src"],
+            },
+            "test_roots": {
+                "python": ["backend/tests"],
+                "typescript_react": [],
+            },
+            "active_contract_sources": ["AGENTS.md", "README.md", "docs/CURRENT.md"],
+            "thresholds": {
+                "python": {
+                    "review_lines": 800,
+                    "large_lines": 1000,
+                    "script_review_lines": 600,
+                    "future_threshold": "ignored",
+                },
+                "typescript_react": {
+                    "review_lines": 400,
+                    "large_lines": 600,
+                    "route_large_lines": 600,
+                },
+                "shared": {
+                    "churn_since_days": 45,
+                    "high_churn_commits": 6,
+                },
+                "future_adapter": {
+                    "anything": "ignored",
+                },
+            },
+            "repo_notes": "Use language-aware scans as candidate-pool evidence only.",
+        }
+        return data
+
     def add_validation_provenance(
         self,
         run_dir: Path,
@@ -119,6 +174,120 @@ class ScoutRunnerTests(unittest.TestCase):
         data = runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
 
         self.assertEqual(data["enabled_subskills"], ["script-lifecycle", "code-reachability"])
+
+    def test_validate_overlay_accepts_structure_subskills_schema(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        self.write_overlay(data)
+
+        parsed = runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+        self.assertEqual(
+            parsed["enabled_subskills"],
+            ["script-lifecycle", "code-reachability", "document-structure", "code-structure"],
+        )
+
+    def test_document_structure_requires_entry_docs(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        del data["subskills"]["document-structure"]["entry_docs"]
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "document-structure.entry_docs"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_document_structure_allows_empty_index_docs(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        data["subskills"]["document-structure"]["index_docs"] = []
+        self.write_overlay(data)
+
+        parsed = runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+        self.assertEqual(parsed["subskills"]["document-structure"]["index_docs"], [])
+
+    def test_document_structure_rejects_malformed_threshold(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        data["subskills"]["document-structure"]["thresholds"]["doc_large_lines"] = 0
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "doc_large_lines.*positive integer"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_code_structure_requires_roots(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        del data["subskills"]["code-structure"]["roots"]
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "code-structure.roots"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_code_structure_rejects_empty_adapter_map(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        data["subskills"]["code-structure"]["roots"] = {}
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "at least one adapter"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_code_structure_rejects_declared_empty_adapter_roots(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        data["subskills"]["code-structure"]["roots"] = {
+            "python": [],
+            "typescript_react": ["frontend/src"],
+        }
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "code-structure.roots.python.*must not be empty"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_code_structure_rejects_unknown_root_adapter(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        data["subskills"]["code-structure"]["roots"]["rust"] = ["crates/app"]
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "roots.rust.*supported adapter"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_code_structure_rejects_unknown_test_root_adapter(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        data["subskills"]["code-structure"]["test_roots"]["rust"] = ["crates/app/tests"]
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "test_roots.rust.*supported adapter"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_code_structure_rejects_malformed_threshold(self) -> None:
+        data = self.overlay_with_structure_subskills()
+        data["subskills"]["code-structure"]["thresholds"]["python"]["large_lines"] = "many"
+        self.write_overlay(data)
+
+        with self.assertRaisesRegex(runner.RunnerError, "large_lines.*positive integer"):
+            runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_setup_and_check_report_artifacts_with_structure_subskills(self) -> None:
+        self.write_overlay(self.overlay_with_structure_subskills())
+        setup_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            mode="dry-run",
+            date="2026-06-06",
+            slug="scout_run",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.cmd_setup(setup_args), 0)
+        run_dir = self.root / "docs/agent_plans/outputs/2026-06-06_scout_run"
+        self.add_validation_provenance(run_dir, mode="dry-run")
+
+        report = (run_dir / "SCOUT_REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("### document-structure", report)
+        self.assertIn("### code-structure", report)
+
+        check_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            run_dir="docs/agent_plans/outputs/2026-06-06_scout_run",
+            mode="dry-run",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.cmd_check(check_args), 0)
 
     def test_placeholder_vulture_version_is_rejected(self) -> None:
         data = self.overlay()
