@@ -26,7 +26,7 @@ DEFAULT_MODEL = "opus"
 DEFAULT_EFFORT = "xhigh"
 DEFAULT_CODEX_MODEL = "gpt-5.5"
 DEFAULT_CODEX_EFFORT = "xhigh"
-DEFAULT_TIMEOUT_SEC = 1800
+DEFAULT_TIMEOUT_SEC = 900
 DEFAULT_HEARTBEAT_SEC = 30
 
 BACKEND_AUTO = "auto"
@@ -828,7 +828,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     token_usage: dict[str, Any] | None = None
     malformed = 0
     print(
-        f"{config.backend} review start mode={config.mode} type={config.review_type} model={active_model(config)} effort={active_effort(config)} artifacts={','.join(a.rel for a in config.artifacts)}",
+        f"{config.backend} review start mode={config.mode} type={config.review_type} timeout_sec={config.timeout_sec} model={active_model(config)} effort={active_effort(config)} artifacts={','.join(a.rel for a in config.artifacts)}",
         file=sys.stderr,
     )
     proc = subprocess.Popen(

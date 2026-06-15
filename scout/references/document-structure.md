@@ -94,6 +94,14 @@ Propose a candidate only when all are true:
 - there is a clear restructuring next action;
 - no existing backlog item semantically covers the same decision.
 
+Apply the Scout active feature suppression rule before proposing document
+structure cleanup candidates. Active implementation plans, review packets, and
+rollout notes can be long or messy while they are carrying current work; that
+is report-only by default until the phase stabilizes. Bypass suppression only
+when the document structure is misleading agents today or the Scout-level
+safety/correctness/data-safety/production-risk/CI-blocking/
+explicit-human-direction override applies.
+
 Concrete risks include:
 
 - bootstrap over-read;
@@ -110,7 +118,8 @@ topic index, or clarify which document owns a fact.
 ## Report-Only Or Ignore
 
 Use report-only when the structure is notable but the action is not yet clear,
-or when a long active document is readable enough but should be watched.
+when a long active document is readable enough but should be watched, or when
+the document is carrying a clear or plausible active feature/rollout surface.
 
 Use ignored noise when:
 

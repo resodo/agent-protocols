@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import ModuleType
@@ -246,6 +247,13 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertNotIn("--allowed-tools", argv)
         self.assertNotIn("--disallowed-tools", argv)
 
+    def test_default_timeout_is_fifteen_minutes(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+
+        self.assertEqual(config.timeout_sec, 900)
+
     def test_skill_removed_legacy_human_interaction_mechanics(self) -> None:
         skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
 
@@ -283,6 +291,15 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             skill,
         )
         self.assertNotIn("ready for human merge", skill)
+
+    def test_skill_requires_outer_wait_budget_to_cover_runner_timeout(self) -> None:
+        skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("Timeout Discipline", skill)
+        self.assertIn("900 seconds", skill)
+        self.assertIn("--timeout-sec 1800", skill)
+        self.assertIn("outer command/tool wait budget", skill)
+        self.assertIn("shorter than the runner timeout", skill)
 
     def test_default_claude_bin_uses_path_lookup(self) -> None:
         repo = self.init_target_repo()
@@ -575,6 +592,96 @@ print('stderr path', file=sys.stderr, flush=True)
         self.assertEqual(metadata["reviewer_version"], "2.1.143 (Claude Code)")
         self.assertEqual(metadata["backend"], "claude")
         self.assertEqual(metadata["malformed_stream_lines"], 1)
+
+    def test_run_claude_start_log_includes_timeout_sec(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir()
+        fake_claude = fake_bin / "claude"
+        fake_claude.write_text(
+            """#!/usr/bin/env python3
+import sys
+
+if '--version' in sys.argv:
+    print('2.1.143 (Claude Code)')
+    raise SystemExit(0)
+
+sys.stdin.read()
+print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Done."}}', flush=True)
+""",
+            encoding="utf-8",
+        )
+        fake_claude.chmod(0o755)
+        config = self.config_for(
+            repo,
+            protocol,
+            mode=csr.MODE_PRINT,
+            topic=None,
+            extra=[
+                "--claude-bin",
+                str(fake_claude),
+                "--timeout-sec",
+                "7",
+                "--run-log-dir",
+                str(self.root / "timeout-start-logs"),
+            ],
+        )
+        logs = csr.prepare_run_logs(config)
+
+        with mock.patch("sys.stderr", new_callable=lambda: __import__("io").StringIO()) as stderr:
+            result = csr.run_claude(config, "prompt", logs, csr.Redactor([repo]))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("timeout_sec=7", stderr.getvalue())
+
+    def test_run_claude_waits_for_quiet_reviewer_before_timeout(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir()
+        fake_claude = fake_bin / "claude"
+        fake_claude.write_text(
+            """#!/usr/bin/env python3
+import sys
+import time
+
+if '--version' in sys.argv:
+    print('2.1.143 (Claude Code)')
+    raise SystemExit(0)
+
+sys.stdin.read()
+time.sleep(0.2)
+print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet done."}}', flush=True)
+""",
+            encoding="utf-8",
+        )
+        fake_claude.chmod(0o755)
+        config = self.config_for(
+            repo,
+            protocol,
+            mode=csr.MODE_PRINT,
+            topic=None,
+            extra=[
+                "--claude-bin",
+                str(fake_claude),
+                "--timeout-sec",
+                "3",
+                "--heartbeat-sec",
+                "1",
+                "--run-log-dir",
+                str(self.root / "quiet-logs"),
+            ],
+        )
+        logs = csr.prepare_run_logs(config)
+        started = time.monotonic()
+
+        result = csr.run_claude(config, "prompt", logs, csr.Redactor([repo]))
+
+        self.assertGreaterEqual(time.monotonic() - started, 0.15)
+        self.assertFalse(result.timed_out)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.review_text, "Quiet done.")
 
     def test_run_reports_timeout_with_dirty_state(self) -> None:
         repo = self.init_target_repo()

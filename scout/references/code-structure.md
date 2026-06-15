@@ -137,6 +137,14 @@ Propose a candidate only when all are true:
 - there is a clear restructuring next action;
 - no existing backlog item semantically covers the same decision.
 
+Apply the Scout active feature suppression rule before proposing cleanup or
+split candidates. In this reference, `active code` means maintained/in-use code;
+`active feature surface` means code currently being built, stabilized, rolled
+out, or acceptance-tested. Large size, high churn, or mixed responsibilities in
+an active feature surface are normally report-only evidence until the feature
+stabilizes, unless the Scout-level safety/correctness/data-safety/
+production-risk/CI-blocking/explicit-human-direction override applies.
+
 Concrete risks include:
 
 - unrelated responsibilities in one module;
@@ -155,7 +163,9 @@ or create an explicit implementation plan for a coherent refactor.
 ## Report-Only Or Ignore
 
 Use report-only when a module is large or high-churn but cohesive, or when the
-next action is not yet clear.
+next action is not yet clear. Also use report-only when cleanup or refactor
+signals sit inside a clear or plausible active feature surface; later Scout
+runs can re-evaluate the observation after active feature signals fade.
 
 Use ignored noise when:
 

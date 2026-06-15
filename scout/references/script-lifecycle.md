@@ -76,14 +76,21 @@ Propose a candidate only when all are true:
 - keeping it has maintenance, safety, provenance, or review-cost risk;
 - there is a clear next human decision/action.
 
+Apply the Scout active feature suppression rule before proposing lifecycle
+cleanup candidates. Scripts that belong to an active rollout, migration,
+operator canary, or feature acceptance path are report-only by default until
+that path stabilizes, unless the Scout-level safety/correctness/data-safety/
+production-risk/CI-blocking/explicit-human-direction override applies.
+
 Good next actions include archive, delete, keep with ownership, move to
 historical provenance, add CI/smoke coverage, or replace with a maintained
 workflow.
 
 ## Report-Only Or Ignore
 
-Use report-only when evidence is interesting but action is unclear, or when
-historical references exist but current placement may still be acceptable.
+Use report-only when evidence is interesting but action is unclear, when
+historical references exist but current placement may still be acceptable, or
+when the script belongs to a clear or plausible active feature/rollout surface.
 
 Use ignored noise when the path is historical/archive/vendor/generated, the
 script is a known manual entrypoint, or the reference is intentionally
