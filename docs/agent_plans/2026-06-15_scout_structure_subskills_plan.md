@@ -37,6 +37,12 @@ The first version should be reference-driven and agent-executed. Do not add
 runner scan helpers yet; runner mechanics should validate overlay shape and
 report skeletons only.
 
+`code-structure` intentionally uses in-subskill adapters while
+`code-reachability` keeps frontend/TypeScript as a separate future extension:
+structure findings share one admission rule across active code surfaces, while
+reachability depends more heavily on language-specific static-analysis
+false-positive classes.
+
 ## Non-Goals
 
 - Do not implement document lifecycle drift detection in this plan.
@@ -81,6 +87,8 @@ The reference must define:
   - `index_review_lines: 400`;
   - `doc_review_lines: 800`;
   - `doc_large_lines: 1200`;
+- threshold defaults are scan hints, not admission rules, and the reference
+  should say to revisit them when repo document norms change;
 - required evidence loop:
   - read repo entry and docs placement rules;
   - identify entrypoint/current/index/active-plan/historical/artifact/backlog
@@ -118,6 +126,8 @@ The reference must define:
   - TypeScript/React: `review_lines: 400`, `large_lines: 600`,
     `route_large_lines: 600`;
   - shared: `churn_since_days: 45`, `high_churn_commits: 6`;
+- threshold defaults are scan hints, not admission rules, and the reference
+  should say to revisit them when repo code norms change;
 - Python evidence obligations:
   - tracked files under declared roots;
   - line counts and top offenders;
@@ -164,19 +174,25 @@ Update `scout/scripts/scout_runner.py`:
   - `code-structure`.
 - validate `document-structure` overlay:
   - `entry_docs`: non-empty string list;
-  - `index_docs`: string list;
+  - `index_docs`: required string list, allowed to be empty;
   - `doc_roots`: non-empty string list;
   - optional `archive_paths`: string list;
-  - optional `thresholds`: mapping with positive integer values for known
-    threshold fields;
+  - optional `thresholds`: mapping whose known threshold fields, when present,
+    have positive integer values. Unknown threshold keys are ignored in v1,
+    matching the runner's existing lenient subskill-mapping convention;
   - optional `repo_notes`: string.
 - validate `code-structure` overlay:
-  - `roots`: mapping with at least one non-empty string-list adapter;
+  - `roots`: mapping with at least one declared adapter, and every declared
+    adapter root list must be non-empty. For example, declare
+    `typescript_react` only when TypeScript/React roots should be scanned;
   - supported v1 adapters: `python`, `typescript_react`;
-  - optional `test_roots`: mapping of string-list adapters;
+  - optional `test_roots`: mapping of string-list adapters using the same
+    supported adapter keys as `roots`;
   - optional `active_contract_sources`: string list;
-  - optional `thresholds`: nested mapping with positive integer values for
-    known adapter/shared threshold fields;
+  - optional `thresholds`: nested mapping whose known adapter/shared threshold
+    fields, when present, have positive integer values. Unknown threshold keys
+    are ignored in v1, matching the runner's existing lenient
+    subskill-mapping convention;
   - optional `repo_notes`: string.
 - do not add scan commands.
 
@@ -184,11 +200,13 @@ Update `scout/scripts/scout_runner.py`:
 
 Update `scout/tests/test_scout_runner.py`:
 
-- accepted overlay with all four subskills;
+- accepted overlay with all four subskills, using a separate overlay variant
+  rather than changing the existing Slice 1 base fixture;
 - `document-structure` rejects missing required fields and malformed
   thresholds;
 - `code-structure` rejects missing roots, empty adapter root sets, unknown
-  adapters, and malformed thresholds;
+  adapters, a mixed adapter map where any declared adapter has an empty root
+  list, and malformed thresholds;
 - setup/check skeleton includes the new subskill headings when enabled;
 - existing vulture config tests still pass with `code-reachability`.
 
@@ -199,7 +217,8 @@ Update:
 - `README.md` only if the protocol summary needs to mention the expanded Scout
   scope;
 - `docs/CURRENT.md` runner/reference map to include the two new references;
-- `docs/agent_plans/README.md` with this plan record.
+- `docs/agent_plans/README.md` is already updated by this draft plan. Do not
+  add a duplicate record during implementation.
 
 No root `AGENTS.md` change is expected unless routing changes.
 
@@ -326,3 +345,31 @@ One blocking clarification (B1) and seven non-blocking tightenings. B1 is a genu
 - The reference prose (evidence loops, admission rules) is not mechanically validated; correctness there rests on reviewer reading at implementation-review time, not on tests. That is inherent to reference-driven subskills and matches the existing two references, so it is an accepted, not a new, risk.
 
 No other blocking issues. Once B1 is resolved (and ideally N1/N3 folded in), this plan is ready for implementation.
+
+### Driver response 1
+
+Classification:
+
+- B1: accepted. The plan now states that every declared `code-structure.roots`
+  adapter must have a non-empty root list, and the tests must cover the mixed
+  empty-adapter case.
+- N1: accepted. The plan now states that known threshold fields require
+  positive integer values and unknown threshold keys are ignored in v1,
+  following the existing lenient subskill-mapping convention.
+- N2: accepted. `document-structure.index_docs` is now explicitly a required
+  list that may be empty.
+- N3: accepted. The test plan now requires a separate all-four-subskills
+  overlay variant instead of mutating the existing Slice 1 fixture.
+- N4: accepted. `code-structure.test_roots` now mirrors the supported adapter
+  key rule from `roots`.
+- N5: accepted. Step 6 now says the plan record is already present and must not
+  be duplicated during implementation.
+- N6: accepted. Both reference sections now require a note that thresholds are
+  scan hints to revisit as repo norms change, not admission rules.
+- N7: accepted. The Context section now records why `code-structure` uses
+  adapters while `code-reachability` keeps frontend reachability as a separate
+  future extension.
+
+Remaining risk: reference prose remains review-owned rather than mechanically
+validated, which matches existing Scout references and is acceptable for this
+plan.
