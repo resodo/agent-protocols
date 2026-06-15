@@ -87,6 +87,32 @@ When practical, cite the commit or plan that introduced or last changed the
 surface, and say whether the finding is a new regression, planned residue, or
 old debt that became visible through the current scan.
 
+### Active Feature Suppression
+
+Do not propose cleanup, refactor, dead-helper, stale-payload, or structure
+candidates for an active feature surface by default.
+
+An active feature surface is maintained code, docs, scripts, or configuration
+that is currently being built, stabilized, rolled out, or acceptance-tested. It
+is different from ordinary active/in-use code: maintained and stable code can
+still produce Scout candidates, while actively-being-built feature work usually
+should not.
+
+Positive activity signals include a current plan, current-map entry, active PR
+or worktree, explicit human statement, active backlog/progress entry, recent
+acceptance or rollout notes, or multiple recent commits tied to the same
+still-open feature. Churn alone is not enough to prove active feature status,
+but plausible unresolved activity is enough to suppress cleanup candidates.
+
+When active feature status is clear or plausible, classify cleanup/refactor/
+dead-helper findings as `report-only observation` and name the active owner,
+plan, backlog item, or uncertainty when known. Later Scout runs may re-evaluate
+the same observation after active signals fade.
+
+Only bypass this suppression when the finding is about safety, correctness,
+data safety, production risk, CI-blocking failure, or explicit human direction
+to review that active feature surface for immediate action.
+
 ## Report Contract
 
 Each Scout run writes a directory under `report.output_root`, normally:

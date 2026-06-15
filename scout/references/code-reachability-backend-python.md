@@ -102,6 +102,13 @@ Propose a candidate only when:
   legacy risk;
 - there is a clear next human decision/action.
 
+Apply the Scout active feature suppression rule before proposing dead-helper,
+stale-payload, or unused-code cleanup candidates. Unused-looking helpers,
+temporary compatibility shims, and response fields inside a clear or plausible
+active feature surface are report-only by default until the feature stabilizes,
+unless the Scout-level safety/correctness/data-safety/production-risk/
+CI-blocking/explicit-human-direction override applies.
+
 Only-referenced-by-tests is candidate-worthy only when the definition is under
 production roots and no production wiring, dynamic entrypoint, or active
 public-contract justification is found. The action should ask whether to remove
@@ -112,7 +119,8 @@ is dead.
 ## Report-Only Or Ignore
 
 Use report-only when evidence is incomplete, dynamic use remains plausible,
-tool output is noisy but not meaningless, or the next action is unclear.
+tool output is noisy but not meaningless, the next action is unclear, or the
+raw signal is cleanup residue inside an active feature surface.
 
 Use ignored noise for confirmed framework registrations, model fields, mapped
 fields, validators, fixtures, migration/runtime entrypoints, and documented

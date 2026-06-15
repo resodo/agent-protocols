@@ -34,3 +34,5 @@ responses, and closeout evidence for changes to this repo's protocols.
   rule, guard freshness, and native skill mount plan.
 - `2026-06-15_scout_structure_subskills_plan.md` - implementation plan for the
   `document-structure` and `code-structure` Scout subskills.
+- `2026-06-16_scout_active_timeout_plan.md` - Scout active feature suppression
+  and structured-review timeout discipline plan.

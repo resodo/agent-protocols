@@ -126,6 +126,25 @@ Use `--protocol-dir` only when testing or intentionally running against a
 different checkout of this protocol. By default the runner uses the
 `structured-review` directory that contains the script.
 
+### Timeout Discipline
+
+Small and medium repo-backed review gates should use the runner default timeout
+of 900 seconds. Large reviews should pass `--timeout-sec 1800`; large reviews
+include broad protocol changes, production/runtime/deploy reviews, multi-file
+implementation reviews, or review artifacts above roughly 1,000 lines.
+
+Once a driver invokes the runner with a timeout, the driver must wait until the
+reviewer exits, the runner timeout expires, or a genuine external interruption
+occurs. A genuine external interruption is a human stop request, OS/process
+signal, infrastructure failure, or session/tool crash.
+
+The driver's outer command/tool wait budget must be greater than or equal to
+the runner `--timeout-sec`, plus enough buffer for process teardown and
+metadata writing. A driver-chosen outer timeout shorter than the runner timeout
+is not an external interruption; it violates this protocol. Do not kill a
+reviewer early because output is quiet, sparse, repetitive, or taking longer
+than expected.
+
 ## Local Overlay
 
 When working inside a repo, load local overlays after this generic protocol:
