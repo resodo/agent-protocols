@@ -247,3 +247,55 @@ escalated to the human.
   in this PR.
 
 ## Review Threads
+
+I've verified the plan against the actual Scout runner, references, tests, and index files. I have enough to produce the review. Here is my complete review thread output.
+
+---
+
+### Reviewer pass 1 (impl-plan, claude reviewer)
+
+**Human's concern (restated):** Confirm the `document-lifecycle-drift` plan is ready for implementation — specifically the subskill boundary, candidate threshold, active feature suppression, overlay schema, runner boundary, scope exclusions, and validation plan — so the implementer does not have to guess.
+
+I inspected the artifacts the plan depends on before judging:
+- `scout/SKILL.md` (subskill list, active feature suppression, runner boundary);
+- `scout/references/document-structure.md` (sibling subskill and its forward reference to a "future" lifecycle subskill);
+- `scout/scripts/scout_runner.py` (`SUBSKILL_REFERENCES`, `validate_overlay`, `report_skeleton`, `cmd_check`);
+- `scout/tests/test_scout_runner.py` (overlay fixtures and rejection-test patterns);
+- `docs/CURRENT.md`, `docs/agent_plans/README.md`, and confirmed `tests/test_skill_frontmatter.py` + `scripts/check_backlog.py` exist.
+
+#### Blocking issues
+
+None. The plan is implementable as written without guessing. The subskill name, reference path, required/optional overlay fields, runner-boundary exclusions, and validation commands are all concrete and match the current runner contract. The required-field rejection tests, lenient-extension convention, and report-skeleton inclusion are all consistent with how `document-structure` and `code-structure` are already wired (`scout/scripts/scout_runner.py:246-260`, the generic skeleton loop at `scout/scripts/scout_runner.py:341-344`, and the `### {subskill}` check at `scout/scripts/scout_runner.py:500-506`).
+
+#### Non-blocking issues
+
+**Thread 1 — `current_docs` field name diverges from the sibling `index_docs`, and is required-non-empty where `index_docs` is allowed-empty.**
+The overlay schema (plan lines 134-138) names the second required field `current_docs` and requires it non-empty. The sibling `document-structure` subskill calls the analogous field `index_docs` and explicitly allows it to be empty (`scout/references/document-structure.md:22`, runner `scout/scripts/scout_runner.py:249`, test `test_document_structure_allows_empty_index_docs`). A repo enabling both subskills will declare two overlapping-but-differently-named lists (`index_docs` and `current_docs`), and `document-lifecycle-drift` will additionally *force* at least one entry where `document-structure` does not. This is explicitly specified, so it is not a guess-forcing ambiguity — but it is a deliberate divergence the driver should confirm consciously:
+- Is the rename to `current_docs` intentional (semantic: "docs whose current-state claims are checked"), or should it reuse `index_docs` for overlay consistency?
+- Should `current_docs` really be required-non-empty? A repo with `entry_docs` + `doc_roots` but no distinct current-map/runbook would be forced to point `current_docs` at an entry doc. An allowed-empty field with documented fallback to `entry_docs` would mirror `index_docs` and lower the adoption constraint. Requiring it is defensible (current-state claims are the core evidence here), but please make the choice on purpose, not by inheritance.
+Recommend: add one sentence to the reference (plan step 1) recording why `current_docs` is a distinct, required field versus `document-structure.index_docs`.
+
+**Thread 2 — Test plan omits a lenient unknown-extension-field assertion that the plan itself promises.**
+Plan lines 155-156 state v1 "validates known shape but does not fail future extension keys," matching the runner's lenient pattern (it only checks named keys; unknown subskill keys are silently accepted — `scout/scripts/scout_runner.py:246-260`). The existing fixture proves this for `document-structure` via `"future_threshold": "ignored"` (`test_scout_runner.py:108`). The test list (plan step 4) does not include an equivalent lenient-extension assertion for `document-lifecycle-drift`. To lock in the documented convention and prevent a future regression to strict rejection, add an assertion that an unknown extension key on the new subskill mapping is accepted.
+
+**Thread 3 — `document-structure.md` forward reference becomes stale on landing and is not in the edit list.**
+`scout/references/document-structure.md:13-15` currently says stale current/historical state "belongs to a future document-lifecycle drift subskill." Once this subskill ships, that "future" wording is itself out-of-date routing — ironically the exact lifecycle drift this subskill exists to catch. Implementation steps 2 and 5 update `scout/SKILL.md`, `docs/CURRENT.md`, and (conditionally) `README.md`, but do not update `scout/references/document-structure.md`. Recommend adding it to the edit list so the cross-reference names the now-real subskill instead of "a future" one.
+
+**Thread 4 — Step 3 bullet "Ensure setup/check report skeletons include the subskill section" risks redundant special-casing.**
+The runner builds the `### {subskill}` section and its six subsections generically for every enabled subskill (`scout/scripts/scout_runner.py:341-344`; checked at `:500-506`). No per-subskill skeleton code is needed — registering the subskill in `SUBSKILL_REFERENCES` plus adding the overlay validation block is sufficient, and the skeleton inclusion then falls out for free (and is what the step-4 skeleton test will confirm). Recommend rewording step 3 so the implementer treats skeleton inclusion as an automatic consequence to *verify*, not new code to *add*, to avoid a needless special case.
+
+#### Overall judgment
+
+Ready for implementation. The boundary with `document-structure` is clean and was already anticipated by the sibling reference; the candidate threshold and report-only/ignore tiers are concrete and appropriately strict; the active feature suppression section correctly defers to and specializes the existing Scout suppression rule (`scout/SKILL.md:90-114`), including the same safety/correctness/data-safety/production-risk/CI-blocking bypass; the overlay schema matches the runner's lenient validation model and introduces no global fields; and the runner boundary firmly excludes scans, drift inference, and semantic backlog checks, consistent with `scout/SKILL.md:170-191`. Scope exclusions (no Skyline V2 / Skyline Data overlay or dry-run, no backlog writes in this PR) are explicit. The four non-blocking threads are refinements, not gates.
+
+#### Residual risks and validation gaps
+
+- **Prose acceptance is human-judged, not command-falsifiable.** Acceptance items like "makes lifecycle drift distinct" and "strict enough to avoid noisy stale-word cleanup" (plan lines 238-243) cannot be proven by a test; only the overlay/skeleton/test mechanics are mechanically falsifiable. The plan is honest about this (lines 213-215), and it is inherent to a reference-driven subskill — but the reviewer of the *implementation* will need to read the new reference against this plan's boundary and threshold sections, not rely on `pytest` alone. Flagging so the impl-review gate budgets for a prose read.
+- **No in-repo overlay to dogfood.** `.agent-protocols/scout.yml` does not exist in this protocol repo, so the new overlay shape is exercised only through synthetic tempdir fixtures. This matches how the existing subskills are tested and is acceptable; noting it so no one assumes a live overlay validates the schema.
+- **`status_sources` / `runbook_roots` are new manually-maintained path lists** (Mechanism Lifecycle lens). The plan handles their lifecycle reasonably by making them optional and adopting-repo-owned with documented fallbacks (`status_sources` → `repo_context.backlog_path`; `archive_paths` → `repo_context.archive_paths`, plan lines 142-148). Ensure the step-1 reference states these are adopting-repo-maintained so they do not silently rot in adopter overlays.
+
+No blocking issues. Resolving Threads 1-4 would tighten consistency and lock in the plan's own stated conventions, but implementation may proceed; the driver owns accept/reject/defer on each thread per the structured-review protocol.
+
+---
+
+I did not write to any file or commit; per the runner contract the driver/runner appends this review under the thread file's `## Review Threads` section and creates the `structured-review:` commit. The above is my complete returned review.
