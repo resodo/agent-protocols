@@ -137,6 +137,13 @@ Required fields:
   or runbooks whose current-state claims should be checked.
 - `doc_roots`: non-empty string list of tracked document roots to inspect.
 
+`current_docs` is deliberately distinct from
+`document-structure.index_docs`: this subskill needs documents whose
+current-state claims are in scope, not only navigational indexes. It is
+required because at least one current-fact-bearing document is needed for a
+lifecycle drift run. When a repo has no separate current map, list the relevant
+entrypoint, status, or runbook document here rather than leaving it implicit.
+
 Optional fields:
 
 - `archive_paths`: string list of historical, artifact, or provenance paths.
@@ -165,29 +172,35 @@ v1 validates known shape but does not fail future extension keys.
      mechanical rules.
    - State that backlog/docs state conflicts use the adopting repo's backlog
      source of truth; this repo's default is `docs/backlog.yml`.
-2. Update `scout/SKILL.md`.
+2. Update `scout/references/document-structure.md`.
+   - Replace the "future document-lifecycle drift subskill" wording with a
+     cross-reference to the now-real `document-lifecycle-drift` subskill.
+   - Keep `document-structure` focused on shape, navigation, and readability.
+3. Update `scout/SKILL.md`.
    - Add `document-lifecycle-drift` to the Subskills list.
    - Preserve the distinction from `document-structure`.
    - Preserve the runner boundary: no v1 automatic scans for document
      lifecycle drift.
-3. Update `scout/scripts/scout_runner.py`.
+4. Update `scout/scripts/scout_runner.py`.
    - Add the subskill reference mapping.
    - Validate the new overlay mapping and string-list fields listed above.
-   - Ensure setup/check report skeletons include the subskill section when it
-     is enabled.
+   - Do not add subskill-specific report-skeleton logic. Verify the existing
+     generic skeleton loop includes the subskill section after registration.
    - Do not add scan commands, keyword scanners, drift inference, backlog
      semantic checks, or automatic candidate generation.
-4. Update `scout/tests/test_scout_runner.py`.
+5. Update `scout/tests/test_scout_runner.py`.
    - Add an overlay fixture variant enabling `document-lifecycle-drift`.
    - Test valid schema acceptance.
    - Test required-field rejection for `entry_docs`, `current_docs`, and
      `doc_roots`.
    - Test optional field type validation for `archive_paths`,
      `status_sources`, `runbook_roots`, and `repo_notes`.
+   - Test that unknown extension keys on the new subskill mapping are accepted
+     under the runner's lenient v1 convention.
    - Test setup/check skeleton includes `### document-lifecycle-drift`.
    - Keep existing structure, reachability, vulture, dry-run, and
      write-enabled tests passing.
-5. Update indexes.
+6. Update indexes.
    - Update `docs/CURRENT.md` Scout references to include the new reference.
    - Update root `README.md` only if the high-level Scout summary needs a
      wording adjustment; no routing change is expected.
@@ -299,3 +312,25 @@ No blocking issues. Resolving Threads 1-4 would tighten consistency and lock in 
 ---
 
 I did not write to any file or commit; per the runner contract the driver/runner appends this review under the thread file's `## Review Threads` section and creates the `structured-review:` commit. The above is my complete returned review.
+
+### Driver response 1
+
+Reviewer pass 1 had no blocking issues, so the plan gate is passed. I accepted
+all four non-blocking refinements before implementation:
+
+- Thread 1 accepted. The Overlay Schema section now explains why
+  `current_docs` is distinct from `document-structure.index_docs`, why it is
+  required, and how adopters should handle repos without a separate current
+  map.
+- Thread 2 accepted. The test plan now requires an assertion that unknown
+  extension keys on the new subskill mapping are accepted.
+- Thread 3 accepted. The implementation plan now includes
+  `scout/references/document-structure.md` so its "future subskill" wording is
+  updated when this subskill lands.
+- Thread 4 accepted. The runner step now says to rely on and verify the
+  existing generic skeleton loop, not add subskill-specific skeleton logic.
+
+No re-review is required for these narrow accepted refinements because the
+reviewer reported no blockers and judged the plan ready for implementation.
+Per the human's current instruction, implementation still stops until the next
+explicit implementation step.
