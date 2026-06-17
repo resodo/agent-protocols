@@ -36,3 +36,5 @@ responses, and closeout evidence for changes to this repo's protocols.
   `document-structure` and `code-structure` Scout subskills.
 - `2026-06-16_scout_active_timeout_plan.md` - Scout active feature suppression
   and structured-review timeout discipline plan.
+- `2026-06-17_document_lifecycle_drift_plan.md` - implementation plan for the
+  `document-lifecycle-drift` Scout subskill.
