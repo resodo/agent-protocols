@@ -10,9 +10,9 @@ source-of-truth boundaries, or maintenance ownership hard for agents and humans
 to understand.
 
 This subskill does not judge whether the document's factual content is stale.
-Stale active/current/historical state belongs to a future document-lifecycle
-drift subskill. This subskill asks whether the document shape itself makes
-maintenance risky.
+Stale active/current/historical state belongs to the
+`document-lifecycle-drift` subskill. This subskill asks whether the document
+shape itself makes maintenance risky.
 
 ## Overlay Fields
 

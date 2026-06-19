@@ -156,6 +156,8 @@ Read only the references for enabled subskills:
 - `code-reachability` backend/Python Slice 1: see
   `references/code-reachability-backend-python.md`.
 - `document-structure`: see `references/document-structure.md`.
+- `document-lifecycle-drift`: see
+  `references/document-lifecycle-drift.md`.
 - `code-structure`: see `references/code-structure.md`.
 
 Subskills define domain scope, overlay fields, useful tools, evidence loops,
@@ -177,9 +179,10 @@ The runner stabilizes mechanics:
 - check report/manifest headings, final validation provenance, and dry-run
   backlog protection.
 
-In v1, the runner does not execute `document-structure` or `code-structure`
-scans. The driver runs project-appropriate commands, records them in
-`SCOUT_REPORT.md`, and owns interpretation.
+In v1, the runner does not execute `document-structure`,
+`document-lifecycle-drift`, or `code-structure` scans. The driver runs
+project-appropriate commands, records them in `SCOUT_REPORT.md`, and owns
+interpretation.
 
 Backlog item field validation belongs to the repo backlog checker. The runner
 may invoke or require that checker, but it must not maintain an independent

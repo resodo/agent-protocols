@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-06-10
+Last updated: 2026-06-20
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -49,7 +49,8 @@ avoid treating historical plans as current instructions.
 - Scout references:
   `scout/references/script-lifecycle.md`,
   `scout/references/code-reachability-backend-python.md`,
-  `scout/references/document-structure.md`, and
+  `scout/references/document-structure.md`,
+  `scout/references/document-lifecycle-drift.md`, and
   `scout/references/code-structure.md`
 
 The UI review reference is conditional. It is not part of the runner-loaded
