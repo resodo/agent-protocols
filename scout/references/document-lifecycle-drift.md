@@ -13,6 +13,11 @@ that belongs to `document-structure`. It also does not turn stale words into CI
 failures. It asks whether a current reader could take a wrong action because a
 document presents old, completed, superseded, or contradictory state as current.
 
+When one document has both structure and lifecycle drift concerns, classify the
+primary risk and do not propose duplicate candidates for the same human
+decision. A lifecycle drift report may note structural contributors as
+report-only context and route the structural question to `document-structure`.
+
 ## Overlay Fields
 
 Required:

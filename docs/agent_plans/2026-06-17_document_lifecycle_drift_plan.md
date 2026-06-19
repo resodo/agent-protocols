@@ -409,3 +409,18 @@ No blocking issues. The implementation is ready for closeout; resolving the two 
 ---
 
 I did not write to any file or commit. Per the runner contract in `write-commit-to-plan` mode, the runner appends this review verbatim under the thread file's `## Review Threads` section and creates the `structured-review:` commit. The above is my complete returned review.
+
+### Driver response 2
+
+Reviewer pass 1 for implementation had no blocking issues and judged the work
+ready for closeout. I accepted Thread 1 as a small prose tightening and updated
+`scout/references/document-lifecycle-drift.md` to say that when one document
+has both structure and lifecycle drift concerns, the Scout driver should
+classify the primary risk, avoid duplicate candidates for the same human
+decision, and route structural contributors to `document-structure` as
+report-only context. Thread 2 required no code change because the successful
+`validate_overlay` call with `future_extension` already proves unknown keys are
+not rejected under the repo's existing test style.
+
+Because the accepted refinement changes the implementation after review, I will
+run an implementation re-review before closeout.
