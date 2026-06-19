@@ -352,3 +352,60 @@ No re-review is required for these narrow accepted refinements because the
 reviewer reported no blockers and judged the plan ready for implementation.
 Per the human's current instruction, implementation still stops until the next
 explicit implementation step.
+
+I have everything I need. All artifacts inspected, all four accepted plan-review threads traced into the implementation, and validation independently re-run (31 Scout tests, 114 full-suite, `git diff --check` clean, backlog checker exit 0). Here is my complete review thread output.
+
+---
+
+### Reviewer pass 1 (impl, claude reviewer)
+
+**Human's concern (restated):** Confirm the completed `document-lifecycle-drift` Scout subskill matches the accepted plan and its plan-review threads — subskill boundary, candidate threshold, active feature suppression, overlay schema validation, runner boundary, tests, docs/status consistency, and validation evidence — and decide whether it is ready for closeout or has blockers.
+
+I inspected the implementation against the accepted plan (`docs/agent_plans/2026-06-17_document_lifecycle_drift_plan.md`) and the plan-review threads (Reviewer pass 1 + Driver response 1 in that file), then independently re-ran validation.
+
+#### Plan-to-implementation traceability
+
+| Plan item (Implementation Plan / Acceptance) | Status | Evidence |
+| --- | --- | --- |
+| 1. Add `scout/references/document-lifecycle-drift.md` (purpose, non-purpose, overlay fields, evidence loop, candidate unit, admission, report-only/ignore, active suppression, evidence standard) | Done | `scout/references/document-lifecycle-drift.md:1-170`; backlog source-of-truth stated `:107-108` |
+| 2. Update `document-structure.md` to drop "future" wording, cross-reference real subskill, keep shape focus | Done | `scout/references/document-structure.md:12-14` ("belongs to the `document-lifecycle-drift` subskill"); no "future" wording remains |
+| 3. Update `scout/SKILL.md` (subskill list, distinction, runner boundary no-scan) | Done | `scout/SKILL.md:159-160` (subskill list), `:182-183` (drift added to v1 no-scan list) |
+| 4. Update `scout_runner.py` (reference map + overlay validation; no skeleton special-casing; no scans) | Done | `SUBSKILL_REFERENCES` `:26`; validation block `:263-275`; generic skeleton loop unchanged `:356-359` |
+| 5. Tests: valid schema, required-field rejection, empty rejection, optional-field types, lenient extension key, skeleton inclusion | Done | `test_scout_runner.py` fixture `:147-164`; valid+extension `:208-218`; required `:245-253`; empty `:255-263`; optional types `:265-279`; skeleton `:359-383` |
+| 6. Update indexes (`docs/CURRENT.md`, conditional `README.md`, `docs/agent_plans/README.md`) | Done | `docs/CURRENT.md:49-54`; `docs/agent_plans/README.md:39-40`; `README.md:16` unchanged (no routing change needed, matches plan) |
+| Acceptance: lifecycle distinct from structure; admission strict; active docs report-only by default; runner limited to lookup/validation/shape; tests cover valid+invalid+skeleton; no Skyline V2/Data overlay or output changed | Met | Boundary bidirectional in both references; admission six-AND + report-only/ignore tiers; suppression `:110-118`; runner diff contains no scan/inference logic; no downstream overlay files touched |
+
+**Accepted plan-review threads — all carried into implementation:**
+- Thread 1 (current_docs distinct/required) — documented in reference `:25-29`; runner requires non-empty `:266`; tests cover required + empty rejection. ✓
+- Thread 2 (lenient extension assertion) — fixture `future_extension` key `:162` + assertion `:218`; validation succeeds with the key present. ✓
+- Thread 3 (document-structure forward reference) — updated, "future" wording removed. ✓
+- Thread 4 (skeleton via generic loop, not special-casing) — no per-subskill skeleton code; inclusion proven by `test_setup_and_check_report_artifacts_with_document_lifecycle_drift`. ✓
+
+#### Blocking issues
+
+None. Every in-scope plan item is `Done` with concrete evidence, all four accepted plan-review threads are reflected in the code/tests, and validation passes on re-run. The work is implementable-as-planned and does not exceed the accepted scope.
+
+#### Non-blocking issues
+
+**Thread 1 — Cross-subskill tie-break from the plan's Boundary section is not captured verbatim in either reference.**
+The accepted plan's "Boundary With Document Structure" (plan `:74-78`) states that when one document has both a structure and a lifecycle problem, the driver should "classify the primary risk" and "not open duplicate candidates for the same human decision," with each subskill allowed to note-and-route the other's concern. The shipped references implement the *scope split* correctly — `document-structure.md:131` routes "factual staleness rather than structure" to ignored noise, and `document-lifecycle-drift.md:153` routes "document shape, navigation, or readability" to ignored noise — and admission in both requires "no existing backlog item semantically covers the same decision." So duplicate candidates are largely prevented. But the explicit "classify the primary risk when a document has both issues" tie-break, and the softer "note as report-only and route to the sibling" disposition, are not literally present (the references use the harder "ignored noise" disposition for out-of-scope concerns). This is a prose refinement, not a correctness gap: the scope boundary and dedup intent both hold. Recommend (optional) adding one sentence to `document-lifecycle-drift.md` capturing the primary-risk tie-break for documents with both issues, so a Scout driver running both subskills has the plan's cross-routing guidance in the reference itself.
+
+**Thread 2 — Lenient-extension assertion proves preservation, leans on the sibling test for rejection-avoidance.**
+`test_validate_overlay_accepts_document_lifecycle_drift_schema` (`:208-218`) asserts the unknown `future_extension` key survives in the parsed result. Because `validate_overlay` returns the overlay unmodified, the substantive guarantee (validation does not *reject* the unknown key) is carried implicitly by the fact that the same test calls `validate_overlay` without expecting a raise. This is functionally sufficient and matches how `document-structure`'s `future_threshold` is tested, so it is consistent with repo convention — noting only that the assertion's strength is "key preserved," with "not rejected" implied by the surrounding successful call. No change required.
+
+#### Overall judgment
+
+**Ready for closeout.** The implementation faithfully matches the accepted plan and incorporates all four accepted plan-review threads. The subskill boundary with `document-structure` is clean and bidirectional; the candidate threshold is appropriately strict (six conjunctive admission conditions plus explicit report-only and ignored-noise tiers); active feature suppression correctly specializes the Scout-level rule, including the same safety/correctness/data-safety/production-risk/CI-blocking bypass (`document-lifecycle-drift.md:110-118` against `scout/SKILL.md:90-114`); the overlay schema validation adds only the planned required/optional fields with the lenient-extension convention and no global fields; and the runner boundary stays limited to reference lookup, overlay validation, and report-shape checks — no scans, drift inference, or semantic backlog checks were added (`scout/SKILL.md:182-183`). Docs/status are consistent: `docs/CURRENT.md` lists the new reference, the plans index lists the plan, the plan header reads `Status: implemented`, and `README.md` correctly needed no routing change. The two non-blocking threads are optional refinements, not gates.
+
+#### Residual risks and validation gaps
+
+- **Validation provenance (reviewer-rerun, strong).** I independently re-ran the plan's validation: `scout/tests/test_scout_runner.py` → 31 passed / 10 subtests; full `python -m pytest` → 114 passed / 22 subtests; `git diff --check` clean; `python scripts/check_backlog.py` → exit 0; worktree clean. This corroborates the plan's recorded Implementation Result.
+- **Prose acceptance is human/reviewer-judged, not command-falsifiable.** Acceptance items like "makes lifecycle drift distinct" and "strict enough to avoid noisy stale-word cleanup" cannot be proven by `pytest`; only overlay/skeleton/test mechanics are mechanically falsifiable. I read the new reference prose against the plan's boundary and threshold sections and found it coherent and distinct — flagging that this judgment, not a test, backs those acceptance lines.
+- **No in-repo overlay to dogfood.** `.agent-protocols/scout.yml` does not exist in this protocol repo, so the new overlay shape is exercised only through synthetic tempdir fixtures — same as the existing subskills, acceptable. Noting so no one assumes a live overlay validated the schema.
+- **New manually-maintained path lists (`status_sources`, `runbook_roots`, `archive_paths`).** The reference now states these are adopting-repo-owned with documented fallbacks (`archive_paths` → `repo_context.archive_paths`; backlog default → `repo_context.backlog_path`) and should be updated when sources move/retire (`document-lifecycle-drift.md:33-41`), which resolves the Mechanism Lifecycle concern raised at plan review. The fallback semantics are reference prose for the driver, not runner-enforced — consistent with the reference-driven design.
+
+No blocking issues. The implementation is ready for closeout; resolving the two non-blocking threads would tighten cross-subskill routing prose but is not required. Per the structured-review boundary, final merge-readiness belongs to closeout after its final rechecks (branch/PR, CI, human acceptance); this review concludes `ready for closeout`, not a merge handoff.
+
+---
+
+I did not write to any file or commit. Per the runner contract in `write-commit-to-plan` mode, the runner appends this review verbatim under the thread file's `## Review Threads` section and creates the `structured-review:` commit. The above is my complete returned review.
