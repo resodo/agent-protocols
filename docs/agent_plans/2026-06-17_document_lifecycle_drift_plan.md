@@ -424,3 +424,58 @@ not rejected under the repo's existing test style.
 
 Because the accepted refinement changes the implementation after review, I will
 run an implementation re-review before closeout.
+
+I have everything I need. All artifacts inspected, the refinement traced against the accepted plan, the sibling reference checked for contradiction, and validation independently re-run (31 Scout tests pass, `git diff --check` clean, worktree clean). Here is my complete review thread output.
+
+---
+
+### Reviewer pass 2 (impl, claude reviewer)
+
+**Human's concern (restated):** After Driver response 2 accepted the optional primary-risk tie-break refinement from Reviewer pass 1, confirm the new prose is correct, check that no new blockers were introduced, verify the review-thread response, and decide whether the `document-lifecycle-drift` implementation remains ready for closeout.
+
+I scoped this re-review to what changed since the last impl pass. The only commit since Reviewer pass 1 (impl) is `0826eb8`, a `+20`-line additive change: 15 lines of `Driver response 2` thread text in the plan, and 5 lines added to `scout/references/document-lifecycle-drift.md`. No code, test, or other reference files were touched.
+
+#### What I verified
+
+**1. The accepted prose refinement is correct (Thread 1 from pass 1).**
+The new paragraph at `scout/references/document-lifecycle-drift.md:16-19` reads:
+
+> When one document has both structure and lifecycle drift concerns, classify the primary risk and do not propose duplicate candidates for the same human decision. A lifecycle drift report may note structural contributors as report-only context and route the structural question to `document-structure`.
+
+This faithfully captures the accepted plan's "Boundary With Document Structure" (plan `:74-78`): "classify the primary risk" ✓, "Do not open duplicate candidates for the same human decision" ✓ (rendered as "do not propose duplicate candidates"), and the lifecycle-side note-and-route disposition ✓ (the plan's "a lifecycle drift report may note structural contributors without turning them into a separate structure candidate," sharpened to the symmetric "note as report-only context and route to `document-structure`" disposition that Reviewer pass 1 itself recommended). The wording is accurate and does not overstate.
+
+**2. No internal contradiction was introduced.** I checked the new lines 16-19 against the existing ignored-noise disposition at `document-lifecycle-drift.md:158` ("the issue is document shape, navigation, or readability **rather than** factual currentness"). These address two distinct, cleanly separated scenarios: line 158 covers a *purely* structural document (no lifecycle drift → ignored noise, fully out of scope), while lines 16-19 cover a document with *both* a lifecycle drift candidate *and* structural contributors (primary risk classified as lifecycle, structural contributor noted as context). The "rather than" in line 158 keeps the two from overlapping. No contradiction.
+
+**3. No new blockers.** The change is markdown-only. I re-ran the focused suite: `scout/tests/test_scout_runner.py` → 31 passed / 10 subtests; `git diff --check` clean; worktree clean. The runner contract (`SUBSKILL_REFERENCES`, `validate_overlay`, generic skeleton loop) is untouched, so the full prior validation evidence (114-test suite, backlog checker exit 0) carries forward unaffected by a reference-prose edit.
+
+**4. Review-thread response is sound (Thread 2 from pass 1).** Driver response 2 declines a code change for Thread 2 because the successful `validate_overlay` call carrying `future_extension` already proves unknown keys are not rejected. That is consistent with Reviewer pass 1's own Thread 2, which explicitly said "No change required" — the driver is not overriding a reviewer ask, just recording the matching disposition. Correct.
+
+#### Blocking issues
+
+None. The refinement is accurate, introduces no contradiction or regression, stays within the accepted scope (one reference sentence cluster), and the thread responses are consistent with Reviewer pass 1.
+
+#### Non-blocking issues
+
+**Thread 3 — Cross-routing is now soft one way, hard the other (optional, no change required).**
+With this edit, the lifecycle→structure direction uses the soft "note as report-only context and route" disposition (`document-lifecycle-drift.md:16-19`), while the reverse structure→lifecycle direction still uses the harder "ignored noise" disposition (`document-structure.md:131` routes "factual staleness rather than structure" to ignored noise). The accepted plan's prose imagined symmetry ("A structure report may note possible factual drift as report-only and route it to this subskill"). This asymmetry pre-existed and was already judged acceptable in Reviewer pass 1, and it does not cause duplicate candidates — both admission lists still gate on "no existing backlog item semantically covers the same decision," and `document-structure.md:12-14` already names the real subskill. Flagging only so the driver consciously owns leaving the structure side as-is; the driver scoped Thread 1 to the lifecycle reference, which is a reasonable boundary. Not a gate.
+
+#### Thread resolutions (Reviewer pass 1, impl)
+
+- **Thread 1 — Resolved.** Artifact body updated: `scout/references/document-lifecycle-drift.md:16-19` now carries the primary-risk tie-break and note-and-route guidance. Verified against plan `:74-78`; correct and contradiction-free.
+- **Thread 2 — Resolved by driver decision.** No change required; the existing lenient-extension test already proves unknown keys are not rejected, matching the pass-1 reviewer note. Accepted.
+
+#### Overall judgment
+
+**Remains ready for closeout.** The single accepted refinement is correct, scoped, and verified; no new blocker was introduced; both prior non-blocking threads are resolved; and the implementation still matches the accepted plan and all four plan-review threads. The new prose actually closes the one substantive gap Reviewer pass 1 noted (the plan's cross-routing tie-break was previously absent from the reference), so the implementation is marginally stronger than at pass 1, not weaker. Per the structured-review boundary, final merge-readiness belongs to closeout after its rechecks (branch/PR, CI, human acceptance); this re-review concludes `ready for closeout`, not a merge handoff.
+
+#### Residual risks and validation gaps
+
+- **Validation provenance (reviewer-rerun, scoped).** I re-ran the focused Scout suite (31 passed / 10 subtests) and confirmed `git diff --check` and worktree are clean. The change is reference-prose only, so the full-suite/backlog evidence from Reviewer pass 1 (114 passed, checker exit 0) is unaffected and not re-run this pass; flagging that the full-suite provenance for this commit is "unchanged-by-construction," not freshly re-executed.
+- **Prose acceptance stays human/reviewer-judged.** The tie-break correctness is established by reading the reference against the plan, not by a test — inherent to a reference-driven subskill and consistent with the pass-1 residual.
+- **One-directional cross-routing symmetry** (Thread 3 above) is the only open prose nuance; it is non-blocking and the driver may leave it as-is.
+
+No blocking issues. The implementation remains ready for closeout; Thread 3 is an optional consistency note, not a gate.
+
+---
+
+I did not write to any file or commit. Per the runner contract in `write-commit-to-plan` mode, the runner appends this review verbatim under the thread file's `## Review Threads` section and creates the `structured-review:` commit. The above is my complete returned review.
