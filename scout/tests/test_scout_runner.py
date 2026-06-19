@@ -144,6 +144,25 @@ class ScoutRunnerTests(unittest.TestCase):
         }
         return data
 
+    def overlay_with_document_lifecycle_drift_subskill(self) -> dict[str, Any]:
+        data = self.overlay()
+        data["enabled_subskills"] = [
+            "script-lifecycle",
+            "code-reachability",
+            "document-lifecycle-drift",
+        ]
+        data["subskills"]["document-lifecycle-drift"] = {
+            "entry_docs": ["AGENTS.md", "README.md"],
+            "current_docs": ["docs/CURRENT.md", "docs/README.md"],
+            "doc_roots": ["docs"],
+            "archive_paths": ["docs/agent_plans/outputs"],
+            "status_sources": ["docs/backlog.yml", "docs/agent_plans/README.md"],
+            "runbook_roots": ["docs/runbooks"],
+            "repo_notes": "Treat dated plans as historical unless current docs route them.",
+            "future_extension": {"ignored": True},
+        }
+        return data
+
     def add_validation_provenance(
         self,
         run_dir: Path,
@@ -186,6 +205,18 @@ class ScoutRunnerTests(unittest.TestCase):
             ["script-lifecycle", "code-reachability", "document-structure", "code-structure"],
         )
 
+    def test_validate_overlay_accepts_document_lifecycle_drift_schema(self) -> None:
+        data = self.overlay_with_document_lifecycle_drift_subskill()
+        self.write_overlay(data)
+
+        parsed = runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+        self.assertEqual(
+            parsed["enabled_subskills"],
+            ["script-lifecycle", "code-reachability", "document-lifecycle-drift"],
+        )
+        self.assertIn("future_extension", parsed["subskills"]["document-lifecycle-drift"])
+
     def test_document_structure_requires_entry_docs(self) -> None:
         data = self.overlay_with_structure_subskills()
         del data["subskills"]["document-structure"]["entry_docs"]
@@ -210,6 +241,42 @@ class ScoutRunnerTests(unittest.TestCase):
 
         with self.assertRaisesRegex(runner.RunnerError, "doc_large_lines.*positive integer"):
             runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_document_lifecycle_drift_requires_core_docs(self) -> None:
+        for field in ("entry_docs", "current_docs", "doc_roots"):
+            with self.subTest(field=field):
+                data = self.overlay_with_document_lifecycle_drift_subskill()
+                del data["subskills"]["document-lifecycle-drift"][field]
+                self.write_overlay(data)
+
+                with self.assertRaisesRegex(runner.RunnerError, f"document-lifecycle-drift.{field}"):
+                    runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_document_lifecycle_drift_rejects_empty_core_docs(self) -> None:
+        for field in ("entry_docs", "current_docs", "doc_roots"):
+            with self.subTest(field=field):
+                data = self.overlay_with_document_lifecycle_drift_subskill()
+                data["subskills"]["document-lifecycle-drift"][field] = []
+                self.write_overlay(data)
+
+                with self.assertRaisesRegex(runner.RunnerError, f"document-lifecycle-drift.{field}.*must not be empty"):
+                    runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
+
+    def test_document_lifecycle_drift_rejects_malformed_optional_fields(self) -> None:
+        cases: list[tuple[str, Any]] = [
+            ("archive_paths", "docs/archive"),
+            ("status_sources", [123]),
+            ("runbook_roots", "docs/runbooks"),
+            ("repo_notes", ""),
+        ]
+        for field, value in cases:
+            with self.subTest(field=field):
+                data = self.overlay_with_document_lifecycle_drift_subskill()
+                data["subskills"]["document-lifecycle-drift"][field] = value
+                self.write_overlay(data)
+
+                with self.assertRaisesRegex(runner.RunnerError, f"document-lifecycle-drift.{field}"):
+                    runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
 
     def test_code_structure_requires_roots(self) -> None:
         data = self.overlay_with_structure_subskills()
@@ -279,6 +346,32 @@ class ScoutRunnerTests(unittest.TestCase):
         report = (run_dir / "SCOUT_REPORT.md").read_text(encoding="utf-8")
         self.assertIn("### document-structure", report)
         self.assertIn("### code-structure", report)
+
+        check_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            run_dir="docs/agent_plans/outputs/2026-06-06_scout_run",
+            mode="dry-run",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.cmd_check(check_args), 0)
+
+    def test_setup_and_check_report_artifacts_with_document_lifecycle_drift(self) -> None:
+        self.write_overlay(self.overlay_with_document_lifecycle_drift_subskill())
+        setup_args = SimpleNamespace(
+            repo_root=self.root,
+            overlay=".agent-protocols/scout.yml",
+            mode="dry-run",
+            date="2026-06-06",
+            slug="scout_run",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(runner.cmd_setup(setup_args), 0)
+        run_dir = self.root / "docs/agent_plans/outputs/2026-06-06_scout_run"
+        self.add_validation_provenance(run_dir, mode="dry-run")
+
+        report = (run_dir / "SCOUT_REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("### document-lifecycle-drift", report)
 
         check_args = SimpleNamespace(
             repo_root=self.root,

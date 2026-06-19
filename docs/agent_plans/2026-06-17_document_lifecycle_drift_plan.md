@@ -1,6 +1,6 @@
 # Scout Document Lifecycle Drift Plan
 
-Status: active implementation plan
+Status: implemented
 Owner: driver
 Date: 2026-06-17
 
@@ -258,6 +258,24 @@ escalated to the human.
 - Tests cover valid and invalid overlay shape plus report skeleton inclusion.
 - No downstream Skyline V2 or Skyline Data overlay or Scout output is changed
   in this PR.
+
+## Implementation Result
+
+Implemented in this branch. The change adds the
+`document-lifecycle-drift` Scout reference, wires it into Scout routing and
+runner overlay validation, updates the document-structure cross-reference and
+current protocol map, and extends Scout runner tests for valid schema,
+invalid schema, lenient extension keys, and report skeleton inclusion.
+
+Validation run after implementation:
+
+```bash
+uv run --with PyYAML --with pytest python -m pytest scout/tests/test_scout_runner.py
+uv run --with PyYAML --with pytest python -m pytest tests/test_skill_frontmatter.py
+uv run --with PyYAML --with pytest python -m pytest
+git diff --check
+uv run --with PyYAML python scripts/check_backlog.py
+```
 
 ## Review Threads
 

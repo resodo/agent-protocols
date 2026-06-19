@@ -23,6 +23,7 @@ SUBSKILL_REFERENCES = {
     "script-lifecycle": Path("references/script-lifecycle.md"),
     "code-reachability": Path("references/code-reachability-backend-python.md"),
     "document-structure": Path("references/document-structure.md"),
+    "document-lifecycle-drift": Path("references/document-lifecycle-drift.md"),
     "code-structure": Path("references/code-structure.md"),
 }
 CORE_FIELDS = (
@@ -258,6 +259,20 @@ def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
             )
         if "repo_notes" in document:
             require_string(document["repo_notes"], "subskills.document-structure.repo_notes")
+
+    if "document-lifecycle-drift" in enabled:
+        drift = require_mapping(subskills["document-lifecycle-drift"], "subskills.document-lifecycle-drift")
+        require_string_list(drift.get("entry_docs"), "subskills.document-lifecycle-drift.entry_docs", non_empty=True)
+        require_string_list(drift.get("current_docs"), "subskills.document-lifecycle-drift.current_docs", non_empty=True)
+        require_string_list(drift.get("doc_roots"), "subskills.document-lifecycle-drift.doc_roots", non_empty=True)
+        if "archive_paths" in drift:
+            require_string_list(drift["archive_paths"], "subskills.document-lifecycle-drift.archive_paths")
+        if "status_sources" in drift:
+            require_string_list(drift["status_sources"], "subskills.document-lifecycle-drift.status_sources")
+        if "runbook_roots" in drift:
+            require_string_list(drift["runbook_roots"], "subskills.document-lifecycle-drift.runbook_roots")
+        if "repo_notes" in drift:
+            require_string(drift["repo_notes"], "subskills.document-lifecycle-drift.repo_notes")
 
     if "code-structure" in enabled:
         structure = require_mapping(subskills["code-structure"], "subskills.code-structure")
