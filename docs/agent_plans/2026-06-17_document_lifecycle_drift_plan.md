@@ -479,3 +479,13 @@ No blocking issues. The implementation remains ready for closeout; Thread 3 is a
 ---
 
 I did not write to any file or commit. Per the runner contract in `write-commit-to-plan` mode, the runner appends this review verbatim under the thread file's `## Review Threads` section and creates the `structured-review:` commit. The above is my complete returned review.
+
+### Driver response 3
+
+Reviewer pass 2 had no blocking issues and judged the implementation ready for
+closeout. I am leaving non-blocking Thread 3 unchanged by driver decision. The
+accepted refinement was specifically to add the lifecycle-side primary-risk
+tie-break and note-and-route guidance. Keeping `document-structure`'s
+pure-factual-staleness case as ignored noise remains consistent with that
+reference's boundary because it applies when the issue is factual staleness
+rather than structure. No implementation change is needed for closeout.
