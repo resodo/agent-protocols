@@ -45,15 +45,26 @@ the standard `agent-protocols-updated` repository dispatch event to
 ## Implementation
 
 1. Add `.github/workflows/dispatch-skynet-ingest.yml`.
-2. Mirror the existing dispatch workflow structure:
+2. Copy `.github/workflows/dispatch-skynet-twitter.yml` verbatim and apply only
+   the five target substitutions below:
+   - workflow name;
+   - step name;
+   - `SKYNET_*_REPO` env var and value;
+   - `SKYNET_*_DISPATCH_TOKEN` secret;
+   - missing-secret message.
+3. Preserve the existing dispatch workflow structure:
    - trigger on `push` to `main`;
    - allow `workflow_dispatch`;
    - set top-level `permissions: {}`;
+   - keep `job: dispatch`, `name: dispatch`, `runs-on: ubuntu-latest`;
+   - keep `SOURCE_REPOSITORY: ${{ github.repository }}` and
+     `SOURCE_SHA: ${{ github.sha }}`;
+   - keep `shell: bash` and `set -euo pipefail`;
    - use `GH_TOKEN: ${{ secrets.SKYNET_INGEST_DISPATCH_TOKEN }}`;
    - dispatch to `MAGI-Systems-01/skynet-ingest`;
    - send event type `agent-protocols-updated`;
    - include `client_payload.repository` and `client_payload.sha`.
-3. Keep naming aligned with existing workflows:
+4. Keep naming aligned with existing workflows:
    - workflow name: `Dispatch Skynet Ingest Protocol Update`;
    - step name: `Dispatch Skynet Ingest update`;
    - env var: `SKYNET_INGEST_REPO`;
@@ -80,6 +91,13 @@ actionlint .github/workflows/dispatch-skynet-ingest.yml
 If `actionlint` is unavailable locally, install or invoke it without committing
 generated binaries or caches.
 
+Validate structural consistency against the copied template. The diff should be
+limited to the five target substitutions named in the implementation section:
+
+```bash
+diff -u .github/workflows/dispatch-skynet-twitter.yml .github/workflows/dispatch-skynet-ingest.yml
+```
+
 Before closeout, verify both required secret names still exist with `gh secret
 list` and do not print secret values.
 
@@ -103,6 +121,12 @@ list` and do not print secret values.
   unless the human explicitly requests a smoke.
 - If Skynet Ingest target workflow changes independently, this source workflow
   might dispatch successfully but target-side update behavior could differ.
+- This repo currently has local `actionlint` validation but no CI-backed
+  workflow-lint gate. Closeout must label workflow syntax and template
+  consistency validation as driver-reported unless CI is expanded separately.
+- The per-target dispatch workflow fan-out is deliberately retained for
+  consistency with V2/Twitter. A future matrix-driven workflow could reduce
+  duplication, but that maintenance redesign is outside this PR.
 
 ## Review Threads
 
@@ -145,3 +169,21 @@ Ready for implementation. Goal, non-goals, and assumptions are explicit; the pat
 - **Validation provenance for closeout.** Because CI does not exercise the YAML, "structurally consistent" and "local validation passes" will be **driver-reported** (actionlint + template diff run locally), not **CI-backed**. Closeout should record that provenance honestly rather than implying CI coverage.
 
 No blocking issues. This plan is ready for implementation; the driver should decide whether to adopt Threads 1–3 (recommend at least Thread 1) and whether to log Thread 4 as backlog.
+
+### Driver response 1
+
+Accepted Thread 1. The Validation section now requires a `diff -u` comparison
+against `dispatch-skynet-twitter.yml`, with expected differences limited to the
+five named substitutions.
+
+Accepted Thread 2. The Implementation section now says to copy the Twitter
+workflow verbatim and names the structural elements that must be preserved.
+
+Accepted Thread 3. The Risks section now explicitly labels actionlint/template
+validation as driver-reported unless CI is expanded separately.
+
+Deferred Thread 4. The copy-paste fan-out is a real maintenance observation, but
+the current PR intentionally matches V2/Twitter. No backlog item is added in
+this PR because this change is only onboarding another existing consumer into
+the current convention; a matrix redesign should be discussed separately if the
+fan-out keeps growing.
