@@ -1,4 +1,4 @@
-name: Dispatch Skynet V2 Protocol Update
+name: Dispatch Skynet Intern Protocol Update
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     name: dispatch
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch Skynet V2 update
+      - name: Dispatch Skynet Intern update
         env:
           GH_TOKEN: ${{ secrets.SKYNET_INTERN_DISPATCH_TOKEN }}
           SKYNET_INTERN_REPO: MAGI-Systems-01/skynet-intern
