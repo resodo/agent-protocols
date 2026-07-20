@@ -598,3 +598,58 @@ non-empty whitespace run, including Markdown wrapping across lines, and the
 test plan now pins that an oversized `## Review Threads` section cannot change
 a small ordinary artifact from normal to hard. These tighten the accepted scan
 semantics without changing scope or requiring another plan-review gate.
+
+All verification is complete — full diff inspected, all 128 tests re-run green, static checks pass, three live dry-run smokes confirm the tier policy end-to-end, and the phrase table matches the plan verbatim. Here is the complete review for the thread file.
+
+I inspected the full branch diff against `origin/main` (runner, tests, both SKILL files, README, docs map, plan index), re-ran every validation command in the plan, and exercised the new selection policy live with three read-only dry runs. The implementation matches the accepted plan without scope divergence. There are no blocking issues.
+
+---
+
+### Reviewer pass 3 (impl, claude reviewer)
+
+**Restated concern:** Does the implemented runner, test suite, and documentation match the accepted plan — the pinned 2x2 matrix, deterministic tier classification, override precedence and provenance, single-sourced policy prose — without regressing the existing review-gate machinery?
+
+Scope of this pass: the complete branch diff `origin/main..HEAD` (verified read in full: 312-line runner diff, 312-line test diff, all four doc diffs), the current runner source around every new code path, and the plan's Implementation Record. Validation provenance is reviewer-rerun unless noted: structured-review 79, Scout 31, root 18 tests — all green; `python -m compileall -q structured-review scout scripts tests`, `python scripts/check_backlog.py`, runner `--help`, and `git diff --check` all pass. I additionally ran three live `--dry-run` smokes: a small ordinary artifact resolved `normal` with `Model source: profile`; a focus naming `schema migration` and `rollout plan` resolved `hard` with exactly the two category-name reasons; and `--reviewer-backend codex --review-tier hard --codex-model gpt-custom` produced `Model: gpt-custom`, `Model source: explicit --codex-model`, `Effort source: profile` — mixed provenance recorded correctly. Finally, this review is itself a dogfood run of the new routing: my own prompt carried tier `hard` from six complexity-signal reasons with profile provenance, exactly as the policy predicts for a self-referential artifact.
+
+#### Plan-to-implementation traceability
+
+- Backend contract unchanged — **Done.** No `+`/`-` diff line touches `resolve_reviewer_backend` or the driver-marker constants; pre-existing backend tests remain green.
+- `--review-tier auto` default, deterministic — **Done.** Parser defaults to `auto`; `resolve_review_tier` uses only review type, `splitlines()` counts, artifact count, and the pinned regex table — no model calls, clock, or randomness.
+- Small ordinary artifact resolves `normal` — **Done.** Pinned by test and confirmed by live dry-run.
+- `closeout-review`, >1,000 body lines, multi-artifact `impl`, and every named category resolve `hard` — **Done.** Tests cover all four signals; the phrase test iterates all 31 phrases individually; the boundary test pins 1,000 lines → `normal` and 1,001 → `hard`; the threads-exclusion test pins that an oversized `## Review Threads` section (1,500 lines of `security review`) changes neither the count nor the keyword scan — the Thread 5 test ask, delivered.
+- Phrase table fidelity — **Done.** I programmatically extracted the runner's `HARD_COMPLEXITY_SIGNAL_PHRASES` and matched all 31 phrases verbatim against the plan body's backticked table; none missing, none extra. Matching semantics implement the accepted spec: `(?<!\w)…(?!\w)` boundaries (`preproduction changeover` stays normal — tested), `re.IGNORECASE`, `\s+` for phrase-internal whitespace including line wraps (tested), hyphenated phrases literal, reasons record category names only.
+- Exact 2x2 profiles — **Done.** `REVIEW_MODEL_MATRIX` pins `claude-opus-4-8`/`claude-fable-5`/`gpt-5.6-terra`/`gpt-5.6-sol`, all `xhigh`; the matrix test asserts all four pairs.
+- Override precedence and provenance — **Done.** All four provider flags now parse with `None` sentinels; `resolve_review_profile` replaces only supplied values and stamps `model_source`/`effort_source` as `profile` or the exact flag; tested on both the claude (`--model`) and codex (`--codex-model`/`--codex-effort`) sides and confirmed live.
+- Artifact validation — **Done.** Missing, directory, unreadable, and non-UTF-8 artifacts all raise a relative-path `RunnerError` before reviewer invocation, including under an explicit tier (bodies are read before the explicit-tier early return); each case is tested.
+- Prompt, start log, metadata — **Done.** The reviewer-selection block sits before task-specific focus with backend, tier, reasons, model, model source, effort, effort source, and the routing-only sentence; the start log gains `tier=`; `metadata.json` gains `review_tier`, `review_tier_reasons`, `model_source`, `effort_source` — all tested.
+- Timeout guidance — **Done.** The non-fatal notice fires in the shared `run_claude` path (so it covers both backends) when tier is `hard` and `timeout_sec == 900`, without mutating the timeout; tested.
+- Documentation single-sourcing — **Done.** `structured-review/SKILL.md` owns the backend rule, tier signals, matrix, override guidance, and lifecycle; `closeout/SKILL.md` delegates backend/tier/model/effort and forbids a competing closeout matrix; `README.md` summarizes `--review-tier` and the profiles; `docs/CURRENT.md` describes the routing with a bumped date; the plan is indexed in `docs/agent_plans/README.md`. The prose test pins the SKILL slugs and the closeout delegation sentences. No stale `gpt-5.5`/`opus` reference remains outside historical plans, per the plan's non-goal.
+- No regression to write-mode, git verification, sandbox, stream parsing, timeout, secret scanning, or path redaction — **Done** (reviewer-rerun). The runner diff touches those paths only additively (two stderr prints, one prompt block, four metadata keys); all pre-existing tests pass.
+- Test-count claim — **Done.** The Implementation Record's 65 → 79 claim matches: exactly 14 new test methods in the diff, 79 green on rerun.
+- PR opened from `feature/review-tier-model-matrix` — **Deferred** to closeout by the plan's own gate ordering. Honest state: the branch is local-only, 6 commits ahead of `origin/main`, unpushed; no PR or CI exists yet.
+- Codex live smokes (`gpt-5.6-terra`, `gpt-5.6-sol`) — **Deferred** to pre-closeout as the plan specifies; not yet run.
+
+#### Blocking issues
+
+None. There are no blocking issues in this pass.
+
+#### Non-blocking issues
+
+**Thread 6 — A non-selected provider's override flag is accepted and silently dropped (non-blocking, driver's choice).**
+
+`resolve_review_profile` applies only the resolved backend's override pair, so with `--reviewer-backend auto` a caller can pin a model that never takes effect: in a Claude-driver environment (auto → codex reviewer), `--model claude-fable-5` parses cleanly and is discarded, and the run proceeds on `gpt-5.6-sol`/`gpt-5.6-terra` with `model_source: profile`. The metadata is truthful about what ran, but nothing surfaces that a supplied flag did nothing — the exact quiet-provenance shape this plan otherwise eliminates, though here it is pre-existing, documented semantics ("override only the selected backend's profile"). Cheap options: a one-line stderr notice when an override for the non-selected provider was supplied, a backlog entry, or an explicit one-sentence rejection in the driver response. None of these gates closeout.
+
+#### Overall judgment
+
+Ready for closeout. The implementation is faithful to the accepted plan at every point I could verify: the pinned matrix, the exact 31-phrase policy, strict-greater-than line threshold, Review Threads exclusion, explicit-tier and per-provider override precedence with honest provenance, fail-fast artifact validation, and single-sourced prose with tests pinning the load-bearing strings. Validation is reviewer-rerun end to end, including live dry-run exercise of normal, auto-hard, and explicit-override paths. Thread 6 is optional tightening. The pending gates the plan itself names — both Codex model smokes, Closeout Review, PR/CI verification, and human merge — belong to closeout, and the plan's status line states its own state accurately.
+
+#### Residual risks and validation gaps
+
+- **The self-referential hard bias is now observed in production, not just predicted:** this review's own run fired all six complexity categories on the plan document (which quotes the full phrase table) and routed to `claude-fable-5`. Cost-only, visible in the recorded reasons, and consistent with the accepted conservative design.
+- **Phrase matching can span input seams:** `resolve_review_tier` joins focus and artifact bodies with a single newline and `\s+` crosses paragraph breaks, so a phrase can assemble across a boundary (for example a body line ending `security` followed by a line starting `review`). Strictly conservative direction — it can only promote to `hard` — and within the plan's stated whitespace rule, but worth knowing when a surprising category reason appears.
+- **A non-UTF-8 `--focus-file` still raises a raw `UnicodeDecodeError`** rather than a `RunnerError`; the plan scoped fail-fast validation to artifacts, so this is pre-existing behavior outside accepted scope, noted for a future polish pass.
+- **README and `docs/CURRENT.md` name the models in prose and are not test-pinned** (the prose test covers `structured-review/SKILL.md` and `closeout/SKILL.md`); keeping them synchronized on a future model change rests on the lifecycle checklist, which does name both files.
+- **Codex slug liveness remains unverified** until the deferred driver-run smokes; unit tests prove argv construction only. Closeout should record that provenance as driver-run, not CI-backed.
+- **The review target is unpushed** — closeout's branch/PR/CI verification is still ahead, and nothing in this pass substitutes for it.
+
+No blocking threads open. Implementation review concludes: ready for closeout.
