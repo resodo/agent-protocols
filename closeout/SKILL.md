@@ -46,7 +46,16 @@ through structured-review skill self-evolution when protocol rules change.
 When Closeout Review is triggered, use the `structured-review` protocol with
 `Type: closeout-review`. The structured-review skill's default runner rule and
 runner-mode guidance decide how the reviewer pass runs; this protocol does not
-duplicate that policy.
+duplicate that policy. Pass the closeout artifact paths and a focus that names
+the triggering evidence or ambiguity, such as release scope, contract files,
+validation provenance, PR/CI state, ancestry, or residual risk. Do not choose a
+reviewer model in the closeout prompt.
+
+The structured-review runner owns backend, tier, model, and effort selection.
+Its automatic policy routes every `closeout-review` to the `hard` tier and
+chooses a cross-vendor reviewer from the driver identity; an explicit runner
+override remains available for exceptional cases. Keep this rule single-sourced
+there rather than maintaining a competing closeout matrix.
 
 Closeout Review checks whether the closeout evidence or report is accurate and
 complete. It returns to closeout with `ready to resume closeout` or named

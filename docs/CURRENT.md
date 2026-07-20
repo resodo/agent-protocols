@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-06-20
+Last updated: 2026-07-20
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -20,7 +20,8 @@ avoid treating historical plans as current instructions.
 - `structured-review/SKILL.md` - structured review for plans,
   implementations, optional closeout evidence reviews, and review-response
   passes. Repo-backed review gates default to the bundled runner when
-  available, with cross-vendor Claude and Codex reviewer backends.
+  available, with cross-vendor Claude and Codex reviewer backends plus
+  automatic normal/hard tier routing through pinned model profiles.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work.
 - `planning/SKILL.md` - discussion-to-plan workflow before implementation.

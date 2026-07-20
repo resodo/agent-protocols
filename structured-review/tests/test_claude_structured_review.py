@@ -254,6 +254,176 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
 
         self.assertEqual(config.timeout_sec, 900)
 
+    def test_default_review_tier_is_normal_with_profile_provenance(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+
+        config = self.config_for(repo, protocol)
+
+        self.assertEqual(config.review_tier, "normal")
+        self.assertEqual(config.review_tier_reasons, ("auto: no hard signals",))
+        self.assertEqual(config.model, "claude-opus-4-8")
+        self.assertEqual(config.effort, "xhigh")
+        self.assertEqual(config.model_source, "profile")
+        self.assertEqual(config.effort_source, "profile")
+
+    def test_review_model_matrix_is_exact_for_both_backends_and_tiers(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        expected = {
+            ("claude", "normal"): ("claude-opus-4-8", "xhigh"),
+            ("claude", "hard"): ("claude-fable-5", "xhigh"),
+            ("codex", "normal"): ("gpt-5.6-terra", "xhigh"),
+            ("codex", "hard"): ("gpt-5.6-sol", "xhigh"),
+        }
+
+        for (backend, tier), profile in expected.items():
+            with self.subTest(backend=backend, tier=tier):
+                config = self.config_for(
+                    repo,
+                    protocol,
+                    extra=["--reviewer-backend", backend, "--review-tier", tier],
+                )
+                self.assertEqual((csr.active_model(config), csr.active_effort(config)), profile)
+                self.assertEqual(config.review_tier_reasons, (f"explicit --review-tier {tier}",))
+
+    def test_closeout_review_auto_selects_hard(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+
+        config = self.config_for(repo, protocol, extra=["--type", "closeout-review"])
+
+        self.assertEqual(config.review_tier, "hard")
+        self.assertIn("review type closeout-review", config.review_tier_reasons)
+        self.assertEqual(config.model, "claude-fable-5")
+
+    def test_artifact_body_over_one_thousand_lines_auto_selects_hard(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        (repo / "docs/plan.md").write_text("\n".join(["line"] * 1000) + "\n", encoding="utf-8")
+
+        boundary_config = self.config_for(repo, protocol)
+
+        self.assertEqual(boundary_config.review_tier, "normal")
+
+        (repo / "docs/plan.md").write_text("\n".join(["line"] * 1001) + "\n", encoding="utf-8")
+
+        config = self.config_for(repo, protocol)
+
+        self.assertEqual(config.review_tier, "hard")
+        self.assertIn("artifact body lines 1001 > 1000", config.review_tier_reasons)
+
+    def test_review_threads_are_excluded_from_size_and_complexity_signals(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        historical = "\n".join(["security review"] * 1500)
+        (repo / "docs/plan.md").write_text(
+            f"# Small plan\n\nOne step.\n\n## Review Threads\n\n{historical}\n",
+            encoding="utf-8",
+        )
+
+        config = self.config_for(repo, protocol)
+
+        self.assertEqual(config.review_tier, "normal")
+        self.assertEqual(config.review_tier_reasons, ("auto: no hard signals",))
+
+    def test_multi_artifact_implementation_review_auto_selects_hard(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        (repo / "docs/other.md").write_text("# Other\n", encoding="utf-8")
+
+        config = self.config_for(
+            repo,
+            protocol,
+            extra=["--type", "impl", "--artifact", "docs/other.md"],
+        )
+
+        self.assertEqual(config.review_tier, "hard")
+        self.assertIn("multi-artifact impl review (2 artifacts)", config.review_tier_reasons)
+
+    def test_each_complexity_phrase_auto_selects_hard(self) -> None:
+        repo = self.init_target_repo()
+        artifact = csr.ResolvedPath(rel="docs/plan.md", abs=(repo / "docs/plan.md").resolve())
+
+        for category, phrases in csr.HARD_COMPLEXITY_SIGNAL_PHRASES:
+            for phrase in phrases:
+                with self.subTest(category=category, phrase=phrase):
+                    tier, reasons = csr.resolve_review_tier(
+                        "auto", "impl-plan", (artifact,), f"Please inspect this {phrase}."
+                    )
+                    self.assertEqual(tier, "hard")
+                    self.assertIn(f"complexity signal: {category}", reasons)
+
+    def test_complexity_phrase_matching_uses_word_boundaries_and_flexible_whitespace(self) -> None:
+        repo = self.init_target_repo()
+        artifact = csr.ResolvedPath(rel="docs/plan.md", abs=(repo / "docs/plan.md").resolve())
+
+        hard_tier, _ = csr.resolve_review_tier(
+            "auto", "impl-plan", (artifact,), "Review the schema\n\tmigration carefully."
+        )
+        normal_tier, reasons = csr.resolve_review_tier(
+            "auto", "impl-plan", (artifact,), "Review preproduction changeover details."
+        )
+
+        self.assertEqual(hard_tier, "hard")
+        self.assertEqual(normal_tier, "normal")
+        self.assertEqual(reasons, ("auto: no hard signals",))
+
+    def test_explicit_normal_wins_but_artifact_is_still_validated(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        (repo / "docs/plan.md").write_text("# Security review\n", encoding="utf-8")
+
+        config = self.config_for(repo, protocol, extra=["--review-tier", "normal"])
+
+        self.assertEqual(config.review_tier, "normal")
+        self.assertEqual(config.review_tier_reasons, ("explicit --review-tier normal",))
+
+        missing = csr.ResolvedPath(rel="docs/missing.md", abs=repo / "docs/missing.md")
+        with self.assertRaisesRegex(csr.RunnerError, "docs/missing.md"):
+            csr.resolve_review_tier("normal", "impl-plan", (missing,), "Review.")
+
+    def test_review_tier_rejects_directory_and_non_utf8_artifacts(self) -> None:
+        repo = self.init_target_repo()
+        directory = csr.ResolvedPath(rel="docs", abs=repo / "docs")
+        with self.assertRaisesRegex(csr.RunnerError, "docs"):
+            csr.resolve_review_tier("auto", "impl-plan", (directory,), "Review.")
+
+        binary_path = repo / "docs/binary.md"
+        binary_path.write_bytes(b"\xff\xfe")
+        binary = csr.ResolvedPath(rel="docs/binary.md", abs=binary_path)
+        with self.assertRaisesRegex(csr.RunnerError, "docs/binary.md"):
+            csr.resolve_review_tier("auto", "impl-plan", (binary,), "Review.")
+
+        regular = csr.ResolvedPath(rel="docs/plan.md", abs=(repo / "docs/plan.md").resolve())
+        with mock.patch.object(Path, "read_text", side_effect=PermissionError("denied")):
+            with self.assertRaisesRegex(csr.RunnerError, "docs/plan.md"):
+                csr.resolve_review_tier("auto", "impl-plan", (regular,), "Review.")
+
+    def test_explicit_profile_overrides_record_their_sources(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+
+        config = self.config_for(
+            repo,
+            protocol,
+            extra=[
+                "--reviewer-backend",
+                "codex",
+                "--review-tier",
+                "hard",
+                "--codex-model",
+                "gpt-custom",
+                "--codex-effort",
+                "high",
+            ],
+        )
+
+        self.assertEqual(csr.active_model(config), "gpt-custom")
+        self.assertEqual(csr.active_effort(config), "high")
+        self.assertEqual(config.model_source, "explicit --codex-model")
+        self.assertEqual(config.effort_source, "explicit --codex-effort")
+
     def test_skill_removed_legacy_human_interaction_mechanics(self) -> None:
         skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
 
@@ -300,6 +470,22 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertIn("--timeout-sec 1800", skill)
         self.assertIn("outer command/tool wait budget", skill)
         self.assertIn("shorter than the runner timeout", skill)
+
+    def test_skill_and_closeout_pin_central_reviewer_selection_policy(self) -> None:
+        skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
+        closeout = (SCRIPT.parents[2] / "closeout/SKILL.md").read_text(encoding="utf-8")
+
+        for value in (
+            "--review-tier auto",
+            "claude-opus-4-8",
+            "claude-fable-5",
+            "gpt-5.6-terra",
+            "gpt-5.6-sol",
+            "another or unrecognized coding agent",
+        ):
+            self.assertIn(value, skill)
+        self.assertIn("routes every `closeout-review` to the `hard` tier", closeout)
+        self.assertIn("structured-review runner owns backend, tier, model, and effort", closeout)
 
     def test_default_claude_bin_uses_path_lookup(self) -> None:
         repo = self.init_target_repo()
@@ -635,6 +821,49 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Done."
         self.assertEqual(result.returncode, 0)
         self.assertIn("timeout_sec=7", stderr.getvalue())
 
+    def test_hard_review_with_default_timeout_emits_guidance(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        fake_bin = self.root / "bin"
+        fake_bin.mkdir()
+        fake_claude = fake_bin / "claude"
+        fake_claude.write_text(
+            """#!/usr/bin/env python3
+import sys
+
+if '--version' in sys.argv:
+    print('2.1.143 (Claude Code)')
+    raise SystemExit(0)
+
+sys.stdin.read()
+print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Done."}}', flush=True)
+""",
+            encoding="utf-8",
+        )
+        fake_claude.chmod(0o755)
+        config = self.config_for(
+            repo,
+            protocol,
+            mode=csr.MODE_PRINT,
+            topic=None,
+            extra=[
+                "--review-tier",
+                "hard",
+                "--claude-bin",
+                str(fake_claude),
+                "--run-log-dir",
+                str(self.root / "hard-timeout-logs"),
+            ],
+        )
+        logs = csr.prepare_run_logs(config)
+
+        with mock.patch("sys.stderr", new_callable=lambda: __import__("io").StringIO()) as stderr:
+            result = csr.run_claude(config, "prompt", logs, csr.Redactor([repo]))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("consider --timeout-sec 1800", stderr.getvalue())
+        self.assertIn("tier=hard", stderr.getvalue())
+
     def test_run_claude_waits_for_quiet_reviewer_before_timeout(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
@@ -822,7 +1051,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             self.assertEqual(argv[:4], ["codex", "exec", "-", "--json"])
             self.assertIn("workspace-write", argv)
             self.assertNotIn("--add-dir", argv)
-            self.assertIn("gpt-5.5", argv)
+            self.assertIn("gpt-5.6-terra", argv)
             self.assertIn("model_reasoning_effort=xhigh", argv)
             self.assertEqual(argv[argv.index("--output-last-message") + 1], str(logs.root / "last-message.txt"))
 
@@ -854,7 +1083,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
 
         self.assertIn("gpt-9", argv)
         self.assertIn("model_reasoning_effort=high", argv)
-        self.assertNotIn("gpt-5.5", argv)
+        self.assertNotIn("gpt-5.6-terra", argv)
 
     def test_codex_stream_line_extracts_agent_message_and_usage(self) -> None:
         message = csr.process_codex_stream_line(
@@ -878,6 +1107,25 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         self.assertIn("You are the claude reviewer backend", csr.build_prompt(claude_config))
         self.assertIn("claude reviewer).", csr.build_prompt(claude_config))
         self.assertIn("You are the codex reviewer backend", csr.build_prompt(codex_config))
+
+    def test_prompt_records_tier_profile_and_sources(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(
+            repo,
+            protocol,
+            extra=["--review-tier", "hard", "--model", "claude-custom"],
+        )
+
+        prompt = csr.build_prompt(config)
+
+        self.assertIn("- Review tier: hard", prompt)
+        self.assertIn("- Tier selection: explicit --review-tier hard", prompt)
+        self.assertIn("- Model: claude-custom", prompt)
+        self.assertIn("- Model source: explicit --model", prompt)
+        self.assertIn("- Effort: xhigh", prompt)
+        self.assertIn("- Effort source: profile", prompt)
+        self.assertIn("same readiness standard at both tiers", prompt)
 
     def test_run_codex_prefers_last_message_file_and_records_metadata(self) -> None:
         repo = self.init_target_repo()
@@ -908,8 +1156,12 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         self.assertEqual(result.reviewer_version, "codex-cli 0.137.0")
         metadata = json.loads(logs.metadata.read_text(encoding="utf-8"))
         self.assertEqual(metadata["backend"], "codex")
-        self.assertEqual(metadata["model"], "gpt-5.5")
+        self.assertEqual(metadata["model"], "gpt-5.6-terra")
         self.assertEqual(metadata["effort"], "xhigh")
+        self.assertEqual(metadata["review_tier"], "normal")
+        self.assertEqual(metadata["review_tier_reasons"], ["auto: no hard signals"])
+        self.assertEqual(metadata["model_source"], "profile")
+        self.assertEqual(metadata["effort_source"], "profile")
         self.assertEqual(metadata["reviewer_version"], "codex-cli 0.137.0")
         self.assertEqual(metadata["token_usage"], {"input_tokens": 10, "output_tokens": 5})
 
