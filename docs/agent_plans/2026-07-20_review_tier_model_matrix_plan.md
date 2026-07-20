@@ -732,3 +732,53 @@ Ready for closeout, re-confirmed. The delta is exactly the accepted Thread 6 tig
 - **All pass-3 residual risks stand unchanged** and belong to closeout: the branch remains local-only and unpushed, the two Codex model smokes are still deferred to pre-closeout, and README/`docs/CURRENT.md` model prose remains lifecycle-maintained rather than test-pinned.
 
 Implementation re-review concludes: ready for closeout.
+
+All verification is complete. Every item on the closeout focus list checked out under independent rerun — tests, statics, both live Codex smokes (plus a negative control), docs, branch, PR, and CI. Here is the complete review for the thread file.
+
+I independently re-ran the full validation suite, re-executed both live model smokes read-only, and verified branch, PR, and CI state against GitHub. The recorded closeout evidence is accurate at every point I could check, and no blocking issue exists.
+
+---
+
+### Reviewer pass 5 (closeout-review, claude reviewer)
+
+**Restated concern:** Is the closeout evidence recorded in this plan accurate, complete, and independently verifiable, so that closeout of PR #25 can resume toward human merge?
+
+Scope of this pass: the plan's Implementation Record, Closeout Record, and full review-thread history; the runner constants and test suite; the five documentation surfaces; and live repo/remote state. Validation provenance is reviewer-rerun except where marked API-verified. One environment note, reported honestly: local `git fetch` failed over both SSH (agent refused the key) and HTTPS (TLS error) — a dev-machine issue, not repo state — so remote freshness and PR facts below are verified through the GitHub API, which is the declared source of truth for PR metadata anyway.
+
+#### Closeout evidence verification
+
+- **Implementation and re-review resolution — verified.** Threads 1–4 were resolved in pass 2, Thread 6 in pass 4, and no blocking thread was ever left open. Thread 5's two asks were verified as delivered in pass 3's traceability but never formally closed; that closure is recorded below.
+- **Test provenance — verified, reviewer-rerun.** structured-review 80, Scout 31, root 18 — all green, matching the Implementation Record's claimed counts exactly.
+- **Static checks — verified, reviewer-rerun.** `python -m compileall -q structured-review scout scripts tests`, `python scripts/check_backlog.py`, runner `--help`, and `git diff --check` all pass.
+- **Codex model smokes — verified, upgraded to reviewer-rerun.** I re-executed both smokes myself: `codex exec --ephemeral -s read-only -c model_reasoning_effort=xhigh` against `gpt-5.6-terra` and `gpt-5.6-sol`, each exit 0 with final response `OK`. As a falsification control, the same invocation with a nonexistent slug was rejected with a 400 `invalid_request_error` ("model is not supported"), proving the CLI validates `-m` against the account catalog and the successful smokes are genuine acceptance evidence, not silent substitution. Provenance remains local-account (driver-run, now also reviewer-rerun), not CI — exactly as the plan's validation contract states.
+- **Docs and mechanism lifecycle — verified.** The runner constants pin the exact accepted matrix (`claude-opus-4-8` / `claude-fable-5` / `gpt-5.6-terra` / `gpt-5.6-sol`, all `xhigh`, at `structured-review/scripts/claude_structured_review.py:25-30`); `structured-review/SKILL.md` owns the same matrix table plus tier signals, override-warning sentence, and lifecycle contract; `closeout/SKILL.md` delegates backend/tier/model/effort and forbids a competing closeout matrix; `README.md` summarizes `--review-tier` and the profiles in prose; `docs/CURRENT.md` describes the routing with `Last updated: 2026-07-20`; the plan is indexed in `docs/agent_plans/README.md`. The prose-consistency, matrix, threads-exclusion, whitespace-wrap, override-provenance, and cross-provider-warning tests all exist and pass.
+- **Branch freshness and cleanliness — verified.** Working tree clean with no unrelated dirty files; local HEAD `fca79b3` equals the remote branch tip and the PR head OID; remote `main` is `58a0830` (API-verified), identical to local `origin/main` and an ancestor of HEAD. The branch is fresh; no rebase is needed.
+- **PR metadata — verified, API-verified.** PR #25 is open, non-draft, `feature/review-tier-model-matrix` → `main`, `MERGEABLE` with merge state `CLEAN`, zero review comments and zero issue comments on the GitHub side. No merge, close, or branch deletion has occurred, matching the Closeout Record's claim.
+- **CI — verified, API-verified.** The `python` job of the `CI` workflow succeeded on the exact current head `fca79b3` (completed 2026-07-20T04:50:51Z, 11s). The Closeout Record's "initial check passed" claim is consistent and now superseded by a green run on the head that includes both closeout-evidence commits.
+
+#### Thread resolution
+
+**Thread 5 — Resolved.** Both accepted asks are implemented and test-pinned: phrase-internal whitespace matching across line wraps (`test_complexity_phrase_matching_uses_word_boundaries_and_flexible_whitespace`) and the oversized-Review-Threads-cannot-flip-tier guarantee (`test_review_threads_are_excluded_from_size_and_complexity_signals`). Pass 3 verified the substance in its traceability; this pass records the formal closure. All review threads in this file are now resolved.
+
+#### Blocking issues
+
+None. There are no blocking issues, and no open review threads remain.
+
+#### Non-blocking issues
+
+None new. I considered and declined one candidate as below the bar: the plan-index entry labels this plan "active implementation plan," which is accurate while the PR is open and only goes stale at merge; it belongs to the normal post-merge documentation touch, not a review thread.
+
+#### Overall judgment
+
+Ready to resume closeout. Every durable claim in the Implementation Record and Closeout Record survived independent re-verification, including a falsification control on the model smokes. The remaining gates are exactly the ones the plan already names, in order: append and commit this review record, push, confirm the fresh CI run on that push, final freshness/cleanliness recheck, and human merge. This review performs none of them.
+
+#### Residual risks and validation gaps
+
+- **CI covers head `fca79b3` only.** The commit carrying this review record will trigger a new CI run; closeout must confirm it green after push rather than reusing this pass's result.
+- **Codex slug liveness provenance is local-account** (driver-run plus reviewer-rerun), never CI-backed; the plan accepts this explicitly and the override flags remain the rollback path.
+- **Self-referential hard routing observed again, as designed:** this closeout pass itself resolved `hard` from the `closeout-review` type plus six complexity-signal categories fired by the plan's own phrase table — cost-only, visible in the recorded reasons.
+- **Carried unchanged from passes 3–4, future polish only:** the cross-provider override warning is stderr-only and unpersisted; a non-UTF-8 `--focus-file` still raises a raw `UnicodeDecodeError`; README and `docs/CURRENT.md` model prose is lifecycle-maintained rather than test-pinned.
+- **The plan-index "active" label** should be updated in the post-merge documentation pass.
+- **Local git-remote access on this machine is degraded** (SSH agent refused the GitHub key; HTTPS fetch hit a TLS error). This did not affect verification — remote facts were confirmed via the GitHub API — but the driver should expect to need the gh credential-helper fallback when pushing this review record.
+
+Closeout Review concludes: ready to resume closeout.
