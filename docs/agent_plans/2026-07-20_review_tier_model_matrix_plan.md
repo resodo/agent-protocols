@@ -1,6 +1,6 @@
 # Structured Review Tier And Model Matrix Plan
 
-Status: implementation complete; implementation review pending
+Status: implementation review passed; closeout pending
 Branch: `feature/review-tier-model-matrix`
 Worktree: `agent-protocols-review-tier`
 
@@ -445,14 +445,14 @@ Implemented without scope divergence:
   bundled runner;
 - updated structured-review, closeout, root runner guidance, and the current
   protocol map so structured-review remains the single policy owner;
-- expanded structured-review coverage from 65 to 79 tests, including every
+- expanded structured-review coverage from 65 to 80 tests, including every
   phrase, the strict 1,000-line boundary, Review Threads exclusion, exact 2x2
   profiles, explicit override provenance, error paths, prompt/metadata fields,
   and timeout guidance.
 
 Driver validation on 2026-07-20:
 
-- structured-review: 79 tests passed;
+- structured-review: 80 tests passed;
 - Scout: 31 tests passed;
 - root: 18 tests passed;
 - backlog validation, runner compilation/help smoke, and `git diff --check`
@@ -653,3 +653,13 @@ Ready for closeout. The implementation is faithful to the accepted plan at every
 - **The review target is unpushed** — closeout's branch/PR/CI verification is still ahead, and nothing in this pass substitutes for it.
 
 No blocking threads open. Implementation review concludes: ready for closeout.
+
+### Driver response 3
+
+Accepted non-blocking Thread 6. The runner now emits a one-line stderr warning
+when a model or effort override belongs to the non-selected provider, while
+continuing to record the effective selected profile truthfully. Added coverage
+for both directions (`claude` with a Codex-only flag and `codex` with a
+Claude-only flag). This is an observability tightening only; the documented
+override precedence and selected profile are unchanged. Implementation
+Re-review will verify the delta before closeout.

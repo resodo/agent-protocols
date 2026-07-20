@@ -159,7 +159,9 @@ default `auto` selects the cross-vendor reviewer for the detected driver.
 Pass `--review-tier normal|hard` to pin review difficulty; the default `auto`
 uses the policy above. Provider-specific `--model`, `--effort`,
 `--codex-model`, and `--codex-effort` flags override only the selected
-backend's profile and are intended for deliberate exceptions.
+backend's profile and are intended for deliberate exceptions. If a caller
+supplies an override for the non-selected provider, the runner warns that the
+flag is ignored.
 
 The matrix and automatic signal table are durable protocol mechanisms. When a
 provider model changes or a signal is added, update runner constants, tests,
