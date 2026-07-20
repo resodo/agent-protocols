@@ -381,6 +381,22 @@ def resolve_review_profile(
     return model, effort, model_source, effort_source
 
 
+def unused_profile_override_flags(
+    backend: str,
+    *,
+    claude_model: str | None,
+    claude_effort: str | None,
+    codex_model: str | None,
+    codex_effort: str | None,
+) -> tuple[str, ...]:
+    candidates = (
+        (("--codex-model", codex_model), ("--codex-effort", codex_effort))
+        if backend == BACKEND_CLAUDE
+        else (("--model", claude_model), ("--effort", claude_effort))
+    )
+    return tuple(flag for flag, value in candidates if value is not None)
+
+
 def default_protocol_dir() -> Path:
     return Path(__file__).resolve().parents[1]
 
@@ -1148,6 +1164,19 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
         codex_model=args.codex_model,
         codex_effort=args.codex_effort,
     )
+    unused_flags = unused_profile_override_flags(
+        backend,
+        claude_model=args.model,
+        claude_effort=args.effort,
+        codex_model=args.codex_model,
+        codex_effort=args.codex_effort,
+    )
+    if unused_flags:
+        print(
+            f"warning: reviewer backend '{backend}' ignores override flags for the "
+            f"non-selected provider: {', '.join(unused_flags)}",
+            file=sys.stderr,
+        )
     if marker_resolved:
         backend_bin = args.claude_bin if backend == BACKEND_CLAUDE else args.codex_bin
         if shutil.which(backend_bin) is None:

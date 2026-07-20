@@ -424,6 +424,29 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.model_source, "explicit --codex-model")
         self.assertEqual(config.effort_source, "explicit --codex-effort")
 
+    def test_non_selected_provider_overrides_emit_warning(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        cases = (
+            ("claude", ["--codex-model", "gpt-custom"], "--codex-model"),
+            ("codex", ["--model", "claude-custom"], "--model"),
+        )
+
+        for backend, override, expected_flag in cases:
+            with self.subTest(backend=backend):
+                with mock.patch(
+                    "sys.stderr", new_callable=lambda: __import__("io").StringIO()
+                ) as stderr:
+                    config = self.config_for(
+                        repo,
+                        protocol,
+                        extra=["--reviewer-backend", backend, *override],
+                    )
+
+                self.assertIn("non-selected provider", stderr.getvalue())
+                self.assertIn(expected_flag, stderr.getvalue())
+                self.assertEqual(config.model_source, "profile")
+
     def test_skill_removed_legacy_human_interaction_mechanics(self) -> None:
         skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
 
