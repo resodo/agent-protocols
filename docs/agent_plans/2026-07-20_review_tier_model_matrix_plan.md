@@ -663,3 +663,45 @@ for both directions (`claude` with a Codex-only flag and `codex` with a
 Claude-only flag). This is an observability tightening only; the documented
 override precedence and selected profile are unchanged. Implementation
 Re-review will verify the delta before closeout.
+
+All verification is complete — the delta is exactly commit f81fe78, the warning behaves correctly in both directions under live exercise, precedence and provenance are unchanged, tests are green (80/31/18), and docs are consistent. Here is the complete review for the thread file.
+
+### Reviewer pass 4 (impl, claude reviewer)
+
+**Restated concern:** After Driver response 3 accepted non-blocking Thread 6, does the delta — commit `f81fe78`, the non-selected provider override warning — do exactly what the response claims, in both directions, without changing the documented override precedence or regressing anything, and does the implementation remain ready for closeout?
+
+Scope of this pass: the delta since reviewer pass 3, which is exactly one commit (`f81fe78`, HEAD; worktree clean, nothing uncommitted). I read the full commit diff — runner (+29 lines), tests (+1 method), `structured-review/SKILL.md` (+1 sentence), plan (status line, test counts, Driver response 3) — plus the surrounding runner source for ordering and precedence. Validation provenance is reviewer-rerun throughout: structured-review 80, Scout 31, root 18 tests all green, and four live `--dry-run` smokes exercising the new path directly.
+
+#### Delta verification
+
+- **Warning correct in both directions — verified live.** `--reviewer-backend claude --codex-model gpt-custom` printed `warning: reviewer backend 'claude' ignores override flags for the non-selected provider: --codex-model` to stderr while the prompt recorded `Model source: profile`; `--reviewer-backend codex --model claude-custom --effort low` warned on `--model, --effort` and ran on the codex profile. The flag names in the warning match the actual argparse spelling on both sides, and both claimed directions in Driver response 3 are real.
+- **No false positives — verified live.** A same-provider override (`--reviewer-backend claude --model my-model`) produced zero stderr output and honest `explicit --model` provenance. All four override flags parse with `None` defaults, so the warning can only fire on an explicitly supplied flag.
+- **Precedence untouched.** `resolve_review_profile` has no diff lines; the new `unused_profile_override_flags` is a pure observational helper computed after profile resolution, and the warning block mutates nothing — model, effort, and both provenance fields are identical to pass-3 behavior. The new test additionally pins `model_source == "profile"` under a cross-provider flag in both directions.
+- **Backend domain is safe.** `resolve_reviewer_backend` returns only `claude` or `codex` and argparse constrains the flag, so the helper's two-branch else cannot misroute. The warning is also emitted before the auto-mode binary-availability check, so it is not swallowed when that check fails.
+- **Documented and tested.** The SKILL.md sentence ("the runner warns that the flag is ignored") is in the policy-owner file and is live in the runner-loaded skill — this review's own prompt carries it. `README.md` and `docs/CURRENT.md` summarize at a level the change does not contradict, consistent with the single-sourcing contract; no other doc needed touching. The new test covers both directions with subTests; suite count 79 → 80 matches the Implementation Record's updated claim exactly (one new method, 80 green on rerun).
+- **No regression.** The runner diff is purely additive; all pre-existing tests pass, and the normal-path dry-run smokes behave as in pass 3.
+- **Plan record consistency.** The Implementation Record's two count updates (79 → 80) are accurate, and the status line `implementation review passed; closeout pending` is consistent with pass 3's conclusion; Driver response 3 honestly disclosed this re-review as the remaining pre-closeout verification, which this pass now completes.
+
+#### Blocking issues
+
+None. There are no blocking issues in this pass.
+
+#### Non-blocking issues
+
+None new. I considered and declined two candidates as below the bar: the absence of a test asserting *no* warning in the same-provider case (verified live; the helper is a two-branch pure function whose false-positive risk is already pinned by the existing explicit-override provenance tests), and the transient status-line wording while this re-review was pending (disclosed inline by Driver response 3 and mooted by this pass).
+
+#### Thread resolution
+
+**Thread 6 — Resolved.** The accepted cheap option (one-line stderr notice) is implemented, tested in both directions, documented in the policy-owner SKILL, and verified live by reviewer rerun. Precedence and provenance semantics are unchanged.
+
+#### Overall judgment
+
+Ready for closeout, re-confirmed. The delta is exactly the accepted Thread 6 tightening — narrow, additive, truthful in both directions — and nothing else moved since pass 3. All review threads are now resolved; no blocking threads open.
+
+#### Residual risks and validation gaps
+
+- **The warning is stderr-only and not persisted** in the start log or `metadata.json`; automation that discards runner stderr loses the notice. This matches the accepted Thread 6 resolution (a stderr notice was the named option), so it is a note for a future polish pass, not a gap against accepted scope.
+- **The exact Thread 6 shape (`--reviewer-backend auto` plus a non-selected override) was not exercisable live here** — this environment carries both driver markers and fails earlier by pre-existing design. Backend resolution completes before the warning check, so the explicit-backend smokes cover the identical post-resolution code path.
+- **All pass-3 residual risks stand unchanged** and belong to closeout: the branch remains local-only and unpushed, the two Codex model smokes are still deferred to pre-closeout, and README/`docs/CURRENT.md` model prose remains lifecycle-maintained rather than test-pinned.
+
+Implementation re-review concludes: ready for closeout.
