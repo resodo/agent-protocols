@@ -162,12 +162,21 @@ Resolve `hard` when any hard signal exists:
    implementation-review heuristic;
 4. artifact or focus text contains an explicit high-complexity/high-impact
    scope signal in a small, named policy table:
-   - production/runtime/deploy/rollout;
-   - architecture/migration;
-   - security/data safety;
-   - multi-repo/multi-agent/release;
-   - broad protocol change;
-   - explicit `complex` / `high-risk` / `hard review` wording.
+   - production/runtime/deploy/rollout: `production-facing`,
+     `production change`, `production rollout`, `runtime-facing`,
+     `runtime behavior`, `deploy-facing`, `deployment plan`, or `rollout
+     plan`;
+   - architecture/migration: `architecture-facing`, `architecture change`,
+     `system architecture`, `data migration`, `schema migration`, or
+     `migration plan`;
+   - security/data safety: `security-sensitive`, `security review`, `security
+     boundary`, `data safety`, `data loss`, or `destructive data`;
+   - multi-repo/multi-agent/release: `multi-repo`, `multi-agent`, `release
+     plan`, or `release handoff`;
+   - broad protocol change: `broad protocol change`, `protocol-wide change`,
+     or `protocol self-evolution`;
+   - explicit complexity: `complex review`, `high-risk`, `hard review`, or
+     `large review`.
 
 Otherwise resolve `normal`.
 
@@ -176,6 +185,23 @@ selection costs more but preserves review quality; a false-negative can
 underpower a high-impact gate. Keep the signal table small and named. Do not
 derive tier from arbitrary token counts, reviewer output, git churn, or hidden
 provider behavior.
+
+Matching is case-insensitive and uses whole words/phrases, so `production` does
+not match `reproduction` and `hard` does not match `hardware`. Hyphenated
+phrases match only the listed spelling; adding alternate spellings is a policy
+change. Reasons record the category name, not the matched artifact text.
+
+For both the line count and complexity scan, use only the artifact body before
+the first top-level `## Review Threads` heading. Excluding review threads keeps
+the resolved tier stable across plan/re-review rounds and avoids reviewer prose
+changing the next reviewer's model. Focus text is always scanned in full.
+Count lines with Python `splitlines()` across all artifact bodies and resolve
+hard only when the total is strictly greater than 1,000.
+
+Every artifact must be an existing readable UTF-8 regular file. A missing,
+directory, unreadable, or non-UTF-8 artifact fails before reviewer invocation
+with a relative-path `RunnerError`; the runner must not silently skip a tier
+input or fall back to normal.
 
 The runner returns both the resolved tier and human-readable reasons. Tests pin
 each signal category, normal fallback, and explicit overrides.
@@ -203,6 +229,18 @@ Add the resolved tier and reasons to:
 - stderr start log;
 - `metadata.json` (`review_tier`, `review_tier_reasons`);
 - dry-run prompt output.
+
+Use `None` as the argparse default sentinel for the four provider-specific
+model/effort override flags. After loading the selected profile, replace only
+values whose flags are non-`None`. Add `model_source` and `effort_source` to
+`RunConfig`, prompt, and metadata; each is either `profile` or the exact
+provider-specific override flag such as `explicit --codex-model`. This keeps a
+custom model from being misrepresented as a matrix-selected value.
+
+When a review resolves hard while `timeout_sec` is the default 900 seconds,
+emit a non-fatal stderr notice that hard reviews usually warrant
+`--timeout-sec 1800`. Do not automatically change timeout semantics: callers
+may intentionally keep a shorter bound.
 
 Review pass headings continue to name the backend; they do not need to encode
 the tier because metadata and prompt own that provenance.
@@ -260,10 +298,14 @@ Extend `structured-review/tests/test_claude_structured_review.py` to cover:
 - multi-artifact `impl` -> hard;
 - each named complexity category -> hard;
 - model and effort flags override only the selected provider profile;
+- override detection uses `None` parser sentinels and prompt/metadata record
+  `model_source` and `effort_source`;
 - Claude and Codex argv receive the resolved profile;
 - prompt contains backend, tier, reasons, model, and effort;
 - metadata contains resolved tier and reasons;
 - stderr start log names the tier;
+- hard tier at the default timeout emits 1800-second guidance without changing
+  the configured timeout;
 - SKILL prose keeps backend/tier rules and closeout boundary single-sourced;
 - all existing backend, write/print, sandbox, redaction, timeout, and stream
   tests remain green.
@@ -319,6 +361,12 @@ python scripts/check_backlog.py
 python structured-review/scripts/claude_structured_review.py --help
 git diff --check
 ```
+
+Before closeout, run one minimal, read-only live smoke against each new Codex
+slug (`gpt-5.6-terra` and `gpt-5.6-sol`) with `xhigh`, using a trivial prompt
+and no repo writes. Record success or the exact availability blocker as
+driver-run provenance. Unit tests remain the source for argv construction;
+these live probes cover current CLI/account model acceptance only.
 
 Reviewer reruns the relevant tests during implementation review when its
 sandbox permits. CI results and exact required-check names are recorded during
@@ -446,3 +494,29 @@ Not ready for implementation yet, on Thread 1 alone. The plan is otherwise stron
 - **Model positioning claims rest on cited provider pages plus recorded human acceptance.** That is the declared source-of-truth layer for this decision and it is documented in the plan; no in-repo validation can strengthen it further, only the lifecycle triggers can.
 
 One blocking thread (Thread 1); no other blockers.
+
+### Driver response 1
+
+Accepted Thread 1 as blocking. The plan now pins the exact phrase table,
+case-insensitive whole-word/phrase matching, category-only reason strings, and
+the scan scope. Both line counting and keyword matching exclude the top-level
+`## Review Threads` section so tier remains stable across review rounds; focus
+text is scanned in full. Total lines use `splitlines()` and must be strictly
+greater than 1,000. Missing, non-regular, unreadable, or non-UTF-8 artifacts
+fail before reviewer invocation with a relative-path `RunnerError`.
+
+Accepted Thread 2. The plan now requires `None` argparse sentinels for all four
+provider-specific override flags and records `model_source` / `effort_source`
+in prompt and metadata as either profile-derived or the exact explicit flag.
+
+Accepted Thread 3. Closeout validation now includes one minimal read-only live
+smoke for each Codex slug at `xhigh`; the result will be recorded as driver-run
+provenance without treating it as CI-backed.
+
+Accepted Thread 4. A hard-tier run that retains the default 900-second timeout
+will emit non-fatal guidance to consider `--timeout-sec 1800`; timeout behavior
+itself remains unchanged.
+
+No reviewer finding changes the human-accepted matrix, cross-vendor backend
+rule, two-tier scope, or merge authority. Ready for reviewer re-check of the
+blocking thread and the accepted tightening changes.
