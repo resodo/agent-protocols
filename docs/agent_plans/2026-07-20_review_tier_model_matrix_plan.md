@@ -458,8 +458,24 @@ Driver validation on 2026-07-20:
 - backlog validation, runner compilation/help smoke, and `git diff --check`
   passed.
 
-Pending gates: implementation review, both read-only Codex model smokes,
-Closeout Review, PR/CI verification, and human merge handoff.
+Pending gates: Closeout Review, PR/CI verification, and human merge handoff.
+
+## Closeout Record
+
+Driver-run model availability provenance on 2026-07-20:
+
+- `gpt-5.6-terra` with `model_reasoning_effort=xhigh`, `--sandbox
+  read-only`, and `--ephemeral`: exit 0, final response `OK`;
+- `gpt-5.6-sol` with `model_reasoning_effort=xhigh`, `--sandbox read-only`,
+  and `--ephemeral`: exit 0, final response `OK`.
+
+Both live runs emitted the same non-fatal CLI notice that installed skill
+descriptions were shortened to fit their context budget. The turns completed
+successfully, so this is not a model-availability blocker. These probes are
+driver-run local-account evidence, not CI evidence.
+
+Branch freshness was rechecked after fetching on 2026-07-20: current
+`origin/main` is `58a0830`, and it is an ancestor of the feature branch.
 
 ## Review Threads
 
