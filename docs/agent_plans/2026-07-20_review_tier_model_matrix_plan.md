@@ -1,8 +1,8 @@
 # Structured Review Tier And Model Matrix Plan
 
-Status: active PR handoff record
-Branch: `feature/review-tier-model-matrix`
-Worktree: `agent-protocols-review-tier`
+Status: historical implementation and review record for merged PR #25
+Source branch: `feature/review-tier-model-matrix`
+Implementation worktree label: `agent-protocols-review-tier`
 
 ## Context
 
@@ -477,17 +477,20 @@ driver-run local-account evidence, not CI evidence.
 Branch freshness was rechecked after fetching on 2026-07-20: current
 `origin/main` is `58a0830`, and it is an ancestor of the feature branch.
 
-PR evidence on 2026-07-20:
+Post-merge evidence on 2026-07-20:
 
-- PR #25 is open and non-draft from `feature/review-tier-model-matrix` to
-  `main`;
-- GitHub reports the PR mergeable;
-- the initial `CI / python` check passed in 12 seconds;
-- no merge, PR close, or remote-branch deletion was performed.
+- Closeout Review pass 5 found no blockers;
+- the final `CI / python` check passed on feature head `1148758`;
+- PR #25 was squash-merged into `main` at `bb3cfff` by the human owner;
+- the merge commit has one parent and the feature head is not an ancestor of
+  `main`, confirming squash rather than merge-commit or rebase shape;
+- local `main` was fast-forwarded to the merged `origin/main` before this
+  lifecycle update;
+- remote branch and worktree cleanup remain human-owned and were not performed.
 
-Closeout Review pass 5 found no blockers and concluded `ready to resume
-closeout`. Remaining handoff gates are final CI after the review record is
-pushed, final freshness/cleanliness checks, and human merge.
+All planned implementation, review, validation, PR, CI, and merge gates are
+complete. This dated document is retained as historical provenance, not active
+instruction.
 
 ## Review Threads
 
