@@ -1,6 +1,6 @@
 # Structured Review Tier And Model Matrix Plan
 
-Status: implementation review passed; closeout pending
+Status: PR open; Closeout Review pending
 Branch: `feature/review-tier-model-matrix`
 Worktree: `agent-protocols-review-tier`
 
@@ -476,6 +476,17 @@ driver-run local-account evidence, not CI evidence.
 
 Branch freshness was rechecked after fetching on 2026-07-20: current
 `origin/main` is `58a0830`, and it is an ancestor of the feature branch.
+
+PR evidence on 2026-07-20:
+
+- PR #25 is open and non-draft from `feature/review-tier-model-matrix` to
+  `main`;
+- GitHub reports the PR mergeable;
+- the initial `CI / python` check passed in 12 seconds;
+- no merge, PR close, or remote-branch deletion was performed.
+
+Pending closeout gates: independent Closeout Review, final CI after its review
+record is pushed, final freshness/cleanliness checks, and human merge handoff.
 
 ## Review Threads
 
