@@ -189,7 +189,9 @@ provider behavior.
 Matching is case-insensitive and uses whole words/phrases, so `production` does
 not match `reproduction` and `hard` does not match `hardware`. Hyphenated
 phrases match only the listed spelling; adding alternate spellings is a policy
-change. Reasons record the category name, not the matched artifact text.
+change. Whitespace inside a listed multi-word phrase matches any non-empty
+whitespace run, including line breaks and indentation in wrapped Markdown.
+Reasons record the category name, not the matched artifact text.
 
 For both the line count and complexity scan, use only the artifact body before
 the first top-level `## Review Threads` heading. Excluding review threads keeps
@@ -295,6 +297,8 @@ Extend `structured-review/tests/test_claude_structured_review.py` to cover:
 - explicit normal/hard overrides;
 - `closeout-review` -> hard;
 - total artifact lines over 1,000 -> hard;
+- a small pre-thread body with a `## Review Threads` section that pushes the
+  full file over 1,000 lines remains normal;
 - multi-artifact `impl` -> hard;
 - each named complexity category -> hard;
 - model and effort flags override only the selected provider profile;
@@ -561,3 +565,11 @@ Ready for implementation. Thread 1 is resolved at the level pass 1 asked for, Th
 - Codex slug liveness remains deferred to the pre-closeout smoke, with driver-run provenance recorded as such — unchanged from pass 1, now with a concrete mitigation in the plan.
 
 No blocking threads open. Plan review concludes: ready for implementation.
+
+### Driver response 2
+
+Accepted optional Thread 5. Phrase-internal whitespace now matches any
+non-empty whitespace run, including Markdown wrapping across lines, and the
+test plan now pins that an oversized `## Review Threads` section cannot change
+a small ordinary artifact from normal to hard. These tighten the accepted scan
+semantics without changing scope or requiring another plan-review gate.
