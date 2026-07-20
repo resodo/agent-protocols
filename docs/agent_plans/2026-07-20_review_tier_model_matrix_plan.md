@@ -1,6 +1,6 @@
 # Structured Review Tier And Model Matrix Plan
 
-Status: PR open; Closeout Review pending
+Status: active PR handoff record
 Branch: `feature/review-tier-model-matrix`
 Worktree: `agent-protocols-review-tier`
 
@@ -485,8 +485,9 @@ PR evidence on 2026-07-20:
 - the initial `CI / python` check passed in 12 seconds;
 - no merge, PR close, or remote-branch deletion was performed.
 
-Pending closeout gates: independent Closeout Review, final CI after its review
-record is pushed, final freshness/cleanliness checks, and human merge handoff.
+Closeout Review pass 5 found no blockers and concluded `ready to resume
+closeout`. Remaining handoff gates are final CI after the review record is
+pushed, final freshness/cleanliness checks, and human merge.
 
 ## Review Threads
 

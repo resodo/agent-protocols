@@ -38,5 +38,5 @@ responses, and closeout evidence for changes to this repo's protocols.
   and structured-review timeout discipline plan.
 - `2026-06-17_document_lifecycle_drift_plan.md` - implementation plan for the
   `document-lifecycle-drift` Scout subskill.
-- `2026-07-20_review_tier_model_matrix_plan.md` - active implementation plan
+- `2026-07-20_review_tier_model_matrix_plan.md` - active PR handoff record
   and review record for automatic reviewer tiers and the backend/model matrix.
