@@ -520,3 +520,44 @@ itself remains unchanged.
 No reviewer finding changes the human-accepted matrix, cross-vendor backend
 rule, two-tier scope, or merge authority. Ready for reviewer re-check of the
 blocking thread and the accepted tightening changes.
+
+The sweep gives concrete evidence: 3 of the 14 other plans would fire the keyword scan (mostly via quoted protocol vocabulary like `large review`), so `normal` remains the common case — the table achieves the balance pass 1 asked for. Everything checks out; here is the complete review for the thread file.
+
+### Reviewer pass 2 (impl-plan, claude reviewer)
+
+**Restated concern:** Did driver response 1 resolve blocking Thread 1, are the accepted Thread 2–4 changes now implementable without guessing, and does the revision delta introduce any new blocker?
+
+Scope of this pass: I read the revision diff (`git show 5764cf1`), the full current plan body, and driver response 1, and spot-checked the runner against the claims the resolutions depend on. Confirmed: the four override flags carry concrete defaults today (`DEFAULT_MODEL` / `DEFAULT_EFFORT` / `DEFAULT_CODEX_MODEL` / `DEFAULT_CODEX_EFFORT` at `structured-review/scripts/claude_structured_review.py` lines 25–28), so the `None`-sentinel change is a real and necessary mechanism, not a no-op; `--timeout-sec` defaults to `DEFAULT_TIMEOUT_SEC = 900`; and the runner already owns a case-insensitive `^##\s+Review Threads\s*$` anchor (`REVIEW_THREADS_RE`, line 45), so the new scan-scope rule can reuse an existing, tested boundary rather than invent one. I also swept all 15 existing plans in `docs/agent_plans/` against the pinned phrase table: 3 of the 14 other plans contain at least one listed phrase (`large review`, `runtime behavior`, `multi-repo`, `migration plan`, `high-risk`), so under the new policy `normal` remains the common case and `hard` fires occasionally — the exact balance Thread 1 demanded, now verifiable against real corpus rather than assumed. No settled human decision is reopened by the revision: the matrix, cross-vendor backend rule, two-tier scope, and merge authority are untouched.
+
+#### Thread resolutions
+
+**Thread 1 — Resolved.** Artifact body updated in section 3. All four sub-points are closed: the phrase table is pinned (six categories, every entry a multi-word or hyphenated phrase — no bare `protocol`, `release`, or `production`, which was the failure mode that made `normal` unreachable); matching semantics are stated (case-insensitive, whole words/phrases, listed spellings only, category-name-only reasons); scan scope is decided for both the keyword scan and the line count (artifact body before the first top-level `## Review Threads` heading, focus text in full, `splitlines()` totals strictly greater than 1,000), making round-to-round tier stability a stated design property instead of an emergent artifact; and the new read path has a defined failure mode (missing, directory, unreadable, or non-UTF-8 artifact fails with a relative-path `RunnerError` before reviewer invocation, no silent skip or fallback to normal). The two acceptance criteria that previously pulled in opposite directions are now simultaneously verifiable, and the corpus sweep above confirms it empirically.
+
+**Thread 2 — Resolved.** Artifact body updated in section 4 and the test list. `None` sentinels are named as the detection mechanism, and `model_source` / `effort_source` land in `RunConfig`, prompt, and metadata with pinned values (`profile` or the exact explicit flag). Minor and not a reopener: the prompt-block template in section 4 does not show the two source lines, but the paragraph after it requires them in the prompt and a test bullet asserts them, so no guessing of substance remains.
+
+**Thread 3 — Resolved.** Artifact body updated in the Validation Plan. One minimal read-only live smoke per Codex slug at `xhigh` before closeout, recorded as driver-run provenance with unit tests kept as the argv source of truth — exactly the cheap mitigation proposed, with the provenance layer stated honestly rather than upgraded to CI-backed.
+
+**Thread 4 — Resolved.** Artifact body updated in section 4 and the test list. The notice is non-fatal and timeout semantics stay inside the non-goal. Implementation note, not a condition: because `--timeout-sec` has a concrete default, "is the default 900" will most simply be implemented as `== 900`, which also fires the notice for an explicitly passed 900. That is harmless for a stderr hint; either detection reading satisfies the acceptance bullet.
+
+#### Blocking issues
+
+None. There are no blocking issues in this pass, and the revision delta introduces no new blocker.
+
+#### Non-blocking issues
+
+**Thread 5 — Two small gaps at the edges of the Thread 1 fix (non-blocking, driver's choice).**
+
+1. Phrase-internal whitespace is unstated. Multi-word phrases wrap across lines in real markdown — this very plan renders `rollout plan` as `rollout` plus a newline and indentation inside its own section 3 list. If matching requires a literal single space, a wrapped phrase is a silent false negative, which is the direction the policy explicitly says it wants to avoid. One sentence fixes it: phrase-internal whitespace matches any whitespace run including newlines, or, alternatively, wrapped phrases are declared accepted misses.
+2. The scan-scope decision has no pinning test. Pass 1 asked for the Review-Threads-exclusion choice to be a stated decision with a test pinning it; the decision is now stated in the body, but section 8 has no corresponding bullet. Add one: an artifact whose pre-threads body is small but whose `## Review Threads` section pushes the total past 1,000 lines resolves `normal`.
+
+#### Overall judgment
+
+Ready for implementation. Thread 1 is resolved at the level pass 1 asked for, Threads 2 through 4 are specified tightly enough to implement without guessing, and the delta stays inside the accepted human decisions and non-goals. Thread 5 is optional tightening the driver can fold into implementation or reject with a sentence; it does not gate the next step.
+
+#### Residual risks and validation gaps
+
+- Self-referential artifacts still scan hard because they quote the phrase table or protocol vocabulary; the corpus sweep makes this concrete (`large review` in the scout timeout plan is quoted timeout-discipline prose, and `README.md` line 3 contains `multi-agent`). Accepted cost-only bias carried over from pass 1, visible in reasons and metadata.
+- The stricter artifact validation is a behavior change for previously tolerated bad inputs; it is strictly fail-fast and pre-invocation, so I see no regression path, and the existing-suite regression bullet in section 8 is what proves it.
+- Codex slug liveness remains deferred to the pre-closeout smoke, with driver-run provenance recorded as such — unchanged from pass 1, now with a concrete mitigation in the plan.
+
+No blocking threads open. Plan review concludes: ready for implementation.
