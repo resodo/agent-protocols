@@ -386,3 +386,63 @@ Avoid adding one-off keywords without a demonstrated classification gap.
 
 ## Review Threads
 
+I've completed my inspection — runner code, closeout skill, docs, and a fresh test-suite run all verified against the plan's claims. Here is the complete review for the thread file.
+
+I inspected the plan, the runner, the tests, the closeout skill, and the docs the plan proposes to change, and I re-ran all three test suites to confirm the claimed green baseline (65 + 31 + 18 = 114, all passing). The plan's description of current behavior is accurate throughout: the backend resolver matches the stated contract exactly, the current defaults are `opus`/`gpt-5.5` at `xhigh`, and the 1,000-line and multi-file heuristics do exist today as timeout-discipline prose. One issue blocks implementation; the rest is tightening. Here is my review.
+
+---
+
+### Reviewer pass 1 (impl-plan, claude reviewer)
+
+**Restated concern:** Is the accepted backend/model matrix, automatic normal-versus-hard tier policy, override precedence, prompt/metadata provenance, closeout boundary, lifecycle, and validation specified tightly enough that an implementer would not have to guess?
+
+I inspected `docs/agent_plans/2026-07-20_review_tier_model_matrix_plan.md`, `structured-review/scripts/claude_structured_review.py` (backend resolver, argparse defaults, prompt builder, argv construction, metadata writer), `structured-review/tests/test_claude_structured_review.py` (including the existing SKILL-prose test precedent), `structured-review/SKILL.md`, `closeout/SKILL.md`, `README.md`, `docs/CURRENT.md`, and `docs/agent_plans/README.md`. I re-ran the three test suites; all green at the claimed counts (structured-review 65, scout 31, root 18). Validation provenance for that baseline is reviewer-rerun.
+
+Verified plan claims, for the record:
+
+- The backend contract in section 5 matches `resolve_reviewer_backend` exactly: Claude marker only -> Codex, Codex marker only -> Claude, neither -> Claude, both -> explicit-choice error, explicit backend wins.
+- Current defaults are `opus` / `gpt-5.5` / `xhigh` as the Context states, and `--model`, `--effort`, `--codex-model`, `--codex-effort` all exist today.
+- The 1,000-line and multi-file-implementation-review signals do mirror an existing heuristic (the SKILL timeout discipline), so signals 2 and 3 are anchored, not invented.
+- `closeout/SKILL.md` already delegates runner policy ("this protocol does not duplicate that policy"), so section 6 is a small consistent addition, not a rewrite.
+- The files-expected-to-change list is accurate: README has a runner-usage section, `docs/CURRENT.md` carries a Last-updated date to bump, and the plan index exists.
+- The Review Gates section respects the closeout boundary: plan review concludes at ready-for-implementation, and merge-readiness stays with closeout.
+
+#### Blocking issues
+
+**Thread 1 — The complexity-signal table and its matching semantics are the core new policy, and they are not yet written down; two acceptance criteria cannot both be verified against a table that does not exist (blocking).**
+
+Section 3 signal 4 defines six named categories, but the actual policy — the phrases and how they match — is deferred to implementation. This matters because plausible readings produce opposite behavior in this very repo:
+
+1. **Phrase list is unwritten.** "Broad protocol change" could map to the keyword `protocol` (fires on essentially every plan in this repo, making `normal` unreachable) or to the literal phrase `broad protocol change` (fires almost never). Same spread for `release` vs `released`, `production` appearing in non-goals ("Do not change production behavior" is a stock non-goal line here), and `multi-agent` appearing in protocol prose. The acceptance criteria "small ordinary plan and implementation-plan artifacts resolve normal" and "every named high-complexity category resolves hard" pull in opposite directions, and which one wins depends entirely on the unwritten table. As drafted, the tests would define the accepted policy after the fact rather than pin a policy the human accepted.
+2. **Matching semantics are unstated.** Case sensitivity, word/phrase boundaries, and substring behavior (`hard` in `hardware`, `production` in `reproduction`) change false-positive rates materially. One sentence fixes this.
+3. **Scan scope is underspecified in a way that affects round-to-round determinism.** "Artifact or focus text" presumably means full artifact text — but does that include the `## Review Threads` section, which grows every round and quotes reviewer language dense with words like "production" and "security"? The same question applies to the >1,000-line count in signal 2: appended threads inflate the artifact, so a plan can silently flip normal -> hard between plan review and plan re-review. That flip may be acceptable (it errs conservative), but it should be a stated decision with a test pinning it, not an emergent artifact of `wc -l`.
+4. **New I/O path needs a defined failure mode.** Today the runner never reads artifact contents (it only resolves paths); the tier scan makes it read every artifact. Define behavior for non-UTF-8 or unreadable artifacts (error vs. count-lines-only vs. skip-with-reason).
+
+What clears this thread: pin the phrase table (it is small — the plan already insists it stay small and named), the matching rule, and the text-scope decision (including the Review Threads inclusion/exclusion choice for both the keyword scan and the line count) in the plan body or directly in the SKILL section this plan already designates as the policy owner. This is roughly fifteen lines of artifact text, not a re-plan. Without it, the implementer is not implementing an accepted policy; they are authoring one.
+
+#### Non-blocking issues
+
+**Thread 2 — Override precedence needs its detection mechanism named, and overridden values need provenance in the output (non-blocking).**
+
+Section 1 says overrides apply "only when the corresponding explicit override was supplied," but the current parser gives all four flags concrete defaults, so supplied-vs-default is currently undetectable. The obvious fix is sentinel defaults (`default=None`), and the Risks section shows awareness of the hazard, but the plan never names the mechanism — one sentence would remove the last guess. Related provenance gap: when an explicit `--model` replaces a profile value, the new prompt block ("Tier selection: <reasons>" followed by "Model:") will imply the printed model came from the matrix when it did not — quietly recreating the exact provenance gap this plan exists to close. Recommend appending an explicit-override reason (or a `model_source` field in metadata) whenever a flag displaces a profile value, and adding that case to the precedence tests.
+
+**Thread 3 — The Codex profiles reach main without a single live execution under this plan's own gates (non-blocking, residual risk).**
+
+Because the driver is Codex, every in-plan review gate uses the Claude reviewer; `gpt-5.6-terra` and `gpt-5.6-sol` will only ever be asserted in argv-construction tests. Their usability provenance is the human's catalog check at plan time — which is recorded, and which I cannot independently verify from the reviewer sandbox (I did not fetch the cited provider pages; I am not disputing them, only noting the provenance layer). Cheap mitigation: a driver-run one-off smoke (`codex exec` with a trivial prompt against each slug) recorded at implementation review or closeout, or an explicit deferral note so closeout records the provenance honestly. The override flags remain the rollback either way, as the plan states.
+
+**Thread 4 — Auto-hard tier and manual timeout selection now key off the same signals but are decoupled (non-blocking).**
+
+Signals 2 and 3 replicate the large-review timeout heuristic, yet timeout stays manual with a 900-second default. Every auto-hard run driven by those signals (closeout-review, >1,000 lines, multi-artifact impl) pairs a slower, more deliberate model with the small-review timeout — a predictable timeout-then-rerun cost. The non-goal correctly keeps timeout behavior unchanged; the cheap fix is prose: have the SKILL note that hard-signal evidence usually also warrants `--timeout-sec 1800`, or have the runner log a one-line stderr notice when tier resolves hard under the default timeout. The plan's own gate 1 already pairs the hard model with 1800 seconds, so the pairing is understood — it just is not written as guidance.
+
+#### Overall judgment
+
+Not ready for implementation yet, on Thread 1 alone. The plan is otherwise strong: human decisions are recorded and separated from proposals, the backend contract matches the code exactly, non-goals fence scope cleanly, the matrix is pinned to full slugs with a real lifecycle contract (owner, staleness signals, removal process), the closeout boundary is handled by delegation rather than duplication, and the test list is implementable in the existing suite's style, including the SKILL-prose checks. Once the signal phrase table, matching rule, and scan-scope decision are pinned in the artifact body, this is ready for implementation. Threads 2 through 4 are driver's-choice tightening.
+
+#### Residual risks and validation gaps
+
+- **Negation and quotation false positives are accepted, not solved.** The plan owns this bias explicitly ("not production" classifying hard) and makes it visible in reasons/metadata. Note the sharper corollary once Thread 1 is settled: any artifact that documents the tier mechanism itself (SKILL and README diffs, future plans quoting the table) will scan hard under full-text matching. Conservative and cost-only, but worth knowing before the first "why was this trivial doc review hard-tier" question.
+- **Tier flip across review rounds** (artifact growth via appended threads) is deterministic but surprising; resolve inside Thread 1's scope decision.
+- **Codex slug liveness is deferred** (Thread 3); closeout should record its provenance as human-acceptance-plus-tests, not CI-backed, unless the smoke run is added.
+- **Model positioning claims rest on cited provider pages plus recorded human acceptance.** That is the declared source-of-truth layer for this decision and it is documented in the plan; no in-repo validation can strengthen it further, only the lifecycle triggers can.
+
+One blocking thread (Thread 1); no other blockers.
