@@ -1,6 +1,6 @@
 # Structured Review Tier And Model Matrix Plan
 
-Status: active implementation driver
+Status: implementation complete; implementation review pending
 Branch: `feature/review-tier-model-matrix`
 Worktree: `agent-protocols-review-tier`
 
@@ -435,6 +435,31 @@ Avoid adding one-off keywords without a demonstrated classification gap.
 - The plan and implementation themselves exercise the runner while it is being
   changed. Plan review uses the pre-change runner with explicit hard model
   settings; implementation and closeout reviews dogfood the new behavior.
+
+## Implementation Record
+
+Implemented without scope divergence:
+
+- added backend/tier profile resolution, exact automatic hard-signal policy,
+  artifact-body validation, selection provenance, and timeout guidance to the
+  bundled runner;
+- updated structured-review, closeout, root runner guidance, and the current
+  protocol map so structured-review remains the single policy owner;
+- expanded structured-review coverage from 65 to 79 tests, including every
+  phrase, the strict 1,000-line boundary, Review Threads exclusion, exact 2x2
+  profiles, explicit override provenance, error paths, prompt/metadata fields,
+  and timeout guidance.
+
+Driver validation on 2026-07-20:
+
+- structured-review: 79 tests passed;
+- Scout: 31 tests passed;
+- root: 18 tests passed;
+- backlog validation, runner compilation/help smoke, and `git diff --check`
+  passed.
+
+Pending gates: implementation review, both read-only Codex model smokes,
+Closeout Review, PR/CI verification, and human merge handoff.
 
 ## Review Threads
 

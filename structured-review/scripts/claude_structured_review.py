@@ -22,19 +22,97 @@ from typing import Any, TextIO, cast
 MODE_WRITE = "write-commit-to-plan"
 MODE_PRINT = "print-review"
 REVIEW_TYPES = ("other-plan", "impl-plan", "impl", "closeout-review")
-DEFAULT_MODEL = "opus"
+DEFAULT_MODEL = "claude-opus-4-8"
+HARD_CLAUDE_MODEL = "claude-fable-5"
 DEFAULT_EFFORT = "xhigh"
-DEFAULT_CODEX_MODEL = "gpt-5.5"
+DEFAULT_CODEX_MODEL = "gpt-5.6-terra"
+HARD_CODEX_MODEL = "gpt-5.6-sol"
 DEFAULT_CODEX_EFFORT = "xhigh"
 DEFAULT_TIMEOUT_SEC = 900
 DEFAULT_HEARTBEAT_SEC = 30
+HARD_REVIEW_LINE_THRESHOLD = 1000
 
 BACKEND_AUTO = "auto"
 BACKEND_CLAUDE = "claude"
 BACKEND_CODEX = "codex"
+REVIEW_TIER_AUTO = "auto"
+REVIEW_TIER_NORMAL = "normal"
+REVIEW_TIER_HARD = "hard"
 CLAUDE_DRIVER_MARKERS = ("CLAUDECODE",)
 CODEX_DRIVER_MARKERS = ("CODEX_THREAD_ID", "CODEX_SANDBOX")
 CODEX_LAST_MESSAGE_NAME = "last-message.txt"
+
+REVIEW_MODEL_MATRIX = {
+    BACKEND_CLAUDE: {
+        REVIEW_TIER_NORMAL: (DEFAULT_MODEL, DEFAULT_EFFORT),
+        REVIEW_TIER_HARD: (HARD_CLAUDE_MODEL, DEFAULT_EFFORT),
+    },
+    BACKEND_CODEX: {
+        REVIEW_TIER_NORMAL: (DEFAULT_CODEX_MODEL, DEFAULT_CODEX_EFFORT),
+        REVIEW_TIER_HARD: (HARD_CODEX_MODEL, DEFAULT_CODEX_EFFORT),
+    },
+}
+
+HARD_COMPLEXITY_SIGNAL_PHRASES = (
+    (
+        "production/runtime/deploy/rollout",
+        (
+            "production-facing",
+            "production change",
+            "production rollout",
+            "runtime-facing",
+            "runtime behavior",
+            "deploy-facing",
+            "deployment plan",
+            "rollout plan",
+        ),
+    ),
+    (
+        "architecture/migration",
+        (
+            "architecture-facing",
+            "architecture change",
+            "system architecture",
+            "data migration",
+            "schema migration",
+            "migration plan",
+        ),
+    ),
+    (
+        "security/data safety",
+        (
+            "security-sensitive",
+            "security review",
+            "security boundary",
+            "data safety",
+            "data loss",
+            "destructive data",
+        ),
+    ),
+    (
+        "multi-repo/multi-agent/release",
+        ("multi-repo", "multi-agent", "release plan", "release handoff"),
+    ),
+    (
+        "broad protocol change",
+        ("broad protocol change", "protocol-wide change", "protocol self-evolution"),
+    ),
+    (
+        "explicit complexity",
+        ("complex review", "high-risk", "hard review", "large review"),
+    ),
+)
+
+
+def phrase_regex(phrase: str) -> re.Pattern[str]:
+    body = r"\s+".join(re.escape(part) for part in phrase.split())
+    return re.compile(rf"(?<!\w){body}(?!\w)", re.IGNORECASE)
+
+
+HARD_COMPLEXITY_PATTERNS = tuple(
+    (category, tuple(phrase_regex(phrase) for phrase in phrases))
+    for category, phrases in HARD_COMPLEXITY_SIGNAL_PHRASES
+)
 
 CONTEXT_OVERLAY = Path(".agent-protocols/context.md")
 STRUCTURED_REVIEW_OVERLAY = Path(".agent-protocols/structured-review.md")
@@ -98,8 +176,12 @@ class RunConfig:
     thread_file: ResolvedPath | None
     topic: str | None
     backend: str
+    review_tier: str
+    review_tier_reasons: tuple[str, ...]
     model: str
     effort: str
+    model_source: str
+    effort_source: str
     claude_bin: str
     codex_bin: str
     codex_model: str
@@ -232,6 +314,73 @@ def read_text(path: Path, *, required: bool = True) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def read_artifact_body(artifact: ResolvedPath) -> str:
+    if not artifact.abs.is_file():
+        raise RunnerError(f"artifact must be an existing regular file: {artifact.rel}")
+    try:
+        text = artifact.abs.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise RunnerError(f"artifact must be readable UTF-8: {artifact.rel}") from exc
+    match = REVIEW_THREADS_RE.search(text)
+    return text[: match.start()] if match else text
+
+
+def resolve_review_tier(
+    raw: str,
+    review_type: str,
+    artifacts: Sequence[ResolvedPath],
+    focus: str,
+) -> tuple[str, tuple[str, ...]]:
+    bodies = [read_artifact_body(artifact) for artifact in artifacts]
+    if raw != REVIEW_TIER_AUTO:
+        return raw, (f"explicit --review-tier {raw}",)
+
+    reasons: list[str] = []
+    if review_type == "closeout-review":
+        reasons.append("review type closeout-review")
+
+    total_lines = sum(len(body.splitlines()) for body in bodies)
+    if total_lines > HARD_REVIEW_LINE_THRESHOLD:
+        reasons.append(f"artifact body lines {total_lines} > {HARD_REVIEW_LINE_THRESHOLD}")
+
+    if review_type == "impl" and len(artifacts) > 1:
+        reasons.append(f"multi-artifact impl review ({len(artifacts)} artifacts)")
+
+    scan_text = "\n".join((focus, *bodies))
+    for category, patterns in HARD_COMPLEXITY_PATTERNS:
+        if any(pattern.search(scan_text) for pattern in patterns):
+            reasons.append(f"complexity signal: {category}")
+
+    if reasons:
+        return REVIEW_TIER_HARD, tuple(reasons)
+    return REVIEW_TIER_NORMAL, ("auto: no hard signals",)
+
+
+def resolve_review_profile(
+    backend: str,
+    review_tier: str,
+    *,
+    claude_model: str | None,
+    claude_effort: str | None,
+    codex_model: str | None,
+    codex_effort: str | None,
+) -> tuple[str, str, str, str]:
+    model, effort = REVIEW_MODEL_MATRIX[backend][review_tier]
+    model_override = claude_model if backend == BACKEND_CLAUDE else codex_model
+    effort_override = claude_effort if backend == BACKEND_CLAUDE else codex_effort
+    model_flag = "--model" if backend == BACKEND_CLAUDE else "--codex-model"
+    effort_flag = "--effort" if backend == BACKEND_CLAUDE else "--codex-effort"
+    model_source = "profile"
+    effort_source = "profile"
+    if model_override is not None:
+        model = model_override
+        model_source = f"explicit {model_flag}"
+    if effort_override is not None:
+        effort = effort_override
+        effort_source = f"explicit {effort_flag}"
+    return model, effort, model_source, effort_source
+
+
 def default_protocol_dir() -> Path:
     return Path(__file__).resolve().parents[1]
 
@@ -280,6 +429,16 @@ def build_prompt(config: RunConfig) -> str:
             f"Mode: {config.mode}",
             f"Thread file: {thread_file}",
             f"Topic: {config.topic or 'none'}",
+            "",
+            "Reviewer selection:",
+            f"- Backend: {config.backend}",
+            f"- Review tier: {config.review_tier}",
+            f"- Tier selection: {'; '.join(config.review_tier_reasons)}",
+            f"- Model: {active_model(config)}",
+            f"- Model source: {config.model_source}",
+            f"- Effort: {active_effort(config)}",
+            f"- Effort source: {config.effort_source}",
+            "- Review tier affects model routing only. Apply the same readiness standard at both tiers; do not invent scope or low-value findings for a hard review.",
             "",
             "Task-specific focus:",
             config.focus.strip(),
@@ -788,8 +947,12 @@ def write_metadata(
         "thread_file": config.thread_file.rel if config.thread_file else None,
         "topic": config.topic,
         "backend": config.backend,
+        "review_tier": config.review_tier,
+        "review_tier_reasons": list(config.review_tier_reasons),
         "model": active_model(config),
         "effort": active_effort(config),
+        "model_source": config.model_source,
+        "effort_source": config.effort_source,
         "timeout_sec": config.timeout_sec,
         "heartbeat_sec": config.heartbeat_sec,
         "run_log_dir": str(logs.root),
@@ -827,8 +990,13 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     state = ReviewState()
     token_usage: dict[str, Any] | None = None
     malformed = 0
+    if config.review_tier == REVIEW_TIER_HARD and config.timeout_sec == DEFAULT_TIMEOUT_SEC:
+        print(
+            "hard review selected with default timeout_sec=900; consider --timeout-sec 1800",
+            file=sys.stderr,
+        )
     print(
-        f"{config.backend} review start mode={config.mode} type={config.review_type} timeout_sec={config.timeout_sec} model={active_model(config)} effort={active_effort(config)} artifacts={','.join(a.rel for a in config.artifacts)}",
+        f"{config.backend} review start mode={config.mode} type={config.review_type} tier={config.review_tier} timeout_sec={config.timeout_sec} model={active_model(config)} effort={active_effort(config)} artifacts={','.join(a.rel for a in config.artifacts)}",
         file=sys.stderr,
     )
     proc = subprocess.Popen(
@@ -931,12 +1099,18 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         choices=(BACKEND_AUTO, BACKEND_CLAUDE, BACKEND_CODEX),
         dest="reviewer_backend",
     )
-    parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--effort", default=DEFAULT_EFFORT)
+    parser.add_argument(
+        "--review-tier",
+        default=REVIEW_TIER_AUTO,
+        choices=(REVIEW_TIER_AUTO, REVIEW_TIER_NORMAL, REVIEW_TIER_HARD),
+        dest="review_tier",
+    )
+    parser.add_argument("--model")
+    parser.add_argument("--effort")
     parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--codex-bin", default="codex")
-    parser.add_argument("--codex-model", default=DEFAULT_CODEX_MODEL)
-    parser.add_argument("--codex-effort", default=DEFAULT_CODEX_EFFORT)
+    parser.add_argument("--codex-model")
+    parser.add_argument("--codex-effort")
     parser.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
     parser.add_argument("--heartbeat-sec", type=int, default=DEFAULT_HEARTBEAT_SEC)
     parser.add_argument("--run-log-dir")
@@ -963,6 +1137,17 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
     backend, marker_resolved = resolve_reviewer_backend(
         args.reviewer_backend, os.environ if env is None else env
     )
+    review_tier, review_tier_reasons = resolve_review_tier(
+        args.review_tier, args.review_type, artifacts, focus
+    )
+    model, effort, model_source, effort_source = resolve_review_profile(
+        backend,
+        review_tier,
+        claude_model=args.model,
+        claude_effort=args.effort,
+        codex_model=args.codex_model,
+        codex_effort=args.codex_effort,
+    )
     if marker_resolved:
         backend_bin = args.claude_bin if backend == BACKEND_CLAUDE else args.codex_bin
         if shutil.which(backend_bin) is None:
@@ -970,6 +1155,12 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
                 f"reviewer backend '{backend}' was auto-selected from the driver environment "
                 "but its binary is unavailable; install it or pass --reviewer-backend explicitly"
             )
+    claude_model, claude_effort = REVIEW_MODEL_MATRIX[BACKEND_CLAUDE][review_tier]
+    codex_model, codex_effort = REVIEW_MODEL_MATRIX[BACKEND_CODEX][review_tier]
+    if backend == BACKEND_CLAUDE:
+        claude_model, claude_effort = model, effort
+    else:
+        codex_model, codex_effort = model, effort
     return RunConfig(
         protocol_dir=protocol_dir,
         worktree=worktree,
@@ -980,12 +1171,16 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
         thread_file=thread_file,
         topic=args.topic,
         backend=backend,
-        model=args.model,
-        effort=args.effort,
+        review_tier=review_tier,
+        review_tier_reasons=review_tier_reasons,
+        model=claude_model,
+        effort=claude_effort,
+        model_source=model_source,
+        effort_source=effort_source,
         claude_bin=args.claude_bin,
         codex_bin=args.codex_bin,
-        codex_model=args.codex_model,
-        codex_effort=args.codex_effort,
+        codex_model=codex_model,
+        codex_effort=codex_effort,
         timeout_sec=args.timeout_sec,
         heartbeat_sec=args.heartbeat_sec,
         run_log_dir=run_log_dir,

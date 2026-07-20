@@ -58,13 +58,47 @@ runner for the reviewer pass when it is available.
 triggers a repo-backed Closeout Review, use the bundled runner when available;
 the trigger comes from closeout, not from structured-review by default.
 
-The runner supports two reviewer backends: `claude` (Claude Code) and `codex`
-(Codex CLI). `--reviewer-backend` defaults to `auto`, which selects the
-cross-vendor reviewer from the driver's environment: a Claude Code driver gets
-the `codex` reviewer and a Codex driver gets the `claude` reviewer. When both
-driver markers are present the runner fails and requires an explicit
-`--reviewer-backend`; when neither is present it uses `claude`. Review threads
-record the reviewer backend in each pass heading.
+The runner resolves reviewer selection in two steps: backend, then review tier.
+Callers should describe the actual artifact scope and review focus; they should
+not duplicate model-selection logic in their prompts.
+
+For the backend, `--reviewer-backend auto` selects the cross-vendor reviewer
+from the driver's environment:
+
+- Claude Code driver -> `codex` reviewer;
+- Codex driver -> `claude` reviewer;
+- another or unrecognized coding agent -> `claude` reviewer;
+- both Claude and Codex driver markers -> fail and require an explicit
+  `--reviewer-backend`.
+
+For the tier, `--review-tier auto` selects `hard` when any of these signals is
+present; otherwise it selects `normal`:
+
+- type is `closeout-review`;
+- artifact body size before `## Review Threads` is greater than 1,000 lines;
+- an `impl` review has multiple artifacts;
+- artifact body or focus names production/runtime/deploy/rollout,
+  architecture/migration, security/data-safety, multi-repo/multi-agent/release,
+  broad protocol-change, or explicit high-complexity scope recognized by the
+  runner's pinned signal table.
+
+Use clear, concrete focus text when one of those properties is relevant. Do not
+add tier keywords merely to force routing; use `--review-tier normal|hard` when
+an intentional override is needed.
+
+The resolved profile matrix is:
+
+| Reviewer backend | `normal` | `hard` | Effort |
+| --- | --- | --- | --- |
+| `claude` | `claude-opus-4-8` | `claude-fable-5` | `xhigh` |
+| `codex` | `gpt-5.6-terra` | `gpt-5.6-sol` | `xhigh` |
+
+The prompt, start log, and run metadata record the resolved tier, reasons,
+model, effort, and whether model/effort came from the profile or an explicit
+provider flag. Tier changes model routing only: both tiers apply the same
+readiness standard, and `hard` does not authorize invented scope or low-value
+findings. Review threads continue to record the reviewer backend in each pass
+heading.
 
 If an auto-selected backend binary is unavailable, the runner fails with an
 actionable error. Substituting the same-vendor reviewer is an explicit
@@ -122,16 +156,26 @@ driver still owns the decision after receiving reviewer output.
 Pass `--reviewer-backend claude|codex` to pin the reviewer backend; the
 default `auto` selects the cross-vendor reviewer for the detected driver.
 
+Pass `--review-tier normal|hard` to pin review difficulty; the default `auto`
+uses the policy above. Provider-specific `--model`, `--effort`,
+`--codex-model`, and `--codex-effort` flags override only the selected
+backend's profile and are intended for deliberate exceptions.
+
+The matrix and automatic signal table are durable protocol mechanisms. When a
+provider model changes or a signal is added, update runner constants, tests,
+this skill, the root runner summary, and `docs/CURRENT.md` in one reviewed
+change. Do not silently replace a pinned profile through a mutable alias.
+
 Use `--protocol-dir` only when testing or intentionally running against a
 different checkout of this protocol. By default the runner uses the
 `structured-review` directory that contains the script.
 
 ### Timeout Discipline
 
-Small and medium repo-backed review gates should use the runner default timeout
-of 900 seconds. Large reviews should pass `--timeout-sec 1800`; large reviews
-include broad protocol changes, production/runtime/deploy reviews, multi-file
-implementation reviews, or review artifacts above roughly 1,000 lines.
+Normal repo-backed review gates should usually use the runner default timeout
+of 900 seconds. Hard reviews should usually pass `--timeout-sec 1800`. If a
+hard review keeps the default 900-second timeout, the runner emits a non-fatal
+guidance notice without changing the caller's timeout.
 
 Once a driver invokes the runner with a timeout, the driver must wait until the
 reviewer exits, the runner timeout expires, or a genuine external interruption

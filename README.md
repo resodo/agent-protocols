@@ -116,7 +116,15 @@ the explicit `--worktree`.
 The runner drives either Claude Code or Codex as the reviewer.
 `--reviewer-backend` defaults to `auto`, which picks the cross-vendor
 reviewer for the detected driver (Claude Code driver -> Codex reviewer, Codex
-driver -> Claude reviewer); pass `--reviewer-backend claude|codex` to pin it.
+driver -> Claude reviewer, unknown driver -> Claude reviewer); conflicting
+driver markers require an explicit backend.
+
+`--review-tier` defaults to `auto`, selecting `normal` or `hard` from review
+type, artifact body size, multi-artifact implementation scope, and pinned
+complexity signals. The profile matrix is Claude Opus 4.8 / Fable 5 and Codex
+GPT-5.6 Terra / Sol for normal / hard respectively, all at `xhigh`. Pass
+`--review-tier normal|hard` or provider-specific model/effort flags only for a
+deliberate override; the runner records the selection and its provenance.
 
 `--protocol-dir` is optional and mainly for tests or intentional alternate
 checkouts; normal usage relies on the script's own `structured-review`
