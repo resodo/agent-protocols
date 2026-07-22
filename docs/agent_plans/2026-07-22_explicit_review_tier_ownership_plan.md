@@ -395,3 +395,67 @@ No blocking issues. Threads A-D are all resolved in the plan body and grounded i
 - Validation is executable by the next agent (the Section "Validation" command block and dry-run CLI cases are runnable). No new gaps introduced by the response-1 edits.
 
 Implementation may proceed under the same explicit Claude `claude-opus-4-8` / `xhigh` / `normal` gate the plan specifies. This is a plan-review conclusion of `ready for implementation`; it is not a merge-readiness handoff, which belongs to closeout after final rechecks.
+
+I've completed a thorough verification. Every accepted plan criterion traces to the committed implementation, all validation evidence reproduces independently, and no live doc carries a stale auto-hard claim. Here is my review.
+
+---
+
+### Reviewer pass 1 (impl, claude reviewer)
+
+Backend: claude · Model: `claude-opus-4-8` · Effort: `xhigh` · Tier: `normal` (explicit driver selection). Fable is not used for this review, per Human Decision 5 and the task instruction.
+
+A note before findings, because it is itself evidence: for this very review the runner *recommended* `hard` with seven mechanical signals (`artifact body lines 4173 > 1000`, multi-artifact, production/architecture/security/multi-agent/protocol/explicit-complexity), yet the driver explicitly selected `normal` and I am running on Opus, not Fable. The mechanism under review is dogfooding correctly in this pass: signals recommended, the driver decided, and no paid-hard model was reached. I am applying the ordinary readiness standard and did not invent scope because a hard recommendation was present.
+
+Original concern, restated in one sentence: a routine Closeout Review was auto-routed to the paid Fable profile purely because its type was `closeout-review`, burned the provider spend and returned nothing usable — so mechanical signals must stop owning the tier/model decision and the context-owning driver must own it explicitly, without breaking legacy callers.
+
+I compared the committed work (implementation commit `structured-review: make review tier driver-owned`) against every accepted acceptance criterion and Design section, read the runner and tests in full, and independently reproduced the validation.
+
+#### Blocking issues
+
+None. Every accepted criterion is implemented, tested, and independently reproducible. Implementation may proceed to closeout.
+
+#### Traceability against accepted acceptance criteria
+
+Each row is `Done` with concrete, reproduced evidence.
+
+| # | Accepted criterion | Status | Evidence |
+| --- | --- | --- | --- |
+| 1 | Closeout type, multi-artifact, >1,000 lines, and every complexity keyword can recommend hard but cannot alter selected tier/model | Done | `recommend_review_tier` returns an observational `(tier, reasons)` tuple (`claude_structured_review.py:334-358`); `config_from_args` threads it only into `recommended_tier`/`recommendation_reasons` (`:1217-1219`, `:1283-1284`); tests `test_closeout_review_recommends_hard_without_changing_selected_tier`, `test_artifact_body_over_one_thousand_lines_only_recommends_hard`, `test_multi_artifact_implementation_review_only_recommends_hard`, `test_each_complexity_phrase_only_recommends_hard`, `test_representative_keywords_never_change_selected_tier_or_model`. Dry-run: closeout+auto recommended hard, stayed normal/Opus. |
+| 2 | Explicit normal → `claude-opus-4-8`/`xhigh` | Done | `REVIEW_MODEL_MATRIX` (`:48-57`); `test_review_model_matrix_is_exact_for_both_backends_and_tiers`; dry-run 1 printed `normal / explicit-driver / claude-opus-4-8 / profile`. |
+| 3 | Explicit hard + reason → `claude-fable-5`/`xhigh` | Done | Same matrix; dry-run 2 printed `hard / explicit-driver / driver reason / claude-fable-5`. |
+| 4 | Hard without a reason fails before reviewer invocation | Done | `resolve_review_tier` raises in `config_from_args` (`:372-374`, called `:1220`) before `run()`; `test_explicit_hard_without_reason_fails_before_profile_resolution`; dry-run 4 exited 1 with no reviewer launch. |
+| 5 | Legacy auto/omitted → normal, clear warning, compatibility provenance | Done | Auto branch (`:362-365`), default `--review-tier auto` (`:1173`), deprecation warning (`:1223-1228`), `legacy_review_tier_reasons` (`:378-384`); `test_legacy_auto_selects_normal_with_compatibility_provenance`; dry-run 3 emitted the deprecation warning and the recommend-hard notice. |
+| 6 | Prompt + metadata distinguish driver selection/reason from recommendation/reasons and record final model/source | Done | `build_prompt` five-field block + routing-only line (`:487-498`); `write_metadata` five new fields + `review_tier`/`review_tier_reasons` aliases + `model`/`effort`/`*_source` (`:1007-1017`); `test_prompt_records_tier_profile_and_sources`, `test_run_codex_prefers_last_message_file_and_records_metadata`. |
+| 7 | Normal and hard retain identical scope and quality rules | Done | Prompt line `Review tier affects model routing only … same readiness standard at both tiers` (`:498`); `SKILL.md:120-123`. |
+| 8 | Backend auto-selection and unrelated runner behavior unchanged | Done | `resolve_reviewer_backend` (`:964-977`), `claude_argv`/`codex_argv`, timeout/heartbeat, write-verification all unchanged; `test_resolve_reviewer_backend_cross_vendor_auto` and the full read-only/commit-shape suite still pass. |
+| 9 | Selected-backend pinned hard-model guard | Done | `require_hard_profile_model_has_hard_tier` keys off the selected backend's hard slug and the resolved model (`:412-419`, called `:1243`); `test_pinned_hard_model_override_requires_hard_tier_for_selected_backend` (claude+codex), `test_redundant_pinned_hard_model_override_is_valid_with_hard_reason`. Dry-run: `--review-tier normal --model claude-fable-5` exited 1; `--review-tier hard --tier-reason … --model claude-fable-5` passed with `model source: explicit --model`. |
+
+#### Verification of the specific focus items
+
+- Driver ownership: confirmed. `resolve_review_tier` maps auto→`legacy-auto-compatibility`, explicit normal/hard→`explicit-driver`; the recommendation never feeds selection.
+- Legacy auto safety: confirmed. Auto/omitted resolves to `normal` on the profile path and can never reach a hard model — the override guard also fires for `auto`+pinned-hard-model, so the paid-model hazard is closed on every non-hard path.
+- Hard rationale enforcement: confirmed. Whitespace is stripped, empty is rejected (`:372-374`); `test_tier_reason_is_required_only_for_explicit_hard` covers `hard/None`, `hard/"   "`, and reason-on-`normal`/`auto`.
+- Recommendation-only signals: confirmed, including preservation of the Review-Threads-exclusion invariant via `read_artifact_body` (`:323-331`) and `test_review_threads_are_excluded_from_size_and_complexity_signals`.
+- Prompt/metadata provenance: confirmed, and the deterministic legacy alias arrays match Design section 3 exactly for all three selection paths (reproduced in `test_run_codex_prefers_last_message_file_and_records_metadata` and `test_prompt_records_tier_profile_and_sources`).
+- Docs consistency: confirmed. `structured-review/SKILL.md` (explicit-tier contract, matrix, recommendation-only, override carve-out at `:182-189`), `closeout/SKILL.md` (`:54-62`, automatic-hard claim removed, "does not select `hard` merely because its type is `closeout-review`"), `README.md:123-138`, and `docs/CURRENT.md:20-26` are mutually consistent and single-sourced to the SKILL. A repo-wide grep found no stale "auto-selects hard" language in any live source-of-truth doc; the only hits are the historical `2026-07-20` plan (correctly left unrewritten per Non-Goals) and the active plan's own change description. `agent-readiness/` and `AGENTS.md` carry no tier/model-routing content, matching the plan's claim that they needed no change.
+- Validation evidence: independently reproduced — `structured-review` 87 tests, Scout 31, root 18, `compileall`, `check_backlog.py`, `git diff --check`, all four plan dry-run cases, plus the guard and non-selected-provider-override warning. The Implementation Record's numbers are accurate.
+- Unchanged backend scope: confirmed. The implementation commit touched exactly the seven expected artifacts and nothing else.
+
+#### Non-blocking issues
+
+None require a change. Two small observations, both already correct:
+
+- `docs/agent_plans/README.md` appears in the plan's "Files Expected To Change" but is absent from the implementation commit. This is fine: the index entry for the `2026-07-22` plan was added when the plan was created, and it is present and accurate today. No action needed.
+- The `review_tier_reasons` alias for an explicit-hard run embeds the driver reason verbatim. Because `build_prompt` runs the whole-prompt local-path guard (`:532`) and metadata is a `.git`-scoped run-log artifact (not committed), there is no leakage path. No action needed.
+
+#### Overall judgment — Ready for closeout.
+
+The responsibility boundary the human asked for is implemented cleanly: mechanical signals are computed into an observational `recommended_tier`/`recommendation_reasons` that cannot mutate `selected_tier`, profile, timeout, scope, or the readiness standard; the driver owns the tier via explicit `--review-tier`; hard requires a stripped non-empty rationale; and the selected-backend pinned-hard-model guard closes the `--model`/`--codex-model` bypass on every non-hard tier while still allowing the redundant-but-valid hard override. The legacy-auto compatibility window keeps omitted/`auto` callers running on normal with a deprecation warning and additive provenance, eliminating the paid-model hazard immediately without a hard failure — exactly the staged migration the plan accepted. Docs are consistent and single-sourced, provenance is fully recorded in prompt/start-log/metadata, and every validation command reproduces. This is an implementation-review conclusion of `ready for closeout`; it is not a merge-readiness handoff, which belongs to closeout after final rechecks.
+
+#### Residual risks / validation gaps
+
+- Compatibility debt (accepted, disclosed): legacy `auto`/omitted callers keep running on `normal` without explicit driver ownership until they migrate. The deprecation warning plus additive provenance make the debt visible, and — verified here — legacy-auto can no longer reach a paid model even with a pinned-hard-model override, so the debt is cosmetic, not a spend hazard.
+- `review_tier_reasons` changed meaning (selection provenance, not signal list). The only in-repo consumers are the rewritten tests; scoped to this repo and disclosed.
+- Process gates outside this review's scope remain pending and are correctly listed as such in the Implementation Record: the shared protocol PR / CI verification and human merge handoff (Review Gate 6) and the closeout evidence + Closeout Review (Gate 5). I make no merge-readiness claim here.
+
+No blocking issues. I recommend the driver proceed to the closeout gate under the same explicit Claude `claude-opus-4-8` / `xhigh` / `normal` selection the plan specifies for this change.
