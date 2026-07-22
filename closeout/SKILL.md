@@ -51,11 +51,15 @@ the triggering evidence or ambiguity, such as release scope, contract files,
 validation provenance, PR/CI state, ancestry, or residual risk. Do not choose a
 reviewer model in the closeout prompt.
 
-The structured-review runner owns backend, tier, model, and effort selection.
-Its automatic policy routes every `closeout-review` to the `hard` tier and
-chooses a cross-vendor reviewer from the driver identity; an explicit runner
-override remains available for exceptional cases. Keep this rule single-sourced
-there rather than maintaining a competing closeout matrix.
+The structured-review runner owns backend/profile enforcement and
+recommendation provenance; the driver owns tier selection. The runner does not
+select `hard` merely because its type is `closeout-review`. Pass
+`--review-tier normal` for a routine Closeout Review. Pass `--review-tier hard`
+with a specific `--tier-reason` only when the evidence has genuine semantic
+difficulty, such as ambiguous authoritative models, irreversible migration, or
+complex concurrency/recovery correctness. Keep the matrix, compatibility
+behavior, and rationale rules single-sourced in structured-review rather than
+maintaining a competing closeout policy.
 
 Closeout Review checks whether the closeout evidence or report is accurate and
 complete. It returns to closeout with `ready to resume closeout` or named
