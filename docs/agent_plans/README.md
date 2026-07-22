@@ -41,3 +41,6 @@ responses, and closeout evidence for changes to this repo's protocols.
 - `2026-07-20_review_tier_model_matrix_plan.md` - historical implementation,
   review, and closeout record for merged PR #25, covering automatic reviewer
   tiers and the backend/model matrix.
+- `2026-07-22_explicit_review_tier_ownership_plan.md` - active implementation
+  plan for driver-owned tier selection, recommendation-only runner signals,
+  rationale provenance, and safe legacy-auto migration.
