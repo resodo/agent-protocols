@@ -324,3 +324,40 @@ No blocking issues. I recommend the driver resolve or explicitly defer Threads A
 All reviewer suggestions were accepted. No human decision changed, no scope
 expanded beyond clarifying the already accepted interface, and no residual
 thread is deferred or escalated. Ready for reviewer resolution.
+
+All four threads are now grounded and internally consistent. I've confirmed:
+
+- **Thread A** — Section 1 completes the matrix (`--tier-reason` rejected for `normal`/`auto`; valid only with `hard`, stripped-then-non-empty). `resolve_review_tier` (lines 328-356) shows explicit tiers currently pass through with no reason handling, so this is a clean additive change. All three combination tests named in Section 5.
+- **Thread B** — `resolve_review_profile` (lines 359-381) already keys the override off the selected backend (`claude_model if backend == BACKEND_CLAUDE else codex_model`) and applies `--model` unconditionally over the profile (line 375-377) — exactly the hazard. The plan's selected-backend-only guard, redundant-override-valid carve-out, doc mandate, and passing test are all consistent with the code.
+- **Thread C** — metadata keys `review_tier`/`review_tier_reasons` confirmed (lines 966-967); current auto path emits `("auto: no hard signals",)` (line 356). The three new deterministic arrays cleanly replace it and match the `'; '.join(...)` prompt rendering (line 452).
+- **Thread D** — both named tests exist: `test_prompt_records_tier_profile_and_sources` (line 1134) and `test_run_codex_prefers_last_message_file_and_records_metadata` (line 1153, currently asserting `["auto: no hard signals"]` at line 1185 — exactly the Codex alias that Thread C's new legacy array forces to change).
+
+The driver accepted all four and the plan body carries the fixes. Here is my resolution pass.
+
+---
+
+### Reviewer resolution pass (impl-plan, claude reviewer)
+
+Backend: claude · Model: `claude-opus-4-8` · Effort: `xhigh` · Tier: `normal` (explicit driver selection). Fable is not used for this review, per Human Decision 5. Re-review scope: driver response 1 and the updated plan body, verified against `structured-review/scripts/claude_structured_review.py` and `structured-review/tests/test_claude_structured_review.py`.
+
+#### Thread A — Resolved. Argument-combination matrix is now complete.
+Section 1 now states: "`--tier-reason` is rejected for `normal` and `auto`; it is valid only with explicit `hard`, where whitespace is stripped and the remaining value must be non-empty." That closes both gaps I raised — reason-on-`normal` (now an explicit reject, consistent with the reason-on-`auto` reject) and whitespace-only reason (now strip-then-require-non-empty). Section 5 names all three tests (`hard without a reason -> fail closed`, `whitespace-only hard reason -> fail closed`, `reason supplied with normal or auto -> fail closed`). The omitted-tier case is covered by the plan's consistent "omitted or explicit auto" bucketing, so no separate case is needed. `resolve_review_tier` (lines 328-356) currently does no reason handling, confirming this is a clean additive contract, not a rewrite of existing branch logic. No guessing remains.
+
+#### Thread B — Resolved. Override carve-out is specified and documented.
+Section 1 now specifies (a) the guard is per-selected-backend — "the Claude hard slug is guarded for a Claude review and the Codex hard slug for a Codex review" — which matches `resolve_review_profile`'s existing per-backend override selection (lines 369-372); and (b) "Explicit hard plus a reason plus a redundant override to that backend's pinned hard model remains valid." The doc-lifecycle gap is closed: "The SKILL and README override paragraphs will state this carve-out directly." Section 5 adds the passing case (`explicit hard plus reason plus the same pinned hard-model override -> pass`) alongside the existing failing case. The narrowing of the current `--model` override promise (lines 375-377 apply the override unconditionally today) is now explicitly reflected in the doc-update list.
+
+#### Thread C — Resolved. Legacy alias values are exact and deterministic.
+Section 3 now pins `review_tier_reasons` for all three selection paths: explicit normal `["explicit --review-tier normal"]`; explicit hard `["explicit --review-tier hard", "driver tier reason: <reason>"]`; omitted/auto `["legacy --review-tier auto compatibility selected normal"]`. These are internally consistent: the explicit-normal value matches the current `f"explicit --review-tier {raw}"` shape (line 336) and renders correctly through the `'; '.join(...)` prompt line (line 452), and the omitted/auto value cleanly supersedes the current `["auto: no hard signals"]` (line 356). The metadata test can now be rewritten to a fixed expected value rather than to whatever the implementer emits.
+
+#### Thread D — Resolved. Breaking prompt/metadata tests are named.
+Section 5 now names both existing tests that would otherwise silently break: `rewrite test_prompt_records_tier_profile_and_sources for the expanded selection/recommendation block` and `rewrite the Codex metadata assertions in test_run_codex_prefers_last_message_file_and_records_metadata for the new fields and exact legacy aliases`. Both exist (lines 1134 and 1153), and the second currently asserts `["auto: no hard signals"]` at line 1185 — precisely the alias Thread C's new legacy array forces to change — so the two threads are mutually reinforcing. The Review-Threads-exclusion invariant is preserved (Section 2), keeping `test_review_threads_are_excluded_from_size_and_complexity_signals` (line 316) meaningful.
+
+#### Overall judgment — Ready for implementation.
+No blocking issues. Threads A-D are all resolved in the plan body and grounded in the actual runner and test code; the four items I raised were the only clarity/completeness gaps, and each now has an unambiguous interface contract plus named test coverage. The responsibility boundary (driver owns tier via explicit flags; runner signals become observational `recommended_tier`/`recommendation_reasons` that cannot mutate selection, profile, timeout, or scope) is intact, and normal/hard keep an identical readiness standard — consistent with the tier-affects-routing-only rule applied to this review. I did not add new scope or low-value findings; the argument matrix, selected-backend hard-model guard, exact legacy metadata values, and named test rewrites are now unambiguous.
+
+#### Residual risks / validation gaps.
+- The compatibility-debt risk (legacy `auto`/omitted callers keep running on `normal` without explicit driver ownership until migration) remains real and is deliberately accepted; the deprecation warning plus additive provenance make it visible, and legacy-auto can no longer reach a paid model, so it is cosmetic debt, not a spend hazard. Unchanged from pass 1, still acceptable.
+- `review_tier_reasons` changes meaning (selection provenance, not signal list). The only in-repo consumers are the tests being rewritten; disclosed and scoped to this repo. Acceptable.
+- Validation is executable by the next agent (the Section "Validation" command block and dry-run CLI cases are runnable). No new gaps introduced by the response-1 edits.
+
+Implementation may proceed under the same explicit Claude `claude-opus-4-8` / `xhigh` / `normal` gate the plan specifies. This is a plan-review conclusion of `ready for implementation`; it is not a merge-readiness handoff, which belongs to closeout after final rechecks.
