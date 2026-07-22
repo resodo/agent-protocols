@@ -59,8 +59,9 @@ the protocol require new repo-backed calls to pass `normal` or `hard`:
   `--tier-reason`;
 - omitted tier or explicit `auto` selects `normal`, emits a deprecation
   warning, and never changes model from runner signals;
-- `--tier-reason` with `auto` fails because it would imply driver ownership
-  without an explicit tier.
+- `--tier-reason` is rejected for `normal` and `auto`; it is valid only with
+  explicit `hard`, where whitespace is stripped and the remaining value must
+  be non-empty.
 
 This staged behavior prevents existing callers from failing all at once while
 also removing the paid-model hazard immediately. Removing `auto` or making an
@@ -70,7 +71,12 @@ have migrated.
 The existing provider override flags remain available. The pinned hard-profile
 models (`claude-fable-5` and `gpt-5.6-sol`) cannot be selected through a normal
 or auto tier override; callers must select `hard` and provide the reason.
-Other explicit custom model/effort overrides retain their existing provenance.
+This check applies only to the selected backend: the Claude hard slug is
+guarded for a Claude review and the Codex hard slug for a Codex review.
+Explicit hard plus a reason plus a redundant override to that backend's pinned
+hard model remains valid. Other explicit custom model/effort overrides retain
+their existing provenance. The SKILL and README override paragraphs will state
+this carve-out directly.
 
 ### 2. Recommendation is observational only
 
@@ -103,7 +109,12 @@ For compatibility, metadata retains `review_tier` as an alias of
 `selected_tier` and `review_tier_reasons` as selection provenance only. It no
 longer stores recommendation signals under a selection-named key. These alias
 keys are documented as deprecated; no versioned metadata consumer exists in
-this repo, so an additive schema change is sufficient.
+this repo, so an additive schema change is sufficient. The legacy reasons are
+deterministic:
+
+- explicit normal: `["explicit --review-tier normal"]`;
+- explicit hard: `["explicit --review-tier hard", "driver tier reason: <reason>"]`;
+- omitted or explicit auto: `["legacy --review-tier auto compatibility selected normal"]`.
 
 ### 4. CLI and documentation contract
 
@@ -140,10 +151,18 @@ selected tier and model stay normal. Add coverage for:
 - explicit normal -> Opus;
 - explicit hard plus reason -> Fable;
 - hard without a reason -> fail closed;
+- whitespace-only hard reason -> fail closed;
+- reason supplied with normal or auto -> fail closed;
 - pinned hard-profile model override without explicit hard/reason -> fail;
+- explicit hard plus reason plus the same pinned hard-model override -> pass;
 - `auto` compatibility warning and no auto-upgrade;
 - selection, rationale, recommendation, final model, and source in prompt and
   metadata;
+- rewrite `test_prompt_records_tier_profile_and_sources` for the expanded
+  selection/recommendation block;
+- rewrite the Codex metadata assertions in
+  `test_run_codex_prefers_last_message_file_and_records_metadata` for the new
+  fields and exact legacy aliases;
 - CLI help and protocol/closeout prose consistency;
 - exact 2x2 profile matrix and all unaffected runner behavior.
 
@@ -287,3 +306,21 @@ Ready for implementation, with the four non-blocking threads above recommended f
 - Validation is executable by the next agent: I confirmed `scout/tests`, `tests/`, and `scripts/check_backlog.py` all exist, so the Section "Validation" command block is runnable and not aspirational. The dry-run CLI cases (explicit normal, explicit hard with reason, legacy auto with a hard recommendation, hard-without-reason failure) give end-to-end coverage beyond unit tests. Good.
 
 No blocking issues. I recommend the driver resolve or explicitly defer Threads A-D, then proceed to implementation under the same explicit Claude `claude-opus-4-8` / `xhigh` / `normal` gate the plan specifies.
+
+### Driver response 1 (impl-plan)
+
+- **Thread A — accepted.** Section 1 now rejects `--tier-reason` for normal
+  and auto and requires explicit-hard reasons to remain non-empty after
+  stripping whitespace. Section 5 names all three argument-combination tests.
+- **Thread B — accepted.** Section 1 now specifies a selected-backend-only
+  hard-model guard, preserves explicit hard + reason + redundant pinned-model
+  overrides, and requires both SKILL and README override prose to document the
+  carve-out. Section 5 adds the passing case.
+- **Thread C — accepted.** Section 3 now gives exact `review_tier_reasons`
+  arrays for explicit normal, explicit hard, and legacy auto.
+- **Thread D — accepted.** Section 5 now names the existing prompt and Codex
+  metadata tests that must be rewritten for the expanded fields.
+
+All reviewer suggestions were accepted. No human decision changed, no scope
+expanded beyond clarifying the already accepted interface, and no residual
+thread is deferred or escalated. Ready for reviewer resolution.
