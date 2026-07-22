@@ -54,6 +54,10 @@ Driver-reported and reproduced after implementation commit:
   passed configuration on Fable profile without invoking Fable; legacy-auto
   Closeout Review stayed Opus/normal while recommending hard; hard without
   reason exited 1 before reviewer invocation.
+- local run-metadata audit: all four successful reviewer invocations in this
+  worktree record `claude-opus-4-8` / `xhigh` and return code 0; no reviewer
+  invocation records Fable. The two post-implementation runs also record
+  selected normal and recommended hard.
 
 Reviewer-rerun provenance:
 
@@ -93,8 +97,8 @@ CI-backed provenance:
 
 ## Safety And Git Hygiene
 
-- No secrets, credentials, private account details, local user-home absolute
-  paths, or generated private run outputs are committed.
+- This change commits no secrets, credentials, private account details, local
+  user-home absolute paths, or generated private run outputs.
 - Work occurred in linked worktree branch `feature/explicit-review-tier`, based
   on fetched `origin/main`; the main checkout was not edited.
 - PR #27 targets `main`, is open and non-draft, and no merge was performed.
