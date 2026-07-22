@@ -1,6 +1,6 @@
 # Explicit Review Tier Ownership Plan
 
-Status: active implementation and review record
+Status: implementation and review artifact for shared protocol PR #27
 Source branch: `feature/explicit-review-tier`
 
 ## Context
@@ -293,8 +293,10 @@ Driver validation:
   recommended hard from review type / Opus 4.8;
 - hard-without-reason dry-run: failed before reviewer invocation with exit 1.
 
-Pending gates: Implementation Review, any required re-review, closeout evidence
-and Closeout Review, PR/CI verification, and human merge handoff.
+Implementation Review completed with no blocking or non-blocking findings and
+no re-review was required. Delivery and CI evidence are recorded in
+`docs/agent_plans/2026-07-22_explicit_review_tier_closeout.md` and PR #27.
+Merge authority remains human-owned.
 
 ## Review Threads
 
