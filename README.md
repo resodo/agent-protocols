@@ -106,6 +106,7 @@ python structured-review/scripts/claude_structured_review.py \
   --type impl-plan \
   --thread-file docs/some_plan.md \
   --artifact docs/some_plan.md \
+  --review-tier normal \
   --focus "Review acceptance, validation, scope, and role boundaries." \
   --topic "some plan"
 ```
@@ -119,12 +120,22 @@ reviewer for the detected driver (Claude Code driver -> Codex reviewer, Codex
 driver -> Claude reviewer, unknown driver -> Claude reviewer); conflicting
 driver markers require an explicit backend.
 
-`--review-tier` defaults to `auto`, selecting `normal` or `hard` from review
-type, artifact body size, multi-artifact implementation scope, and pinned
-complexity signals. The profile matrix is Claude Opus 4.8 / Fable 5 and Codex
-GPT-5.6 Terra / Sol for normal / hard respectively, all at `xhigh`. Pass
-`--review-tier normal|hard` or provider-specific model/effort flags only for a
-deliberate override; the runner records the selection and its provenance.
+Drivers must pass `--review-tier normal` or `--review-tier hard` for new
+repo-backed reviews. Hard additionally requires `--tier-reason` with a concrete
+semantic rationale. The profile matrix remains Claude Opus 4.8 / Fable 5 and
+Codex GPT-5.6 Terra / Sol for normal / hard respectively, all at `xhigh`.
+
+For legacy callers, omitted tier or `--review-tier auto` emits a deprecation
+warning and always selects normal. The runner may recommend hard from review
+type, artifact body size, multi-artifact implementation scope, or pinned
+complexity signals, but that recommendation never changes selected tier,
+model, timeout, scope, or quality gate. Prompt and run metadata record driver
+selection/reason separately from runner recommendation/reasons.
+
+Provider-specific model/effort flags remain deliberate overrides for the
+selected backend, but normal/auto cannot use them to select that backend's
+pinned hard-profile model; select hard with `--tier-reason` instead. An
+override for the non-selected provider is ignored with a warning.
 
 `--protocol-dir` is optional and mainly for tests or intentional alternate
 checkouts; normal usage relies on the script's own `structured-review`

@@ -38,6 +38,9 @@ BACKEND_CODEX = "codex"
 REVIEW_TIER_AUTO = "auto"
 REVIEW_TIER_NORMAL = "normal"
 REVIEW_TIER_HARD = "hard"
+TIER_SELECTION_EXPLICIT_DRIVER = "explicit-driver"
+TIER_SELECTION_LEGACY_AUTO = "legacy-auto-compatibility"
+LEGACY_AUTO_TIER_REASON = "legacy --review-tier auto compatibility selected normal"
 CLAUDE_DRIVER_MARKERS = ("CLAUDECODE",)
 CODEX_DRIVER_MARKERS = ("CODEX_THREAD_ID", "CODEX_SANDBOX")
 CODEX_LAST_MESSAGE_NAME = "last-message.txt"
@@ -176,8 +179,11 @@ class RunConfig:
     thread_file: ResolvedPath | None
     topic: str | None
     backend: str
-    review_tier: str
-    review_tier_reasons: tuple[str, ...]
+    selected_tier: str
+    tier_selection_source: str
+    driver_tier_reason: str | None
+    recommended_tier: str
+    recommendation_reasons: tuple[str, ...]
     model: str
     effort: str
     model_source: str
@@ -325,16 +331,12 @@ def read_artifact_body(artifact: ResolvedPath) -> str:
     return text[: match.start()] if match else text
 
 
-def resolve_review_tier(
-    raw: str,
+def recommend_review_tier(
     review_type: str,
     artifacts: Sequence[ResolvedPath],
     focus: str,
 ) -> tuple[str, tuple[str, ...]]:
     bodies = [read_artifact_body(artifact) for artifact in artifacts]
-    if raw != REVIEW_TIER_AUTO:
-        return raw, (f"explicit --review-tier {raw}",)
-
     reasons: list[str] = []
     if review_type == "closeout-review":
         reasons.append("review type closeout-review")
@@ -353,19 +355,45 @@ def resolve_review_tier(
 
     if reasons:
         return REVIEW_TIER_HARD, tuple(reasons)
-    return REVIEW_TIER_NORMAL, ("auto: no hard signals",)
+    return REVIEW_TIER_NORMAL, ()
+
+
+def resolve_review_tier(raw: str, tier_reason: str | None) -> tuple[str, str, str | None]:
+    if raw == REVIEW_TIER_AUTO:
+        if tier_reason is not None:
+            raise RunnerError("--tier-reason is valid only with --review-tier hard")
+        return REVIEW_TIER_NORMAL, TIER_SELECTION_LEGACY_AUTO, None
+
+    if raw == REVIEW_TIER_NORMAL:
+        if tier_reason is not None:
+            raise RunnerError("--tier-reason is valid only with --review-tier hard")
+        return REVIEW_TIER_NORMAL, TIER_SELECTION_EXPLICIT_DRIVER, None
+
+    normalized_reason = tier_reason.strip() if tier_reason is not None else ""
+    if not normalized_reason:
+        raise RunnerError("--tier-reason must be non-empty with --review-tier hard")
+    return REVIEW_TIER_HARD, TIER_SELECTION_EXPLICIT_DRIVER, normalized_reason
+
+
+def legacy_review_tier_reasons(config: RunConfig) -> tuple[str, ...]:
+    if config.tier_selection_source == TIER_SELECTION_LEGACY_AUTO:
+        return (LEGACY_AUTO_TIER_REASON,)
+    reasons = [f"explicit --review-tier {config.selected_tier}"]
+    if config.driver_tier_reason is not None:
+        reasons.append(f"driver tier reason: {config.driver_tier_reason}")
+    return tuple(reasons)
 
 
 def resolve_review_profile(
     backend: str,
-    review_tier: str,
+    selected_tier: str,
     *,
     claude_model: str | None,
     claude_effort: str | None,
     codex_model: str | None,
     codex_effort: str | None,
 ) -> tuple[str, str, str, str]:
-    model, effort = REVIEW_MODEL_MATRIX[backend][review_tier]
+    model, effort = REVIEW_MODEL_MATRIX[backend][selected_tier]
     model_override = claude_model if backend == BACKEND_CLAUDE else codex_model
     effort_override = claude_effort if backend == BACKEND_CLAUDE else codex_effort
     model_flag = "--model" if backend == BACKEND_CLAUDE else "--codex-model"
@@ -379,6 +407,16 @@ def resolve_review_profile(
         effort = effort_override
         effort_source = f"explicit {effort_flag}"
     return model, effort, model_source, effort_source
+
+
+def require_hard_profile_model_has_hard_tier(backend: str, selected_tier: str, model: str) -> None:
+    hard_model = REVIEW_MODEL_MATRIX[backend][REVIEW_TIER_HARD][0]
+    if selected_tier != REVIEW_TIER_HARD and model == hard_model:
+        model_flag = "--model" if backend == BACKEND_CLAUDE else "--codex-model"
+        raise RunnerError(
+            f"{model_flag} cannot select pinned hard-profile model '{hard_model}' with "
+            f"--review-tier {selected_tier}; pass --review-tier hard --tier-reason instead"
+        )
 
 
 def unused_profile_override_flags(
@@ -448,8 +486,11 @@ def build_prompt(config: RunConfig) -> str:
             "",
             "Reviewer selection:",
             f"- Backend: {config.backend}",
-            f"- Review tier: {config.review_tier}",
-            f"- Tier selection: {'; '.join(config.review_tier_reasons)}",
+            f"- Selected review tier: {config.selected_tier}",
+            f"- Tier selection source: {config.tier_selection_source}",
+            f"- Driver tier reason: {config.driver_tier_reason or 'none'}",
+            f"- Runner recommended tier: {config.recommended_tier}",
+            f"- Recommendation reasons: {'; '.join(config.recommendation_reasons) or 'none'}",
             f"- Model: {active_model(config)}",
             f"- Model source: {config.model_source}",
             f"- Effort: {active_effort(config)}",
@@ -963,8 +1004,13 @@ def write_metadata(
         "thread_file": config.thread_file.rel if config.thread_file else None,
         "topic": config.topic,
         "backend": config.backend,
-        "review_tier": config.review_tier,
-        "review_tier_reasons": list(config.review_tier_reasons),
+        "selected_tier": config.selected_tier,
+        "tier_selection_source": config.tier_selection_source,
+        "driver_tier_reason": config.driver_tier_reason,
+        "recommended_tier": config.recommended_tier,
+        "recommendation_reasons": list(config.recommendation_reasons),
+        "review_tier": config.selected_tier,
+        "review_tier_reasons": list(legacy_review_tier_reasons(config)),
         "model": active_model(config),
         "effort": active_effort(config),
         "model_source": config.model_source,
@@ -1006,13 +1052,20 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     state = ReviewState()
     token_usage: dict[str, Any] | None = None
     malformed = 0
-    if config.review_tier == REVIEW_TIER_HARD and config.timeout_sec == DEFAULT_TIMEOUT_SEC:
+    if config.selected_tier == REVIEW_TIER_HARD and config.timeout_sec == DEFAULT_TIMEOUT_SEC:
         print(
             "hard review selected with default timeout_sec=900; consider --timeout-sec 1800",
             file=sys.stderr,
         )
     print(
-        f"{config.backend} review start mode={config.mode} type={config.review_type} tier={config.review_tier} timeout_sec={config.timeout_sec} model={active_model(config)} effort={active_effort(config)} artifacts={','.join(a.rel for a in config.artifacts)}",
+        f"{config.backend} review start mode={config.mode} type={config.review_type} "
+        f"selected_tier={config.selected_tier} tier_source={config.tier_selection_source} "
+        f"driver_tier_reason={json.dumps(config.driver_tier_reason)} "
+        f"recommended_tier={config.recommended_tier} "
+        f"recommendation_reasons={json.dumps(list(config.recommendation_reasons), separators=(',', ':'))} "
+        f"timeout_sec={config.timeout_sec} "
+        f"model={active_model(config)} effort={active_effort(config)} "
+        f"artifacts={','.join(a.rel for a in config.artifacts)}",
         file=sys.stderr,
     )
     proc = subprocess.Popen(
@@ -1120,13 +1173,21 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         default=REVIEW_TIER_AUTO,
         choices=(REVIEW_TIER_AUTO, REVIEW_TIER_NORMAL, REVIEW_TIER_HARD),
         dest="review_tier",
+        help=(
+            "driver-selected review tier; pass normal or hard explicitly. "
+            "Legacy auto compatibility always selects normal and is deprecated"
+        ),
     )
-    parser.add_argument("--model")
-    parser.add_argument("--effort")
+    parser.add_argument(
+        "--tier-reason",
+        help="required non-empty driver rationale for --review-tier hard; forbidden otherwise",
+    )
+    parser.add_argument("--model", help="explicit Claude model override")
+    parser.add_argument("--effort", help="explicit Claude effort override")
     parser.add_argument("--claude-bin", default="claude")
     parser.add_argument("--codex-bin", default="codex")
-    parser.add_argument("--codex-model")
-    parser.add_argument("--codex-effort")
+    parser.add_argument("--codex-model", help="explicit Codex model override")
+    parser.add_argument("--codex-effort", help="explicit Codex reasoning-effort override")
     parser.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
     parser.add_argument("--heartbeat-sec", type=int, default=DEFAULT_HEARTBEAT_SEC)
     parser.add_argument("--run-log-dir")
@@ -1153,17 +1214,33 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
     backend, marker_resolved = resolve_reviewer_backend(
         args.reviewer_backend, os.environ if env is None else env
     )
-    review_tier, review_tier_reasons = resolve_review_tier(
-        args.review_tier, args.review_type, artifacts, focus
+    recommended_tier, recommendation_reasons = recommend_review_tier(
+        args.review_type, artifacts, focus
     )
+    selected_tier, tier_selection_source, driver_tier_reason = resolve_review_tier(
+        args.review_tier, args.tier_reason
+    )
+    if tier_selection_source == TIER_SELECTION_LEGACY_AUTO:
+        print(
+            "warning: --review-tier auto compatibility is deprecated and always selects "
+            "normal; pass --review-tier normal or hard explicitly",
+            file=sys.stderr,
+        )
+    if recommended_tier == REVIEW_TIER_HARD and selected_tier == REVIEW_TIER_NORMAL:
+        print(
+            "notice: runner recommends hard from mechanical signals "
+            f"({'; '.join(recommendation_reasons)}); selected tier and model remain normal",
+            file=sys.stderr,
+        )
     model, effort, model_source, effort_source = resolve_review_profile(
         backend,
-        review_tier,
+        selected_tier,
         claude_model=args.model,
         claude_effort=args.effort,
         codex_model=args.codex_model,
         codex_effort=args.codex_effort,
     )
+    require_hard_profile_model_has_hard_tier(backend, selected_tier, model)
     unused_flags = unused_profile_override_flags(
         backend,
         claude_model=args.model,
@@ -1184,8 +1261,8 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
                 f"reviewer backend '{backend}' was auto-selected from the driver environment "
                 "but its binary is unavailable; install it or pass --reviewer-backend explicitly"
             )
-    claude_model, claude_effort = REVIEW_MODEL_MATRIX[BACKEND_CLAUDE][review_tier]
-    codex_model, codex_effort = REVIEW_MODEL_MATRIX[BACKEND_CODEX][review_tier]
+    claude_model, claude_effort = REVIEW_MODEL_MATRIX[BACKEND_CLAUDE][selected_tier]
+    codex_model, codex_effort = REVIEW_MODEL_MATRIX[BACKEND_CODEX][selected_tier]
     if backend == BACKEND_CLAUDE:
         claude_model, claude_effort = model, effort
     else:
@@ -1200,8 +1277,11 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
         thread_file=thread_file,
         topic=args.topic,
         backend=backend,
-        review_tier=review_tier,
-        review_tier_reasons=review_tier_reasons,
+        selected_tier=selected_tier,
+        tier_selection_source=tier_selection_source,
+        driver_tier_reason=driver_tier_reason,
+        recommended_tier=recommended_tier,
+        recommendation_reasons=recommendation_reasons,
         model=claude_model,
         effort=claude_effort,
         model_source=model_source,

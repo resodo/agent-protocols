@@ -82,6 +82,8 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             "Review the plan.",
             "--reviewer-backend",
             "claude",
+            "--review-tier",
+            "normal",
         ]
         if mode == csr.MODE_WRITE:
             args.extend(["--thread-file", "docs/plan.md"])
@@ -200,6 +202,17 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             csr.parse_args([*base, "--focus", "a", "--focus-file", "docs/plan.md"])
 
+    def test_cli_help_describes_explicit_tier_and_hard_reason_contract(self) -> None:
+        with mock.patch("sys.stdout", new_callable=lambda: __import__("io").StringIO()) as stdout:
+            with self.assertRaises(SystemExit) as ctx:
+                csr.parse_args(["--help"])
+
+        self.assertEqual(ctx.exception.code, 0)
+        help_text = " ".join(stdout.getvalue().split())
+        self.assertIn("pass normal or hard explicitly", help_text)
+        self.assertIn("Legacy auto compatibility always selects normal", help_text)
+        self.assertIn("required non-empty driver rationale", help_text)
+
     def test_multiple_artifacts_are_preserved_in_prompt(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
@@ -254,18 +267,27 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
 
         self.assertEqual(config.timeout_sec, 900)
 
-    def test_default_review_tier_is_normal_with_profile_provenance(self) -> None:
+    def test_legacy_auto_selects_normal_with_compatibility_provenance(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
 
-        config = self.config_for(repo, protocol)
+        with mock.patch("sys.stderr", new_callable=lambda: __import__("io").StringIO()) as stderr:
+            config = self.config_for(repo, protocol, extra=["--review-tier", "auto"])
 
-        self.assertEqual(config.review_tier, "normal")
-        self.assertEqual(config.review_tier_reasons, ("auto: no hard signals",))
+        self.assertEqual(config.selected_tier, "normal")
+        self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
+        self.assertIsNone(config.driver_tier_reason)
+        self.assertEqual(config.recommended_tier, "normal")
+        self.assertEqual(config.recommendation_reasons, ())
+        self.assertEqual(
+            csr.legacy_review_tier_reasons(config),
+            ("legacy --review-tier auto compatibility selected normal",),
+        )
         self.assertEqual(config.model, "claude-opus-4-8")
         self.assertEqual(config.effort, "xhigh")
         self.assertEqual(config.model_source, "profile")
         self.assertEqual(config.effort_source, "profile")
+        self.assertIn("deprecated", stderr.getvalue())
 
     def test_review_model_matrix_is_exact_for_both_backends_and_tiers(self) -> None:
         repo = self.init_target_repo()
@@ -279,39 +301,79 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
 
         for (backend, tier), profile in expected.items():
             with self.subTest(backend=backend, tier=tier):
+                tier_args = ["--review-tier", tier]
+                if tier == "hard":
+                    tier_args.extend(["--tier-reason", "authoritative model consistency"])
                 config = self.config_for(
                     repo,
                     protocol,
-                    extra=["--reviewer-backend", backend, "--review-tier", tier],
+                    extra=["--reviewer-backend", backend, *tier_args],
                 )
                 self.assertEqual((csr.active_model(config), csr.active_effort(config)), profile)
-                self.assertEqual(config.review_tier_reasons, (f"explicit --review-tier {tier}",))
+                self.assertEqual(config.selected_tier, tier)
+                self.assertEqual(config.tier_selection_source, "explicit-driver")
+                expected_reasons = [f"explicit --review-tier {tier}"]
+                if tier == "hard":
+                    expected_reasons.append(
+                        "driver tier reason: authoritative model consistency"
+                    )
+                self.assertEqual(
+                    list(csr.legacy_review_tier_reasons(config)),
+                    expected_reasons,
+                )
 
-    def test_closeout_review_auto_selects_hard(self) -> None:
+    def test_closeout_review_recommends_hard_without_changing_selected_tier(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
 
         config = self.config_for(repo, protocol, extra=["--type", "closeout-review"])
 
-        self.assertEqual(config.review_tier, "hard")
-        self.assertIn("review type closeout-review", config.review_tier_reasons)
-        self.assertEqual(config.model, "claude-fable-5")
+        self.assertEqual(config.selected_tier, "normal")
+        self.assertEqual(config.recommended_tier, "hard")
+        self.assertIn("review type closeout-review", config.recommendation_reasons)
+        self.assertEqual(config.model, "claude-opus-4-8")
 
-    def test_artifact_body_over_one_thousand_lines_auto_selects_hard(self) -> None:
+    def test_legacy_auto_closeout_recommendation_never_changes_selected_model(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+
+        with mock.patch("sys.stderr", new_callable=lambda: __import__("io").StringIO()) as stderr:
+            config = self.config_for(
+                repo,
+                protocol,
+                extra=["--review-tier", "auto", "--type", "closeout-review"],
+            )
+
+        self.assertEqual(config.selected_tier, "normal")
+        self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
+        self.assertEqual(config.recommended_tier, "hard")
+        self.assertEqual(csr.active_model(config), "claude-opus-4-8")
+        self.assertIn("deprecated", stderr.getvalue())
+        self.assertIn("selected tier and model remain normal", stderr.getvalue())
+
+    def test_artifact_body_over_one_thousand_lines_only_recommends_hard(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         (repo / "docs/plan.md").write_text("\n".join(["line"] * 1000) + "\n", encoding="utf-8")
 
-        boundary_config = self.config_for(repo, protocol)
+        with mock.patch("sys.stderr", new_callable=lambda: __import__("io").StringIO()):
+            boundary_config = self.config_for(
+                repo, protocol, extra=["--review-tier", "auto"]
+            )
 
-        self.assertEqual(boundary_config.review_tier, "normal")
+        self.assertEqual(boundary_config.selected_tier, "normal")
+        self.assertEqual(boundary_config.recommended_tier, "normal")
 
         (repo / "docs/plan.md").write_text("\n".join(["line"] * 1001) + "\n", encoding="utf-8")
 
-        config = self.config_for(repo, protocol)
+        with mock.patch("sys.stderr", new_callable=lambda: __import__("io").StringIO()):
+            config = self.config_for(repo, protocol, extra=["--review-tier", "auto"])
 
-        self.assertEqual(config.review_tier, "hard")
-        self.assertIn("artifact body lines 1001 > 1000", config.review_tier_reasons)
+        self.assertEqual(config.selected_tier, "normal")
+        self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
+        self.assertEqual(config.recommended_tier, "hard")
+        self.assertIn("artifact body lines 1001 > 1000", config.recommendation_reasons)
+        self.assertEqual(config.model, "claude-opus-4-8")
 
     def test_review_threads_are_excluded_from_size_and_complexity_signals(self) -> None:
         repo = self.init_target_repo()
@@ -324,50 +386,96 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
 
         config = self.config_for(repo, protocol)
 
-        self.assertEqual(config.review_tier, "normal")
-        self.assertEqual(config.review_tier_reasons, ("auto: no hard signals",))
+        self.assertEqual(config.selected_tier, "normal")
+        self.assertEqual(config.recommended_tier, "normal")
+        self.assertEqual(config.recommendation_reasons, ())
 
-    def test_multi_artifact_implementation_review_auto_selects_hard(self) -> None:
+    def test_multi_artifact_implementation_review_only_recommends_hard(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         (repo / "docs/other.md").write_text("# Other\n", encoding="utf-8")
 
-        config = self.config_for(
-            repo,
-            protocol,
-            extra=["--type", "impl", "--artifact", "docs/other.md"],
-        )
+        with mock.patch("sys.stderr", new_callable=lambda: __import__("io").StringIO()):
+            config = self.config_for(
+                repo,
+                protocol,
+                extra=[
+                    "--review-tier",
+                    "auto",
+                    "--type",
+                    "impl",
+                    "--artifact",
+                    "docs/other.md",
+                ],
+            )
 
-        self.assertEqual(config.review_tier, "hard")
-        self.assertIn("multi-artifact impl review (2 artifacts)", config.review_tier_reasons)
+        self.assertEqual(config.selected_tier, "normal")
+        self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
+        self.assertEqual(config.recommended_tier, "hard")
+        self.assertIn("multi-artifact impl review (2 artifacts)", config.recommendation_reasons)
+        self.assertEqual(config.model, "claude-opus-4-8")
 
-    def test_each_complexity_phrase_auto_selects_hard(self) -> None:
+    def test_each_complexity_phrase_only_recommends_hard(self) -> None:
         repo = self.init_target_repo()
         artifact = csr.ResolvedPath(rel="docs/plan.md", abs=(repo / "docs/plan.md").resolve())
 
         for category, phrases in csr.HARD_COMPLEXITY_SIGNAL_PHRASES:
             for phrase in phrases:
                 with self.subTest(category=category, phrase=phrase):
-                    tier, reasons = csr.resolve_review_tier(
-                        "auto", "impl-plan", (artifact,), f"Please inspect this {phrase}."
+                    tier, reasons = csr.recommend_review_tier(
+                        "impl-plan", (artifact,), f"Please inspect this {phrase}."
                     )
                     self.assertEqual(tier, "hard")
                     self.assertIn(f"complexity signal: {category}", reasons)
+
+    def test_representative_keywords_never_change_selected_tier_or_model(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        phrases = (
+            "production change",
+            "runtime behavior",
+            "data migration",
+            "security review",
+            "multi-agent",
+            "protocol-wide change",
+            "complex review",
+        )
+
+        for phrase in phrases:
+            with self.subTest(phrase=phrase), mock.patch(
+                "sys.stderr", new_callable=lambda: __import__("io").StringIO()
+            ):
+                config = self.config_for(
+                    repo,
+                    protocol,
+                    extra=[
+                        "--review-tier",
+                        "auto",
+                        "--focus",
+                        f"Inspect this {phrase}.",
+                    ],
+                )
+                self.assertEqual(config.selected_tier, "normal")
+                self.assertEqual(
+                    config.tier_selection_source, "legacy-auto-compatibility"
+                )
+                self.assertEqual(config.recommended_tier, "hard")
+                self.assertEqual(csr.active_model(config), "claude-opus-4-8")
 
     def test_complexity_phrase_matching_uses_word_boundaries_and_flexible_whitespace(self) -> None:
         repo = self.init_target_repo()
         artifact = csr.ResolvedPath(rel="docs/plan.md", abs=(repo / "docs/plan.md").resolve())
 
-        hard_tier, _ = csr.resolve_review_tier(
-            "auto", "impl-plan", (artifact,), "Review the schema\n\tmigration carefully."
+        hard_tier, _ = csr.recommend_review_tier(
+            "impl-plan", (artifact,), "Review the schema\n\tmigration carefully."
         )
-        normal_tier, reasons = csr.resolve_review_tier(
-            "auto", "impl-plan", (artifact,), "Review preproduction changeover details."
+        normal_tier, reasons = csr.recommend_review_tier(
+            "impl-plan", (artifact,), "Review preproduction changeover details."
         )
 
         self.assertEqual(hard_tier, "hard")
         self.assertEqual(normal_tier, "normal")
-        self.assertEqual(reasons, ("auto: no hard signals",))
+        self.assertEqual(reasons, ())
 
     def test_explicit_normal_wins_but_artifact_is_still_validated(self) -> None:
         repo = self.init_target_repo()
@@ -376,29 +484,94 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
 
         config = self.config_for(repo, protocol, extra=["--review-tier", "normal"])
 
-        self.assertEqual(config.review_tier, "normal")
-        self.assertEqual(config.review_tier_reasons, ("explicit --review-tier normal",))
+        self.assertEqual(config.selected_tier, "normal")
+        self.assertEqual(config.tier_selection_source, "explicit-driver")
 
         missing = csr.ResolvedPath(rel="docs/missing.md", abs=repo / "docs/missing.md")
         with self.assertRaisesRegex(csr.RunnerError, "docs/missing.md"):
-            csr.resolve_review_tier("normal", "impl-plan", (missing,), "Review.")
+            csr.recommend_review_tier("impl-plan", (missing,), "Review.")
 
     def test_review_tier_rejects_directory_and_non_utf8_artifacts(self) -> None:
         repo = self.init_target_repo()
         directory = csr.ResolvedPath(rel="docs", abs=repo / "docs")
         with self.assertRaisesRegex(csr.RunnerError, "docs"):
-            csr.resolve_review_tier("auto", "impl-plan", (directory,), "Review.")
+            csr.recommend_review_tier("impl-plan", (directory,), "Review.")
 
         binary_path = repo / "docs/binary.md"
         binary_path.write_bytes(b"\xff\xfe")
         binary = csr.ResolvedPath(rel="docs/binary.md", abs=binary_path)
         with self.assertRaisesRegex(csr.RunnerError, "docs/binary.md"):
-            csr.resolve_review_tier("auto", "impl-plan", (binary,), "Review.")
+            csr.recommend_review_tier("impl-plan", (binary,), "Review.")
 
         regular = csr.ResolvedPath(rel="docs/plan.md", abs=(repo / "docs/plan.md").resolve())
         with mock.patch.object(Path, "read_text", side_effect=PermissionError("denied")):
             with self.assertRaisesRegex(csr.RunnerError, "docs/plan.md"):
-                csr.resolve_review_tier("auto", "impl-plan", (regular,), "Review.")
+                csr.recommend_review_tier("impl-plan", (regular,), "Review.")
+
+    def test_tier_reason_is_required_only_for_explicit_hard(self) -> None:
+        self.assertEqual(
+            csr.resolve_review_tier("normal", None),
+            ("normal", "explicit-driver", None),
+        )
+        self.assertEqual(
+            csr.resolve_review_tier("hard", "  lock and recovery correctness  "),
+            ("hard", "explicit-driver", "lock and recovery correctness"),
+        )
+        for tier, reason in (
+            ("hard", None),
+            ("hard", "   "),
+            ("normal", "routine review"),
+            ("auto", "routine review"),
+        ):
+            with self.subTest(tier=tier, reason=reason):
+                with self.assertRaises(csr.RunnerError):
+                    csr.resolve_review_tier(tier, reason)
+
+    def test_explicit_hard_without_reason_fails_before_profile_resolution(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+
+        with self.assertRaisesRegex(csr.RunnerError, "--tier-reason"):
+            self.config_for(repo, protocol, extra=["--review-tier", "hard"])
+
+    def test_pinned_hard_model_override_requires_hard_tier_for_selected_backend(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+
+        cases = (
+            ("claude", ["--model", "claude-fable-5"]),
+            ("codex", ["--codex-model", "gpt-5.6-sol"]),
+        )
+        for backend, override in cases:
+            with self.subTest(backend=backend):
+                with self.assertRaisesRegex(csr.RunnerError, "pinned hard-profile model"):
+                    self.config_for(
+                        repo,
+                        protocol,
+                        extra=["--reviewer-backend", backend, *override],
+                    )
+
+    def test_redundant_pinned_hard_model_override_is_valid_with_hard_reason(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+
+        config = self.config_for(
+            repo,
+            protocol,
+            extra=[
+                "--review-tier",
+                "hard",
+                "--tier-reason",
+                "irreversible migration correctness",
+                "--model",
+                "claude-fable-5",
+            ],
+        )
+
+        self.assertEqual(config.selected_tier, "hard")
+        self.assertEqual(config.driver_tier_reason, "irreversible migration correctness")
+        self.assertEqual(csr.active_model(config), "claude-fable-5")
+        self.assertEqual(config.model_source, "explicit --model")
 
     def test_explicit_profile_overrides_record_their_sources(self) -> None:
         repo = self.init_target_repo()
@@ -412,6 +585,8 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
                 "codex",
                 "--review-tier",
                 "hard",
+                "--tier-reason",
+                "authoritative model consistency",
                 "--codex-model",
                 "gpt-custom",
                 "--codex-effort",
@@ -500,6 +675,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
 
         for value in (
             "--review-tier auto",
+            "--tier-reason",
             "claude-opus-4-8",
             "claude-fable-5",
             "gpt-5.6-terra",
@@ -507,8 +683,9 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             "another or unrecognized coding agent",
         ):
             self.assertIn(value, skill)
-        self.assertIn("routes every `closeout-review` to the `hard` tier", closeout)
-        self.assertIn("structured-review runner owns backend, tier, model, and effort", closeout)
+        self.assertIn("driver owns tier selection", closeout)
+        self.assertIn("merely because its type is `closeout-review`", closeout)
+        self.assertNotIn("routes every `closeout-review` to the `hard` tier", closeout)
 
     def test_default_claude_bin_uses_path_lookup(self) -> None:
         repo = self.init_target_repo()
@@ -872,6 +1049,8 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Done."
             extra=[
                 "--review-tier",
                 "hard",
+                "--tier-reason",
+                "concurrent recovery correctness",
                 "--claude-bin",
                 str(fake_claude),
                 "--run-log-dir",
@@ -885,7 +1064,14 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Done."
 
         self.assertEqual(result.returncode, 0)
         self.assertIn("consider --timeout-sec 1800", stderr.getvalue())
-        self.assertIn("tier=hard", stderr.getvalue())
+        self.assertIn("selected_tier=hard", stderr.getvalue())
+        self.assertIn("tier_source=explicit-driver", stderr.getvalue())
+        self.assertIn(
+            'driver_tier_reason="concurrent recovery correctness"',
+            stderr.getvalue(),
+        )
+        self.assertIn("recommended_tier=normal", stderr.getvalue())
+        self.assertIn("recommendation_reasons=[]", stderr.getvalue())
 
     def test_run_claude_waits_for_quiet_reviewer_before_timeout(self) -> None:
         repo = self.init_target_repo()
@@ -1137,18 +1323,51 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         config = self.config_for(
             repo,
             protocol,
-            extra=["--review-tier", "hard", "--model", "claude-custom"],
+            extra=[
+                "--review-tier",
+                "hard",
+                "--tier-reason",
+                "multiple authoritative models",
+                "--model",
+                "claude-custom",
+                "--focus",
+                "Review this schema migration.",
+            ],
         )
 
         prompt = csr.build_prompt(config)
 
-        self.assertIn("- Review tier: hard", prompt)
-        self.assertIn("- Tier selection: explicit --review-tier hard", prompt)
+        self.assertIn("- Selected review tier: hard", prompt)
+        self.assertIn("- Tier selection source: explicit-driver", prompt)
+        self.assertIn("- Driver tier reason: multiple authoritative models", prompt)
+        self.assertIn("- Runner recommended tier: hard", prompt)
+        self.assertIn("- Recommendation reasons: complexity signal: architecture/migration", prompt)
         self.assertIn("- Model: claude-custom", prompt)
         self.assertIn("- Model source: explicit --model", prompt)
         self.assertIn("- Effort: xhigh", prompt)
         self.assertIn("- Effort source: profile", prompt)
         self.assertIn("same readiness standard at both tiers", prompt)
+
+        metadata_root = self.root / "hard-metadata"
+        metadata_root.mkdir()
+        logs = self.logs_for(metadata_root)
+        csr.write_metadata(config, logs, None, outcome="configured")
+        metadata = json.loads(logs.metadata.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["selected_tier"], "hard")
+        self.assertEqual(metadata["tier_selection_source"], "explicit-driver")
+        self.assertEqual(metadata["driver_tier_reason"], "multiple authoritative models")
+        self.assertEqual(metadata["recommended_tier"], "hard")
+        self.assertEqual(
+            metadata["recommendation_reasons"],
+            ["complexity signal: architecture/migration"],
+        )
+        self.assertEqual(
+            metadata["review_tier_reasons"],
+            [
+                "explicit --review-tier hard",
+                "driver tier reason: multiple authoritative models",
+            ],
+        )
 
     def test_run_codex_prefers_last_message_file_and_records_metadata(self) -> None:
         repo = self.init_target_repo()
@@ -1166,7 +1385,16 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             protocol,
             mode=csr.MODE_PRINT,
             topic=None,
-            extra=["--reviewer-backend", "codex", "--codex-bin", str(fake_codex), "--run-log-dir", str(self.root / "logs")],
+            extra=[
+                "--reviewer-backend",
+                "codex",
+                "--review-tier",
+                "auto",
+                "--codex-bin",
+                str(fake_codex),
+                "--run-log-dir",
+                str(self.root / "logs"),
+            ],
         )
         logs = csr.prepare_run_logs(config)
 
@@ -1181,8 +1409,16 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         self.assertEqual(metadata["backend"], "codex")
         self.assertEqual(metadata["model"], "gpt-5.6-terra")
         self.assertEqual(metadata["effort"], "xhigh")
+        self.assertEqual(metadata["selected_tier"], "normal")
+        self.assertEqual(metadata["tier_selection_source"], "legacy-auto-compatibility")
+        self.assertIsNone(metadata["driver_tier_reason"])
+        self.assertEqual(metadata["recommended_tier"], "normal")
+        self.assertEqual(metadata["recommendation_reasons"], [])
         self.assertEqual(metadata["review_tier"], "normal")
-        self.assertEqual(metadata["review_tier_reasons"], ["auto: no hard signals"])
+        self.assertEqual(
+            metadata["review_tier_reasons"],
+            ["legacy --review-tier auto compatibility selected normal"],
+        )
         self.assertEqual(metadata["model_source"], "profile")
         self.assertEqual(metadata["effort_source"], "profile")
         self.assertEqual(metadata["reviewer_version"], "codex-cli 0.137.0")

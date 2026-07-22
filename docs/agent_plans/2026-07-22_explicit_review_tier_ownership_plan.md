@@ -1,6 +1,6 @@
 # Explicit Review Tier Ownership Plan
 
-Status: active implementation driver
+Status: active implementation and review record
 Source branch: `feature/explicit-review-tier`
 
 ## Context
@@ -261,6 +261,40 @@ failing, so their driver ownership is not yet fully explicit. The deprecation
 warning and additive provenance make that debt visible while eliminating
 automatic high-cost routing. Recommendation false positives remain possible,
 but they become informational and therefore cannot spend more or expand scope.
+
+## Implementation Record
+
+Implemented on 2026-07-22 without scope divergence:
+
+- split runner configuration and provenance into driver-owned selected tier,
+  selection source/reason, and runner-owned recommended tier/reasons;
+- retained the existing signal table only for recommendations and made legacy
+  auto select normal with a deprecation warning;
+- required a stripped non-empty reason for hard, rejected reasons on normal or
+  auto, and blocked selected-backend pinned hard-model overrides from bypassing
+  the hard contract;
+- kept the exact normal/hard profile matrix, backend auto-selection, quality
+  gate, timeout, sandbox, write verification, and provider override provenance;
+- updated structured-review, closeout, README, current-map, CLI help, prompt,
+  start log, metadata aliases, and tests. The inspected readiness/bootstrap
+  documents had no tier-routing call site and were intentionally unchanged.
+
+Driver validation:
+
+- structured-review: 87 tests passed;
+- Scout: 31 tests passed;
+- root: 18 tests passed;
+- compileall, backlog validation, runner help, and `git diff --check` passed;
+- explicit-normal dry-run: selected normal / explicit-driver / Opus 4.8 /
+  `xhigh`;
+- explicit-hard-with-reason dry-run: selected hard / explicit-driver / Fable 5
+  / `xhigh`; this was configuration-only and did not invoke Fable;
+- legacy-auto Closeout Review dry-run: selected normal / legacy-auto /
+  recommended hard from review type / Opus 4.8;
+- hard-without-reason dry-run: failed before reviewer invocation with exit 1.
+
+Pending gates: Implementation Review, any required re-review, closeout evidence
+and Closeout Review, PR/CI verification, and human merge handoff.
 
 ## Review Threads
 

@@ -58,9 +58,9 @@ runner for the reviewer pass when it is available.
 triggers a repo-backed Closeout Review, use the bundled runner when available;
 the trigger comes from closeout, not from structured-review by default.
 
-The runner resolves reviewer selection in two steps: backend, then review tier.
-Callers should describe the actual artifact scope and review focus; they should
-not duplicate model-selection logic in their prompts.
+The runner resolves reviewer selection in two steps: backend, then a
+driver-selected review tier. Callers should describe the actual artifact scope
+and review focus; they should not duplicate model-selection logic in prompts.
 
 For the backend, `--reviewer-backend auto` selects the cross-vendor reviewer
 from the driver's environment:
@@ -71,8 +71,27 @@ from the driver's environment:
 - both Claude and Codex driver markers -> fail and require an explicit
   `--reviewer-backend`.
 
-For the tier, `--review-tier auto` selects `hard` when any of these signals is
-present; otherwise it selects `normal`:
+For repo-backed gates, the driver must pass `--review-tier normal` or
+`--review-tier hard`. The review type, artifact count, artifact length, and
+keywords never change that selection or its model profile.
+
+`hard` requires `--tier-reason` with a non-empty, concrete explanation of the
+semantic difficulty. Appropriate reasons include consistency across multiple
+authoritative data models, irreversible or high-risk data migration, complex
+concurrency/locking/transaction/recovery correctness, shared protocol
+self-modification, or evidence that Opus could not reliably complete the
+review. Artifact count, document length, Closeout Review type, and a sensitive
+keyword alone are not reasons. The runner rejects `--tier-reason` with normal
+or auto.
+
+For compatibility, omitted `--review-tier` and explicit `--review-tier auto`
+select `normal`, emit a deprecation warning, and record
+`legacy-auto-compatibility`. They never select a hard-profile model. Migrate
+callers to an explicit tier; removing auto or making omission fail closed is a
+later reviewed change after known consumers migrate.
+
+The runner still recommends `hard` when any of these mechanical signals is
+present; otherwise it recommends `normal`:
 
 - type is `closeout-review`;
 - artifact body size before `## Review Threads` is greater than 1,000 lines;
@@ -82,9 +101,10 @@ present; otherwise it selects `normal`:
   broad protocol-change, or explicit high-complexity scope recognized by the
   runner's pinned signal table.
 
-Use clear, concrete focus text when one of those properties is relevant. Do not
-add tier keywords merely to force routing; use `--review-tier normal|hard` when
-an intentional override is needed.
+The recommendation and its reasons are observational. They are shown in the
+prompt, start log, and metadata but never alter selected tier, model, timeout,
+scope, or readiness. Use clear, concrete focus text; do not add keywords to
+force a recommendation.
 
 The resolved profile matrix is:
 
@@ -93,12 +113,14 @@ The resolved profile matrix is:
 | `claude` | `claude-opus-4-8` | `claude-fable-5` | `xhigh` |
 | `codex` | `gpt-5.6-terra` | `gpt-5.6-sol` | `xhigh` |
 
-The prompt, start log, and run metadata record the resolved tier, reasons,
-model, effort, and whether model/effort came from the profile or an explicit
-provider flag. Tier changes model routing only: both tiers apply the same
-readiness standard, and `hard` does not authorize invented scope or low-value
-findings. Review threads continue to record the reviewer backend in each pass
-heading.
+The prompt, start log, and run metadata separately record selected tier,
+selection source, driver reason, recommended tier, recommendation reasons,
+final model/effort, and whether model/effort came from the profile or an
+explicit provider flag. Metadata temporarily retains deprecated
+`review_tier`/`review_tier_reasons` compatibility keys. Tier changes model
+routing only: both tiers apply the same readiness standard, and `hard` does not
+authorize invented scope or low-value findings. Review threads continue to
+record the reviewer backend in each pass heading.
 
 If an auto-selected backend binary is unavailable, the runner fails with an
 actionable error. Substituting the same-vendor reviewer is an explicit
@@ -133,6 +155,7 @@ python structured-review/scripts/claude_structured_review.py \
   --type impl-plan \
   --thread-file docs/example_plan.md \
   --artifact docs/example_plan.md \
+  --review-tier normal \
   --focus "Review acceptance, validation, scope, and role boundaries." \
   --topic "example plan"
 ```
@@ -156,17 +179,21 @@ driver still owns the decision after receiving reviewer output.
 Pass `--reviewer-backend claude|codex` to pin the reviewer backend; the
 default `auto` selects the cross-vendor reviewer for the detected driver.
 
-Pass `--review-tier normal|hard` to pin review difficulty; the default `auto`
-uses the policy above. Provider-specific `--model`, `--effort`,
-`--codex-model`, and `--codex-effort` flags override only the selected
-backend's profile and are intended for deliberate exceptions. If a caller
-supplies an override for the non-selected provider, the runner warns that the
-flag is ignored.
+Pass `--review-tier normal|hard` for every new repo-backed call. Provider-
+specific `--model`, `--effort`, `--codex-model`, and `--codex-effort` flags
+override only the selected backend's profile and are intended for deliberate
+exceptions. A non-hard tier cannot use those flags to select that backend's
+pinned hard-profile model; select hard and provide `--tier-reason` instead.
+Repeating the pinned hard model as an override on a valid hard run is allowed.
+If a caller supplies an override for the non-selected provider, the runner
+warns that the flag is ignored.
 
-The matrix and automatic signal table are durable protocol mechanisms. When a
-provider model changes or a signal is added, update runner constants, tests,
-this skill, the root runner summary, and `docs/CURRENT.md` in one reviewed
-change. Do not silently replace a pinned profile through a mutable alias.
+The matrix, recommendation signal table, and legacy-auto compatibility path
+are durable protocol mechanisms. When a provider model or signal changes, or
+when known consumers have migrated enough to remove auto, update runner
+constants, tests, this skill, the root runner summary, and `docs/CURRENT.md` in
+one reviewed change. Do not silently replace a pinned profile through a mutable
+alias.
 
 Use `--protocol-dir` only when testing or intentionally running against a
 different checkout of this protocol. By default the runner uses the
