@@ -110,7 +110,7 @@ The resolved profile matrix is:
 
 | Reviewer backend | `normal` | `hard` | Effort |
 | --- | --- | --- | --- |
-| `claude` | `claude-opus-4-8` | `claude-fable-5` | `xhigh` |
+| `claude` | `claude-opus-5` | `claude-fable-5` | `xhigh` |
 | `codex` | `gpt-5.6-terra` | `gpt-5.6-sol` | `xhigh` |
 
 The prompt, start log, and run metadata separately record selected tier,
