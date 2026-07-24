@@ -22,7 +22,7 @@ from typing import Any, TextIO, cast
 MODE_WRITE = "write-commit-to-plan"
 MODE_PRINT = "print-review"
 REVIEW_TYPES = ("other-plan", "impl-plan", "impl", "closeout-review")
-DEFAULT_MODEL = "claude-opus-4-8"
+DEFAULT_MODEL = "claude-opus-5"
 HARD_CLAUDE_MODEL = "claude-fable-5"
 DEFAULT_EFFORT = "xhigh"
 DEFAULT_CODEX_MODEL = "gpt-5.6-terra"

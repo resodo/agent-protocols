@@ -283,7 +283,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             csr.legacy_review_tier_reasons(config),
             ("legacy --review-tier auto compatibility selected normal",),
         )
-        self.assertEqual(config.model, "claude-opus-4-8")
+        self.assertEqual(config.model, "claude-opus-5")
         self.assertEqual(config.effort, "xhigh")
         self.assertEqual(config.model_source, "profile")
         self.assertEqual(config.effort_source, "profile")
@@ -293,7 +293,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         expected = {
-            ("claude", "normal"): ("claude-opus-4-8", "xhigh"),
+            ("claude", "normal"): ("claude-opus-5", "xhigh"),
             ("claude", "hard"): ("claude-fable-5", "xhigh"),
             ("codex", "normal"): ("gpt-5.6-terra", "xhigh"),
             ("codex", "hard"): ("gpt-5.6-sol", "xhigh"),
@@ -331,7 +331,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.selected_tier, "normal")
         self.assertEqual(config.recommended_tier, "hard")
         self.assertIn("review type closeout-review", config.recommendation_reasons)
-        self.assertEqual(config.model, "claude-opus-4-8")
+        self.assertEqual(config.model, "claude-opus-5")
 
     def test_legacy_auto_closeout_recommendation_never_changes_selected_model(self) -> None:
         repo = self.init_target_repo()
@@ -347,7 +347,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.selected_tier, "normal")
         self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
         self.assertEqual(config.recommended_tier, "hard")
-        self.assertEqual(csr.active_model(config), "claude-opus-4-8")
+        self.assertEqual(csr.active_model(config), "claude-opus-5")
         self.assertIn("deprecated", stderr.getvalue())
         self.assertIn("selected tier and model remain normal", stderr.getvalue())
 
@@ -373,7 +373,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
         self.assertEqual(config.recommended_tier, "hard")
         self.assertIn("artifact body lines 1001 > 1000", config.recommendation_reasons)
-        self.assertEqual(config.model, "claude-opus-4-8")
+        self.assertEqual(config.model, "claude-opus-5")
 
     def test_review_threads_are_excluded_from_size_and_complexity_signals(self) -> None:
         repo = self.init_target_repo()
@@ -413,7 +413,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
         self.assertEqual(config.recommended_tier, "hard")
         self.assertIn("multi-artifact impl review (2 artifacts)", config.recommendation_reasons)
-        self.assertEqual(config.model, "claude-opus-4-8")
+        self.assertEqual(config.model, "claude-opus-5")
 
     def test_each_complexity_phrase_only_recommends_hard(self) -> None:
         repo = self.init_target_repo()
@@ -460,7 +460,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
                     config.tier_selection_source, "legacy-auto-compatibility"
                 )
                 self.assertEqual(config.recommended_tier, "hard")
-                self.assertEqual(csr.active_model(config), "claude-opus-4-8")
+                self.assertEqual(csr.active_model(config), "claude-opus-5")
 
     def test_complexity_phrase_matching_uses_word_boundaries_and_flexible_whitespace(self) -> None:
         repo = self.init_target_repo()
@@ -676,7 +676,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         for value in (
             "--review-tier auto",
             "--tier-reason",
-            "claude-opus-4-8",
+            "claude-opus-5",
             "claude-fable-5",
             "gpt-5.6-terra",
             "gpt-5.6-sol",
