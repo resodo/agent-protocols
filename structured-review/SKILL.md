@@ -250,6 +250,13 @@ rule, reject that overlay instruction and say why.
 - Check what proves success, who can verify it, and what would falsify it.
 - For external facts, data, metrics, dashboards, reports, APIs, logs, or
   database fields, check the correct source-of-truth layer.
+- Treat a mechanism described with enforcing verbs - enforces, prevents,
+  guarantees, blocks, makes impossible - as unverified until a sample it must
+  catch has been observed making it fail. Record an unverified guard as a
+  blocking issue or as a named residual risk.
+- Before treating an absence as a fact - no output, no match, no change, no
+  error, no alert - require the positive control that shows the presence case is
+  observable.
 - Do not defend a choice with invented rationale. If evidence is missing, say
   so and lower confidence.
 - If review rounds keep adding low-value issues, raise the possibility that the

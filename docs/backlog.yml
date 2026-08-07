@@ -98,3 +98,72 @@ items:
       sufficient.
     refs:
       - structured-review/references/review-lenses.md
+
+  - id: AP-BL-0007
+    status: open
+    priority: P2
+    kind: process
+    title: >
+      No protocol surface is loaded while an agent types a command or reads a
+      measurement, so identifier and implausible-measurement discipline has no
+      reachable home
+    why: >
+      A 2026-08-06/07 downstream session produced two recurring execution-time
+      failures that no rule in this repo can reach. First, identifiers used in
+      commands without reading their definition: a flag that does not exist, a
+      page selector guessed from a rendered screenshot, a "latest run" query that
+      returned a different workflow's run. Seven instances in one day, each
+      costing a full round trip. Second, acting irreversibly on an unverified
+      number: a misparsed timestamp implied a CI job had run 8.6 hours under a
+      6-hour platform kill limit, and a healthy job was cancelled and rerun on
+      that basis. Both happen during execution. Skills load on invocation, so no
+      SKILL.md is present at that moment, and the consuming repo's AGENTS.md was
+      considered and rejected as a home because its own bootstrap template says
+      the bootstrap establishes coordinates rather than solving the next task.
+      The subset that IS reachable - a wrong pattern committed into a CI gate -
+      is already covered by the guard-reach rule added in the same change.
+    next: >
+      Watch whether this class recurs often enough to justify an
+      execution-discipline surface that is actually loaded at execution time. If
+      it does, decide what that surface is before writing the rules; if it does
+      not, close this as cancelled with the reason recorded.
+    done_when: >
+      Either an execution-discipline surface exists and carries both rules, or
+      this item closes as cancelled with the reason that no such surface is worth
+      its maintenance cost.
+    refs:
+      - docs/agent_plans/2026-08-07_evidence_discipline_rules_plan.md
+      - structured-review/SKILL.md
+
+  - id: AP-BL-0008
+    status: open
+    priority: P2
+    kind: process
+    title: >
+      Subagent liveness monitoring has no owning protocol, so the "no legitimate
+      reason to be idle" rule has nowhere to live
+    why: >
+      In the same session a driver rewrote a stall detector 19 times. Every
+      version until the last measured something correlated with progress rather
+      than progress itself - output file size, new commits, HEAD movement,
+      uncommitted count, CI status counts - and each of those signals is
+      unchanged both when a subagent is dead and when it is busy on one long
+      step. One version explicitly suppressed alerts while any CI job was
+      pending, which made a hung job indistinguishable from a running one. The
+      generalizable core, that an absence must be shown capable of being present,
+      is covered by the negative-evidence rule added in the same change. The
+      remainder is specific: alert on "there is no legitimate reason for this to
+      be idle", never on "the signal did not change". No protocol is loaded when
+      a driver chooses a monitoring predicate, and minting a protocol directory
+      for one rule fails Rule Economy. Worth recording that the durable answer
+      that session actually found was not a better predicate: it was the human
+      checking every five minutes, which removes the class rather than refining
+      it.
+    next: >
+      Watch whether multi-agent orchestration accumulates enough durable rules to
+      justify an owning surface. Do not create one for this rule alone.
+    done_when: >
+      Either an owning surface exists and carries the rule, or this item closes
+      as cancelled with the reason recorded.
+    refs:
+      - docs/agent_plans/2026-08-07_evidence_discipline_rules_plan.md
