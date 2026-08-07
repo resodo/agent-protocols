@@ -18,6 +18,37 @@ fields, also check:
 - whether the correct source-of-truth layer is being used;
 - whether different representations are being confused.
 
+## Guard Reach
+
+When an artifact claims a test, check, gate, validator, or guard enforces,
+prevents, guarantees, or blocks something, the claim under examination is not
+whether the guard passes. It is what the guard would catch.
+
+A guard that has only ever been observed passing carries no information about
+that. Ask which sample was used, from which direction, and what was observed.
+"The tests pass" is the claim being examined, not evidence for it.
+
+Four failure shapes, each observed in real work:
+
+- the guard asserts away its own precondition, so it covers only the case that
+  could not violate the property;
+- the guard keys on a token that also occurs somewhere unrelated, so removing
+  the real thing leaves it green;
+- the guard matches a narrower form than the one that actually occurs, so it
+  would pass on the incident it was written for;
+- no executable guard exists at all, and review is standing in for one.
+
+The last is the most dangerous, because it looks like agreement. For claims that
+an action cannot happen in a given state - idempotency, state machines, rollback
+and recovery protection, re-run safety - reading and review do not constitute
+evidence. Require a test that executes the transition and observes the result. A
+finding of this class can be judged resolved by several independent review passes
+and still be false; that has happened.
+
+Related: a validator that constrains form is not a validator of meaning. Passing
+a character set, length, or shape constraint says nothing about whether the value
+is safe to act on.
+
 ## Mechanism Lifecycle
 
 When an artifact introduces or materially changes a durable mechanism, review
@@ -117,6 +148,11 @@ record, metric, or other live data source:
 - treat "the field exists" as insufficient evidence that it is usable;
 - when both raw and enriched/corrected variants exist, default to enriched or
   corrected unless there is a reason to prefer raw.
+
+The same standard applies to a tool's silence as to a schema's existence: an
+empty result, a quiet exit, or an absent alert is a fact about the tool until
+the presence case has been shown once. See the negative-evidence rule in
+`SKILL.md` and `Guard Reach` above.
 
 ## External Resource Source Of Truth
 

@@ -169,6 +169,14 @@ For every in-scope acceptance item:
 - distinguish "not yet enough data" from "broken" and from "not checked"
 - never upgrade a row to `Done` based only on historical chat memory
 
+For work that has been deployed, contract, schema, migration, and health
+verification establish wiring only. Accept a human-facing flow only after one
+real interaction through the deployed path, performed after the deploy, and
+record what was exercised, what came back, and the provenance label. The human
+may perform it, in which case the label is `human acceptance`. If the deployed
+path is unreachable from the agent's environment, record the item `Partial` with
+a named owner rather than accepting it.
+
 For human-facing UI, dashboards, reports, notifications, CLI tables, or rendered docs:
 
 - open or render the output;
@@ -315,6 +323,11 @@ Do not create a separate lessons-learned document unless explicitly requested. P
   it before handoff or report the PR is not yet ready and name the required
   pre-merge follow-up. If the fix creates another commit, wait for the new
   remote/CI state before repeating the handoff.
+- Read CI status at the exact commit being handed off and record that commit.
+  "The branch is green" is a claim about some commit; name which one, and say so
+  when a later commit is not covered by that run. Also name any suite excluded
+  from the default run or configured not to block, so its silence is not read as
+  a pass.
 - Commit only related changes when commit authorization exists.
 - Push if the current workflow expects remote handoff.
 - If the repo requires PR/CI/review for branch or worktree closeout, record PR

@@ -18,6 +18,18 @@ responses, and closeout evidence for changes to this repo's protocols.
 
 ## Current Records
 
+- `2026-08-07_evidence_discipline_rules_plan.md` - two `Shared Review Rules`
+  bullets (a mechanism described with enforcing verbs is unverified until a
+  sample it must catch has made it fail; an absence is not a fact until the
+  presence case is shown), a `Guard Reach` lens in `review-lenses.md` carrying
+  the reasoning and the execution-required clause for state claims, and two
+  `closeout` bullets (contract verification is not acceptance after a deploy;
+  read CI at the exact commit and name the excluded suites). Derived from a
+  downstream session in which a re-run-safety finding was judged resolved by
+  three independent review passes and went red on the first run of an execution
+  harness. Registers `AP-BL-0007` and `AP-BL-0008` for the rules with no
+  reachable home.
+
 - `2026-06-04_claude_runner_plan.md` - Claude structured-review runner plan.
 - `2026-06-05_structured_review_runner_default_refactor_plan.md` - runner
   default and structured-review refactor plan.
