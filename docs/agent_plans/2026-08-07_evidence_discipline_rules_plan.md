@@ -284,6 +284,50 @@ Driver's concern, restated: are these four rules real operating instructions tha
 
 Verified before judging: base is `origin/main` @ `cba0229` (confirmed), artifact committed at `d1812e4`, branch not pushed (confirmed — no `origin` ref contains it), worktree clean. `docs/backlog.yml` is unchanged from `origin/main` on this branch. I read `structured-review/SKILL.md`, `closeout/SKILL.md`, both required references, `retrospective/SKILL.md`, `backlog-maintenance/SKILL.md`, `scripts/check_backlog.py`, `.github/workflows/ci.yml`, and the repo indexes. I did not read the downstream `skynet-intern` retrospective or its overlay — no access from this worktree — so every claim in `## Source` and `## The Failures These Rules Come From` is taken as given and is not independently verified. The plan says it does not depend on that document, which is the right call.
 
+### Reviewer pass 1 (impl, codex reviewer)
+
+Driver concern, restated: verify that the four evidence-discipline rules landed exactly as accepted, require evidence rather than mere asking, avoid duplicated guidance, and register useful deferred backlog decisions.
+
+Verified: `db4e43c` descends from `origin/main @ cba0229`; the worktree is clean and the branch is unpushed. I reviewed the accepted pass-1 response and all requested artifacts.
+
+## Blocking issues
+
+None.
+
+## Non-blocking issues
+
+### Thread 1: Plan text miscounts the implemented operating bullets
+
+`docs/agent_plans/2026-08-07_evidence_discipline_rules_plan.md:90` and `:230` say there are “three” `SKILL.md` bullets, but the accepted response and landed implementation contain four: two in `structured-review/SKILL.md` and two in `closeout/SKILL.md`. Correct this count, and update the plan status from “ready for implementation” during the driver’s next plan-thread response.
+
+## Overall judgment
+
+Ready for closeout.
+
+Traceability is complete:
+
+| Accepted item | Result |
+| --- | --- |
+| Guard must have an observed failing sample; otherwise block or name residual risk | Done in `structured-review/SKILL.md:253` |
+| Absence requires an observable positive control | Done in `structured-review/SKILL.md:257` |
+| Guard rationale, failure shapes, state-transition execution requirement, and form-vs-meaning distinction | Done in `structured-review/references/review-lenses.md:21` |
+| Prevent drift with the negative-evidence cross-reference | Done in `structured-review/references/review-lenses.md:152` |
+| Post-deploy human-facing acceptance evidence, human owner, and `Partial` fallback | Done in `closeout/SKILL.md:172` |
+| CI status pinned to the handoff commit | Done in `closeout/SKILL.md:326` |
+| `AP-BL-0007` and `AP-BL-0008` | Done in `docs/backlog.yml:102` and `:138` |
+
+The four rules no longer reduce to asking alone: the first requires an observed failing sample, the second an observable positive control, the third a recorded deployed-path interaction and provenance, and the fourth the exact recorded commit. They remain reviewer-operated controls rather than executable enforcement, which is an inherent residual limitation, not a mismatch with the accepted scope.
+
+`Guard Reach` is a useful specialization of `Validation First` and `Mechanism Lifecycle`, not a duplicate: it tests a guard’s discriminatory reach across both durable and non-durable mechanisms. The short `SKILL.md` bullets supply operating decisions; the reference holds rationale and examples. The closeout deploy rule is correctly positioned as a prerequisite to the UI checks below it, not a duplicate. Its `Partial` fallback is consistent with the existing traceability-status vocabulary, while provenance remains one of the four labels defined immediately above.
+
+Both backlog items meet the open-item schema, use valid `P2`/`process` fields, include references, and have real closure decisions—either establish an owning execution/monitoring surface or explicitly cancel with rationale—rather than aspirational completion statements.
+
+## Residual risks and validation gaps
+
+- The downstream-session facts remain driver-reported and cannot be independently verified from this repository, as the plan already discloses.
+- Reviewer-rerun validation passed: `git diff --check cba0229...db4e43c`, `python scripts/check_backlog.py`, 18 general tests, 87 structured-review tests, 31 Scout tests, and compilation of `structured-review` and `scout`.
+- No remote CI run covers unpushed `db4e43c`; closeout should report that provenance plainly.
+
 ## Blocking issues
 
 ### Thread 1: Rule A can be satisfied by asking, which is the failure it exists to prevent
