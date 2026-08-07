@@ -1,6 +1,6 @@
 # Evidence Discipline Rules For Review And Closeout
 
-Status: plan, review pass 1 resolved; ready for implementation
+Status: implemented; plan review and implementation review both resolved; ready for closeout
 Owner: `feature/evidence-discipline-rules`
 Worktree: `../agent-protocols-evidence-discipline`
 Base: `origin/main` @ `cba0229`
@@ -87,7 +87,8 @@ execution existed to disagree.
 
 ## Rules To Add
 
-Deliberately small: three bullets in two `SKILL.md` files, and two expanded
+Deliberately small: four bullets across two `SKILL.md` files - two in
+`structured-review`, two in `closeout` - and two expanded
 lenses in the already-required `structured-review` reference. Rationale lives in
 the reference; `SKILL.md` keeps one imperative line each, matching the existing
 bullet shape in those sections.
@@ -227,7 +228,7 @@ Both items are `kind: process`, `status: open`:
 
 ## Acceptance
 
-- The three `SKILL.md` bullets read as operating instructions: each is one
+- The four `SKILL.md` bullets read as operating instructions: each is one
   imperative line a reviewer or closeout driver can act on without reading this
   plan or the reference.
 - No rule can be satisfied by an assertion or by asking. Rule A names a state
@@ -511,3 +512,27 @@ under `Source`, with per-item strength labels rather than a uniform claim. One
 item was corrected as a direct result: the monitoring-predicate failure was
 re-checked on the machine in question while writing this response, and the
 original characterization was imprecise. The corrected version is in failure 6.
+
+---
+
+### Driver response to implementation review (codex, pass 1)
+
+No blocking issues. The one non-blocking thread is **accepted** and fixed.
+
+**Thread 1 (impl) — accepted.** The plan said "three `SKILL.md` bullets" in both
+`Rules To Add` and `Acceptance` while four landed: two in
+`structured-review/SKILL.md` and two in `closeout/SKILL.md`. Miscount introduced
+in the pass-1 revision when the dropped `Reviewer Role` bullet was subtracted
+from the wrong total. Corrected in both places, and the status line now says
+implemented rather than ready for implementation.
+
+Recorded from the reviewer's own validation, so closeout does not have to
+re-derive it: `git diff --check cba0229...db4e43c`, `python
+scripts/check_backlog.py`, 18 general tests, 87 structured-review tests, 31
+Scout tests, and compilation of `structured-review` and `scout` all passed on a
+reviewer rerun.
+
+**On the residual risk about CI provenance.** Correct and carried into closeout:
+this repository has no CI workflow, the branch is local at the time of review,
+and the only validation is the reviewer rerun above plus the driver's own run of
+`python -m pytest tests -q` (18 passed). Nothing here claims CI backing.
