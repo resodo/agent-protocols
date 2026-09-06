@@ -234,3 +234,78 @@ Not yet ready for implementation. The scope is bounded and feasible against the 
   outside the accepted task; existing CLI retention ownership is intentional,
   not incomplete implementation. No speculative follow-up mechanism is added.
 - Ready for reviewer recheck of these plan clarifications. No code edited yet.
+
+The prompt builder contains no timeout, run directory, or timestamp, so hashing the complete built prompt while letting the timeout change on resume is consistent. I have everything needed. Writing the review now.
+
+### Reviewer pass 2 (impl-plan, claude reviewer)
+
+Human concern, restated: long hard reviews were being killed by outer tool limits and their work lost, so the driver wants a deliberate stop, recovery of the same reviewer session, and no chance of the review being written back twice.
+
+Scope of this pass: recheck of the new `Concrete lifecycle and recovery rules` section and the driver response, per the focus. No live CLI calls were made; CLI flag support was verified in pass 1.
+
+Verified before judging: branch `feat/review-resume` at `039370c`, worktree clean. Read `git show 039370c` (67 added lines, plan only), then the full plan. Cross-checked the new section against `structured-review/scripts/claude_structured_review.py` as it stands today:
+- `claude_argv` is `-p --permission-mode auto --model M --effort E --output-format stream-json --include-partial-messages --include-hook-events --verbose`, prompt on stdin. The pinned resume shape is this list plus `--resume ID`, so "equivalent permissions" holds by construction for Claude.
+- `codex_argv` relies on `--sandbox workspace-write` and sets no `-C`; `Popen` already passes `cwd=config.worktree`. The `-c sandbox_mode="workspace-write"` substitution is the only expressible mechanism on `codex exec resume`, as pass 1 found.
+- Exit codes in use today are 0, 1, 2 (timeout, via `RunnerError(exit_code=2)`), and 130 (`KeyboardInterrupt`). Code 3 is free, so the new stop code does not collide.
+- `build_prompt` contains no timeout, run directory, timestamp, or attempt-specific value. Hashing the complete built prompt while allowing the timeout to change on resume is therefore consistent. Codex's per-attempt `--output-last-message` path is in argv, not the prompt, so it does not disturb the fingerprint.
+- Today's `proc.stdin.write(prompt)` is a blocking write on a pipe, which is exactly the hang the new nonblocking-pipe rule targets.
+
+#### Thread resolutions for pass 1
+
+##### Thread 1: attempt state model, eligibility, orphan policy, stop with no live runner
+
+Resolved. The new section names the phases (`created`, `launched`, `session_captured`, `finalizing`), the outcomes, and an eligibility rule stated purely in persisted fields: only terminal `timeout`/`stopped`/`interrupted` with `cleanup_complete=true` and a captured session ID may resume. The driver's partial rejection of my suggestion (resuming from `launched`/`session_captured` after verified child death) is accepted as the better design. Because `cleanup_complete` is written only by the runner's own termination path, an orphaned reviewer after an abrupt runner death leaves the attempt at `running`, which is never resumable, so the second-writer hazard I raised cannot arise without any PID liveness or PID-reuse logic. The stop-with-no-live-runner behaviour (lock free, report no live runner, do not signal the recorded PID) answers item 4. One implementation note, not a reopen: the rejection error for a `running`/crashed attempt should print the recorded runner PID, reviewer PGID, and launch time, since the plan records them "for diagnosis" and the error is where the operator will look.
+
+##### Thread 2: Codex resume argv and sandbox
+
+Resolved. Both argv shapes are pinned, the Codex sandbox mechanism on resume is `-c sandbox_mode="workspace-write"` with cwd set by `Popen`, `--ephemeral` and `--no-session-persistence` are excluded from both initial and resumed calls, and the plan commits live dogfood to inspecting the recorded rollout context for the effective policy. The fallback if that observation is unavailable is carried in `Limits and fallback` and in the residual risks below.
+
+##### Thread 3: exactly-once write-back ordering
+
+Resolved. The section states the mechanism in the order I asked for: `finalizing` persisted before any append, SIGINT/SIGTERM and stop requests deferred through finalization, failed finalization terminal and non-resumable, before-resume HEAD and clean-status checks as the backstop, and no automatic replay even after a crash between file write and commit. In `print-review` mode the same marker should precede the stdout print. Either way an attempt whose reviewer exited normally can never become resumable under the Thread 1 rule, so the property holds in both modes. The injected-failure test I described remains the acceptance evidence and is covered by the "interrupted write-back" row.
+
+##### Thread 4: capture the first event carrying a session id
+
+Resolved. "Capture the first valid session_id on any Claude event" is now in the body.
+
+##### Thread 5: fingerprint composition
+
+Resolved. Inputs are enumerated, including runner source hash and binary path/version, with timeout explicitly excluded. Verified above that the built prompt is deterministic across attempts.
+
+##### Thread 6: RUN identifier printed at launch
+
+Resolved. `RUN` is the absolute attempt log directory, printed at launch. See Thread 10 for one clarity point on multi-attempt chains.
+
+##### Thread 7: background launch and changed tests
+
+Resolved. The body now states that drivers with shorter tool lifetimes launch in supported background mode and poll, and that a per-poll wait budget is not a process lifetime budget. The list of tests that pin old values stays in pass 1 as implementer guidance; it does not need to be in the plan body.
+
+##### Thread 8: late requests, new outcomes, exit codes
+
+Resolved. New outcomes are named additively, timeout keeps 2, stop uses 3, SIGINT/SIGTERM use 130/143, and late signals in finalization are recorded without converting success to interruption. The driver chose "returns after queuing, explicitly not an acknowledgement, poll metadata" over a bounded ack wait. That is a valid and simpler decision.
+
+##### Thread 9: backlog home and index updates
+
+Resolved by driver decision. Index updates are accepted under item 7. Orphan repair and retention are treated as non-goals rather than deferred work, so no backlog item is required now. If closeout leaves a real acceptance item incomplete (for example the Codex sandbox observation), the closeout protocol registers that at closeout time. Human may overrule.
+
+#### Blocking issues
+
+None. All three pass 1 blocking threads are closed by the new section.
+
+#### Non-blocking issues
+
+##### Thread 10: State how `--stop-run` and `--resume-run` treat a non-latest attempt directory
+
+`RUN` is an attempt directory, a chain can hold several attempts after resumes, and stop writes to "the exact latest attempt directory". The body does not say what happens when the caller passes an earlier attempt's `RUN`: reject with an error naming the latest attempt directory, or follow the latest-attempt pointer transparently. Item 5's "reject stale attempts" implies rejection, and both readings are safe, so this is a one-sentence clarification that can be settled during implementation and covered by the "exclusive resume" test. It does not gate implementation.
+
+#### Overall judgment
+
+Ready for implementation. The new section turns every enforcing claim from pass 1 into a stated mechanism, and the eligibility rule is stricter and simpler than what I proposed. The accepted trade-off should be visible to the human in one sentence: only a runner that gets to run its own cleanup path (timeout, stop request, SIGINT, SIGTERM) produces a resumable attempt. An outer SIGKILL of the runner, or a runner crash, loses the review by design and requires a fresh run, with background launch and polling as the mitigation. That is consistent with the human's original concern as long as drivers follow the new launch guidance. Further plan-text rounds would add low value; the remaining items belong to implementation review.
+
+#### Residual risks and validation gaps
+
+- Guard reach at implementation review: eligibility, exclusive resume, and exactly-once write-back are state-machine claims. Tests must execute the transitions and observe the result: resume attempted against `running`, `finalizing`, `success`, and `failed` attempts; concurrent resume against a held chain lock; failure injected between append and commit followed by a resume that must produce no second commit. Reading and review do not count as evidence for these.
+- The rule "rejects a backend that emits a different session ID" assumes both CLIs preserve the id on resume. If either legitimately emits a new id, every resume fails closed and the first dogfood run will show it immediately. The same applies to UUID validation of Codex thread ids, which pass 1 could not verify locally. Treat either as a plan amendment, not a silent relaxation.
+- Codex sandbox on resume: if the rollout context does not expose the effective policy, the untouched-worktree and HEAD checks catch a stray write after the fact but do not prevent it. Record that outcome honestly rather than leaving the acceptance row implied.
+- Process-group termination confirms "no executing members" but detached descendants outside the group are unmanaged by design. macOS still has no parent-death signal. Both are now accepted limits rather than open questions.
+- Retention of CLI sessions remains with the CLIs. A late resume that finds the session gone is the "missing session state" path and must be tested as such.
