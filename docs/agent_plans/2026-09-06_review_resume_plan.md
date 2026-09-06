@@ -87,3 +87,83 @@ leave that acceptance item incomplete rather than claiming success. A runner
 crash may require a new review; broad arbitrary-crash repair is outside scope.
 
 ## Review Threads
+
+### Reviewer pass 1 (impl-plan, claude reviewer)
+
+Human concern, restated: long hard reviews were being killed by outer tool limits and their work lost, so the driver wants a deliberate stop, recovery of the same reviewer session, and no chance of the review being written back twice.
+
+Verified before judging: branch `feat/review-resume` at `ac881d1`, worktree clean, plan committed. I read the plan, the full runner `structured-review/scripts/claude_structured_review.py`, its tests, `structured-review/SKILL.md`, `closeout/SKILL.md`, `README.md`, `docs/CURRENT.md`, `docs/agent_plans/README.md`, `docs/backlog.yml`, and `.github/workflows/ci.yml`. I checked the installed CLIs directly: `claude --help` (Claude Code 2.1.261), `codex exec --help` and `codex exec resume --help` (codex-cli 0.153.4). I ran one throwaway `claude -p --output-format stream-json` call to confirm the session-id field shape. No structured-review run logs exist in this worktree's private run directory, so the Codex `thread.started` shape is not verified locally.
+
+Runner facts the plan depends on, as they stand today:
+- `run_claude` launches the reviewer with `subprocess.Popen` in the runner's own process group and, on timeout, calls `proc.kill()` on the direct child only; nothing records the child's PID or tracks descendants.
+- `write_metadata` runs once, after the reviewer exits; nothing is persisted before or during the run except logs.
+- `append_and_commit_review` creates the commit, then `verify_write_mode` checks it. A verification failure therefore reports `failed` with a review commit already on HEAD.
+- `main` catches `KeyboardInterrupt` at top level and returns 130 without cleanup or metadata.
+
+#### Blocking issues
+
+##### Thread 1: The attempt state model and resume-eligibility inputs are not defined, and the orphaned-reviewer case is unhandled
+
+Plan items 2, 5, and 6 list what must be rejected and say descendants must have exited "before ... allowing recovery", but nothing says what the eligibility check reads or how liveness is decided. Implementing item 2's process-group termination requires launching the reviewer in its own session or group. That has a consequence the plan does not name: when the runner itself dies abruptly (SIGKILL from an outer tool, which is the very scenario motivating this plan), the reviewer survives as an orphan in its own group, still running and still writing the Claude or Codex session on disk. A later `--resume-run` would find the advisory lock released, see no terminal outcome, and start a second `claude -p --resume ID` against a session another live process is writing. Today's runner cannot detect this because it records no PID.
+
+Please add to the plan body:
+1. The persisted attempt phases and their transitions, for example `created`, `launched` (runner pid, child pid, child pgid, launch time), `session_captured`, `reviewer_exited`, `finalizing`, and terminal `committed`/`printed`/`failed`/`stopped`/`timeout`/`interrupted`. Item 3's "before launching and as session ID becomes available" should become "at each phase change", written atomically.
+2. The eligibility rule in terms of those fields: resume only from `launched` or `session_captured` with a recorded session id, and only when the recorded child pgid is verified dead (with launch time or command check to guard against pid reuse).
+3. The decision for a live orphan: reject with an error that names the pgid and never kill it automatically, or decide otherwise, but decide in the plan.
+4. What `--stop-run` reports when no runner is alive to observe the request, since the request is observed by the runner, not by the reviewer process.
+
+Without this the acceptance rows "missing/mismatched session", "exclusive resume", and "interrupted write-back" have no named state or intended error to assert, which is exactly the "unrelated setup failure" the plan's own evidence rule forbids.
+
+##### Thread 2: The Codex resume argument shape cannot be derived from the plan, and `codex exec resume` lacks `--sandbox`
+
+Item 4 says `codex exec resume ID` "with explicit model/effort and equivalent permissions". On the installed codex-cli 0.153.4, `codex exec resume` accepts `-c`, `-m`, `--json`, `-o/--output-last-message`, and `-` for stdin, but does not accept `-s/--sandbox`, `-C/--cd`, `--add-dir`, `--approve-for-me`, or `-p/--profile`, all of which `codex exec` accepts and one of which (`--sandbox workspace-write`) `codex_argv` relies on today. "Equivalent permissions" therefore cannot be expressed with the current flag. The implementer would have to choose between relying on the thread's inherited sandbox policy (not documented in the help) and `-c sandbox_mode="workspace-write"`.
+
+Please pin in the plan the exact resume argv for both backends, the Codex sandbox mechanism on resume, and a dogfood observation that the resumed Codex reviewer actually ran under workspace-write. If that observation is not available, record it as a residual risk and note that the runner's untouched-worktree and HEAD checks catch a stray write after the fact but do not prevent it. Also state that `--ephemeral` (Codex) and `--no-session-persistence` (Claude) are never passed on either the initial or resumed run, since item 5's "unsupported persistence" rejection presumes persistence was requested.
+
+##### Thread 3: Exactly-once write-back is asserted but the ordering that makes it hold is unstated
+
+Item 6 says a crash during finalization must not become resumable and that late stop requests do not cancel a successful write-back. These are enforcing claims; the plan should state the mechanism, not only the property:
+1. Marker before mutation: persist the non-resumable `reviewer_exited`/`finalizing` phase before `append_and_commit_review` touches the thread file.
+2. Signals deferred during finalization: SIGINT, SIGTERM, and stop requests set a flag rather than raising, so nothing can interrupt between the thread-file write and `git commit`. Today a Ctrl-C there would leave a dirty thread file and metadata that still says running.
+3. The backstop: resume compares HEAD and clean status against the launch snapshot, so a commit that landed without a recorded terminal phase is still rejected.
+4. `failed` after `finalizing` is terminal and non-resumable. This matters today because the runner commits first and verifies second, so a verification failure can report `failed` with a valid review commit already on HEAD; the prior plan's Thread 3 on `AP-BL-0006` in `docs/agent_plans/2026-08-07_evidence_discipline_rules_plan.md` describes that false-failure shape.
+
+The "interrupted write-back" test should inject the failure between the append and the commit and assert both the intended non-resumable error and that a subsequent resume cannot produce a second commit.
+
+#### Non-blocking issues
+
+##### Thread 4: Capture the first event carrying a session id, not the `init` event
+
+Verified live with `--output-format stream-json --verbose`: in this environment the first stream line is a `system`/`hook_started` event that already carries `session_id`; the `system`/`init` event came third and also carries `cwd`, which is useful for the fingerprint. Whether hooks fire depends on user configuration, so capture on the first event with a string `session_id` rather than waiting for `init`. The Codex `thread.started`/`thread_id` shape is not verified locally; verify during implementation and mirror the observed event in the tests' fake CLI.
+
+##### Thread 5: Fingerprint composition is unspecified
+
+Item 3's "review target fingerprint" and item 5's rejection list name worktree, HEAD, artifacts, focus, profile, and protocol, but not the concrete inputs. Name them so the implementer does not guess. A workable set: recorded worktree root, pre-launch HEAD, sha256 of each artifact and of the thread file, sha256 of the full built prompt (which already covers focus, protocol sections, and overlays), mode, type, backend, model, effort, tier, and reviewer binary version.
+
+##### Thread 6: Define the `RUN` identifier and print it at launch
+
+`--stop-run RUN` and `--resume-run RUN` need a documented identifier: the chain directory name under the private runs directory, a full path, or an id file. Today the run directory is printed only on completion; the driver needs it at launch to be able to stop.
+
+##### Thread 7: The new timeout profile forces background launch for Claude Code drivers; say so and list the tests that change
+
+With normal 1800 s and hard 3600 s, a Claude Code driver's single tool call has a ceiling well below the runner timeout, so item 7's "individual polling waits may be short" implies detached launch plus polling on metadata or exit code. Say that in the SKILL text that replaces the current "outer wait budget" paragraph. Recording timeout source needs the argparse default to become `None`. Tests that pin the old values and will need deliberate updates: `test_default_timeout_is_fifteen_minutes`, `test_hard_review_with_default_timeout_emits_guidance`, `test_skill_requires_outer_wait_budget_to_cover_runner_timeout`, and `test_skill_and_closeout_pin_central_reviewer_selection_policy` (pins `claude-fable-5` and `gpt-5.6-sol`).
+
+##### Thread 8: Late stop requests and new outcome values
+
+State that a stop request or signal arriving after `reviewer_exited` is recorded as late and ignored, and that `--stop-run` returns after the runner acknowledges or after a bounded wait, reporting which. Name the new `outcome` values (for example `stopped`, `interrupted`) and the exit code for a stopped run, since `outcome` is an existing field consumers may match on and timeout already uses exit code 2.
+
+##### Thread 9: Deferred pieces need a backlog home, and the indexes need this plan
+
+"Broad arbitrary-crash repair" and any retention or orphan-cleanup work left out at closeout should be registered in `docs/backlog.yml` per the backlog protocol rather than living only in this plan's Limits section. `docs/agent_plans/README.md` does not yet list this plan; item 7 covers it, but note that `docs/CURRENT.md` also needs its structured-review description and "Last updated" line changed.
+
+#### Overall judgment
+
+Not yet ready for implementation. The scope is bounded and feasible against the current runner, the model and timeout changes are mechanical, and the validation section is unusually strong on negative evidence. The three blocking threads are plan-text gaps rather than design flaws: name the attempt states and the orphan policy, pin both resume argument shapes with the Codex sandbox mechanism, and state the finalization ordering. Once those are in the body this should be ready without a change in scope.
+
+#### Residual risks and validation gaps
+
+- macOS has no parent-death signal, so an orphaned reviewer after a runner SIGKILL can only be detected, not prevented. The plan should treat that as inherent and rely on Thread 1's liveness check.
+- Claude resume requires the same project directory as the original run; a moved worktree yields "session not found". That error path should be distinguishable from "session id never captured".
+- Codex `thread.started` shape and inherited sandbox on resume are unverified locally.
+- Fable 5.1 and GPT-6 Astra availability for dogfood is not checked here; the plan's fallback wording already covers the honest-incomplete case.
+- Session and transcript retention is left to the CLIs; a resume long after the fact may find the session gone, which is the "missing session state" path and should be tested as such.
