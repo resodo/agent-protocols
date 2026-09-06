@@ -430,3 +430,60 @@ Ready for closeout. The implementation matches the accepted contract item by ite
   an actionable RunnerError for a missing explicitly selected executable.
 - No scope, model, effort, or timeout policy changes. Ready for narrow resolution
   recheck of these corrections, then closeout.
+
+### Reviewer pass 4 (impl, claude reviewer)
+
+Human concern, restated: long hard reviews were being killed by outer tool limits and their work lost, so the driver wants a deliberate stop, recovery of the same reviewer session, and no chance of the review being written back twice. This pass is the narrow recheck of the driver's correction commit `5925cb8` against Threads 11-14.
+
+Verified before judging: branch `feat/review-resume` at `5925cb8`, worktree clean, in sync with `origin/feat/review-resume`. I read the full correction diff (runner, both test files, `structured-review/SKILL.md`, `structured-review/references/recovery.md`, and the 22-line driver response in this plan; the plan body is unchanged). Executed here:
+
+- `python -m unittest discover -s structured-review/tests -v` with both `claude` and `codex` removed from `PATH` (confirmed absent with `command -v` before the run): 107 tests pass in about 46 seconds, exit 0, worktree still clean afterwards. This reproduces the driver's isolation claim independently.
+- `python -m compileall -q structured-review scout` and `git diff --check origin/main..HEAD`: clean.
+- One throwaway probe (not committed) against the fake provider for the guard that Thread 11 rewired: a second event carrying a different valid session ID now fails the attempt with `backend changed session ID during attempt`, `outcome=failed`, `cleanup_complete=true`, and the first ID retained in metadata; the positive control (same ID repeated) completes with `outcome=success`. No existing test covers this rejection, so the probe stands in for it.
+- Remote CI checked through `gh`: run `34013734391` on head `5925cb8` completed `success` with every step green (backlog check, root tests, structured-review tests, scout tests, compile) on Ubuntu with Python 3.12. The earlier failed run `34013223179` was on head `001acde`, which matches the driver's account of the four legacy tests that mocked reviewer execution but not the version query. PR `#30` exists and is still a draft.
+- No live provider calls were made, per the focus. PyYAML is still absent from my local interpreter, so the backlog check, root tests, and scout tests are CI-backed for this pass, not reviewer-rerun.
+
+#### Thread resolutions
+
+##### Thread 11: Every session-bearing stream event rewrites metadata with an fsync
+
+Resolved. `structured-review/scripts/claude_structured_review.py:1318` seeds `captured_session` from the resume ID, and the session block at `:1351-1362` compares in memory and calls `patch_metadata` only on the first observation (`elif not observed_session`). The invalid-ID, wrong-resume-ID, and changed-ID rejections remain in front of that branch, and my probe above observed the changed-ID rejection firing with the new in-memory comparison. `test_session_capture_is_persisted_once_for_many_events` (`structured-review/tests/test_recovery.py:283`) drives 300 session-bearing events through the real fake provider and asserts exactly one `session_captured` write and fewer than 15 metadata updates for the entire attempt; because `write_metadata` routes through `patch_metadata`, that bound covers all metadata I/O, not only the session path. Passed locally and in CI.
+
+##### Thread 12: A signal in the gap between reviewer exit and the finalization marker discards a completed review
+
+Resolved. `captured_signals` now accepts a shared list (`:1278-1289`), `run()` opens one scope alongside `attempt_context` (`:1641-1642`), `run_claude` nests on the same list through `logs.signals` (`:1332`), and finalization nests on it again (`:1656`). Nested scopes restore the outer lambda on exit, so from reviewer launch through the success write there is no instant at which the default handler is installed. The per-`run_claude` `late_signals` patch is gone and success records `list(late_signals)` at `:1668`, so the accounting is a single list rather than a read-modify-write of metadata. `test_actual_signals_in_post_exit_snapshot_do_not_lose_completed_review` (`:298`) sends a real SIGINT and a real SIGTERM to the runner's own PID during the post-exit `git_snapshot` call (I confirmed the second call site at `:1647` is that snapshot and no other call sits between it and the pre-launch one at `:1636`), then observes `outcome=success`, `late_signals=[sig]`, exactly one review commit, and a refused resume with `not resumable: outcome=success`. Before this fix the SIGINT case produced `outcome=error` in my pass 3 probe and the SIGTERM case would have killed the process, so the test discriminates. Side benefit: a signal during the incomplete-path metadata write (`:1652-1654`) is now captured instead of interrupting the write, which closes a small way to leave a timed-out attempt stuck at `outcome=running`. The contract sentence "SIGINT and SIGTERM use the same cleanup path" now holds without the gap exception.
+
+##### Thread 13: The `git commit` child remains exposed to a terminal SIGINT during finalization
+
+Resolved by documentation, as the driver chose. `structured-review/SKILL.md:224-226` now says the runner defers its own signals and that a terminal interrupt can still stop a git child and leave an uncommitted thread append; `structured-review/references/recovery.md:54-56` says the same with the Ctrl-C framing and the non-resumable consequence. The SKILL text loaded into this very prompt already carries the new sentence, which confirms the runner reads the updated file. Cosmetic only: line 224 of `SKILL.md` runs to 123 characters inside a paragraph otherwise wrapped at 80; there is no markdown lint in CI, so rewrap at the driver's convenience or not at all.
+
+##### Thread 14: Small evidence and usability gaps
+
+Resolved.
+
+- Continuation instruction: the fake provider now writes its stdin to `stdin.txt` (`structured-review/tests/test_recovery.py:41`) and the resume test asserts the prompt starts with `Continue the interrupted review in this same conversation.`, contains `ONE complete final review` and `The original scope`, and still contains the original focus text `Review the plan.` (`:130-134`). This matches the runner text at `:1297-1303` and proves the original prompt survives behind the preamble. The file is overwritten by the resumed attempt, so a stale copy from the initial attempt would fail the `startswith` assertion. Passed for both backends.
+- Diagnostics: `attempt_diagnostics` (`:1129-1134`) prints `runner_pid`, `reviewer_pgid`, and `started_at` with a `created_at` fallback, and is used by both the no-live-runner stop error (`:1148`) and the non-resumable-outcome error (`:1204`). I checked that `write_metadata` omits `started_at` when there is no result (`:1047-1048`), so the fallback actually reaches `created_at` for a pre-launch crash rather than printing `None`. `test_no_live_runner_stop_does_not_signal_recorded_pid` (`:274`) asserts the real runner PID value and the presence of the other two fields.
+- Provenance: the PyYAML-dependent rows and the Linux-only code paths (`ps -eo pgid=,stat=` parsing, `flock`, epoll selector) are now CI-backed by run `34013734391` on the current head. The evidence table in this plan still lists "Independent implementation review and remote CI" as Pending; closeout should replace that row with this pass and the CI run ID.
+
+##### Driver-found CI correction
+
+Accepted as described. The four legacy tests now mock `binary_version` alongside `run_claude`, and `review_fingerprint` converts an `OSError` from the version query into `reviewer binary unavailable: <path>; install it or check the explicit backend binary flag` (`:1161-1164`), covered by `test_missing_explicit_binary_has_actionable_runner_error` (`:319`). `binary_version` uses `check=False` and handles `TimeoutExpired`, so only a missing or unexecutable binary reaches that branch, which is the right scope for the message.
+
+#### Blocking issues
+
+None.
+
+#### Non-blocking issues
+
+None new. The two items above that need follow-up (stale Pending row in the evidence table; optional rewrap of `SKILL.md:224`) belong to closeout and need no reviewer round.
+
+#### Overall judgment
+
+Ready for closeout. Threads 11 through 14 are resolved: each fix is a few lines, each is exercised by a test that runs the real transition and asserts the intended outcome, and the full suite passes both locally with the provider binaries hidden and in remote CI on the reviewed head. No scope, model, effort, or timeout policy changed. This is not a merge-readiness handoff; PR `#30` is still a draft and closeout owns the final rechecks and the evidence-table update.
+
+#### Residual risks and validation gaps
+
+- Two signal windows remain outside the shared handler by construction: the pre-launch window inside `attempt_context` (lock, fingerprint, metadata creation) and the instant after the outer signal scope exits while the chain lock is released. In the first, no reviewer has started and the attempt fails closed as a non-resumable `running` record with diagnostics printed; in the second, metadata is already terminal and write-back is complete. Nothing is lost in either, so I am recording them rather than asking for more code.
+- Live provider behaviour remains driver-reported from the earlier dogfood; this pass did not rerun it and the correction commit does not touch the provider argv shapes.
+- The changed-session-ID rejection is covered only by my uncommitted probe. It is a small negative guard on a path the driver did not change semantically; adding it to `test_recovery.py` is cheap if the driver wants it in the suite, but I am not reopening a thread for it.
+- Detached descendants, orphaned reviewers after a runner SIGKILL, PID reuse, and CLI transcript retention remain the accepted limits from pass 2, unchanged.
