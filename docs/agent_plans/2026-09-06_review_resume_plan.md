@@ -1,6 +1,6 @@
 # Review profiles, cancellation, and session recovery
 
-Status: active implementation plan
+Status: historical implementation and review record
 
 ## Decisions and scope
 
@@ -99,7 +99,8 @@ self-modification involving cancellation, persistent state, and recovery.
   not a portable or untrusted import format. Resume validates UUID session IDs
   and rejects a backend that emits a different session ID or cannot load it.
 - Persist phase=finalizing and outcome=finalizing BEFORE any append. Defer
-  SIGINT/SIGTERM through this section; late requests never undo completed
+  the runner's own SIGINT/SIGTERM through this section; a terminal interrupt can
+  still stop a git child and leave a non-resumable dirty append; late requests never undo completed
   output. Failed finalization is terminal and cannot resume. Before-resume HEAD
   and clean-status checks provide a second backstop. No automatic replay of
   write-back, even after a crash between file write and commit.
@@ -156,8 +157,8 @@ Driver-reported validation, 2026-09-06:
 | Claude Fable 5.1 live recovery | Claude Code 2.1.261, hard/xhigh: stopped with exit 3, cleanup verified, same session resumed successfully, random session-only marker retained, seeded empty-input defect found, exactly one review commit, clean fixture | Done |
 | GPT-6 Astra live recovery | Codex CLI 0.153.4, hard/xhigh: explicit 150-second test limit produced timeout exit 2, same thread resumed successfully, marker retained, seeded defect found, exactly one review commit, clean fixture | Done |
 | Codex permissions on resume | Original and resumed native rollout turn_context both record model gpt-6-astra, effort xhigh, workspace-write and network_access=false | Done |
-| Other local CI checks | Backlog schema check; 18 root tests; 31 Scout tests; compile and diff whitespace checks | Done |
-| Independent implementation review and remote CI | Performed after implementation commit; final outcome recorded below | Pending |
+| Repository validation | CI-backed on implementation commit 5925cb8: 107 review tests, 18 root tests, 31 Scout tests, backlog check and compile; driver diff check passed | Done |
+| Independent review and remote CI | Claude passes 3 and 4 found no blockers; Threads 11–14 resolved in f5176b0. CI python passed on 5925cb8 (run 34013734391). Final PR-head checks are reported in the handoff | Done |
 
 Both live smokes used isolated synthetic repositories, not this implementation
 as the defect fixture. Success means the recovery workflow completed; the seeded
@@ -171,6 +172,15 @@ failure path is simulated, not claimed as a live-provider observation.
 The retained limits are intentional: POSIX process groups only, no detached
 process ownership, no arbitrary runner-crash recovery, and same-machine CLI
 transcript retention owned by the caller. No planned feature has been deferred.
+
+Closeout: the implementation, independent review, and live recovery acceptance
+items are complete. PR #30 contains the single delivery branch. The feature
+worktree and main checkout were checked for unrelated edits; no merge action is
+authorized or performed by this record. Main has no branch protection or active
+rulesets; the repository CI workflow nevertheless runs all listed suites, with
+no test suite excluded or configured as non-blocking. Final remote head and CI
+status are reported in the PR handoff rather than stored as a self-referential
+commit assertion in this document.
 
 ## Review Threads
 
