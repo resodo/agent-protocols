@@ -221,8 +221,9 @@ The runner prints the attempt log directory at launch. Stop requests are
 queued there; queueing is not acknowledgement. Poll `metadata.json` until a
 terminal outcome before resuming. SIGINT/SIGTERM and timeout clean up the owned
 POSIX process group, first gracefully and then forcibly if needed. Detached
-processes outside that group are not managed. During finalization, signals are
-deferred and late stop requests do not undo completed write-back.
+processes outside that group are not managed. During finalization, the runner defers its own signals and late stop requests
+do not undo completed write-back. A terminal interrupt can still stop a git
+child and leave an uncommitted thread append; inspect it before a fresh review.
 
 ### Recovery
 

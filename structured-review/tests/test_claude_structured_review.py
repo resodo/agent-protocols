@@ -773,7 +773,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             logs.review.write_text("### Review\n\nNo blockers.\n", encoding="utf-8")
             return self.result(review_text="### Review\n\nNo blockers.\n")
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude), mock.patch("sys.stdout", new_callable=lambda: __import__("io").StringIO()) as stdout:
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude), mock.patch("sys.stdout", new_callable=lambda: __import__("io").StringIO()) as stdout:
             csr.run(config)
 
         self.assertIn("No blockers.", stdout.getvalue())
@@ -1130,7 +1130,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             (config.worktree / "docs/plan.md").write_text("# Plan\n\nDirty after timeout.\n", encoding="utf-8")
             return self.result(timed_out=True, returncode=-9)
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude):
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude):
             with self.assertRaisesRegex(csr.RunnerError, "timed out with uncommitted changes") as ctx:
                 csr.run(config)
 
@@ -1147,7 +1147,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         def fake_run_claude(config: csr.RunConfig, prompt: str, logs: csr.RunLogs, redactor: csr.Redactor) -> csr.ClaudeRunResult:
             raise ValueError("boom")
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude):
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude):
             with self.assertRaisesRegex(csr.RunnerError, "errored"):
                 csr.run(config)
 
@@ -1481,7 +1481,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             logs.stderr.write_text("", encoding="utf-8")
             return self.result(review_text="### Reviewer pass 1 (impl-plan, claude reviewer)\n\nNo blocking issues.\n")
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude):
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude):
             csr.run(config)
 
         self.assertEqual(run_git(repo, "log", "-1", "--pretty=%s"), "structured-review: add reviewer comments for plan")

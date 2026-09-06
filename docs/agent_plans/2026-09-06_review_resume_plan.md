@@ -408,3 +408,25 @@ Ready for closeout. The implementation matches the accepted contract item by ite
 - Linux CI has not yet run this branch. The `ps -eo pgid=,stat=` parsing, `flock`, and the kqueue versus epoll selector paths are exercised only on macOS so far.
 - The runner now imports `fcntl` at module load, so the whole script is POSIX-only, not just the recovery feature. Consistent with the SKILL text, but worth one sentence if any consumer runs it elsewhere.
 - Detached descendants, orphaned reviewers after a runner SIGKILL, PID reuse, and CLI transcript retention remain the accepted limits from pass 2. The implementation neither narrows nor widens them.
+
+### Driver response to implementation review
+
+- Accepted Thread 11: capture session identity in memory, persist only the first
+  observation, and still reject any changed identity. A 300-event test observes
+  one capture write and fewer than 15 metadata updates for the whole attempt.
+- Accepted Thread 12: one shared signal list spans reviewer execution, post-exit
+  snapshot, outcome decision, and finalization. Real SIGINT/SIGTERM injected in
+  the snapshot window each preserve a completed review and exactly one commit.
+- Accepted Thread 13 via documentation: the runner defers its own signals, but a
+  foreground git child can still be interrupted. This leaves a non-resumable
+  failed finalization requiring inspection. Driver-queued stops do not signal git.
+- Accepted Thread 14: assert the continuation instruction received on stdin,
+  print PID/PGID/start time for crashed/non-resumable attempts, and finish remote
+  CI before closeout. Full local PyYAML-dependent checks passed in the isolated
+  environment; reviewer environment lacked that dependency, which is not a pass.
+- Driver-found CI correction: four legacy tests mocked reviewer execution but
+  not the new version query. Mock that query too. All 107 review tests passed
+  with Claude/Codex absent from PATH in a disposable source copy. Also preserve
+  an actionable RunnerError for a missing explicitly selected executable.
+- No scope, model, effort, or timeout policy changes. Ready for narrow resolution
+  recheck of these corrections, then closeout.

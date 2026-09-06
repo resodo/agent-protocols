@@ -223,6 +223,7 @@ class RunLogs:
     metadata: Path
     review: Path
     chain_root: Path | None = None
+    signals: list[int] | None = None
 
 
 @dataclass(frozen=True)
@@ -1125,6 +1126,14 @@ def chain_lock(root: Path):
             fcntl.flock(lock, fcntl.LOCK_UN)
 
 
+def attempt_diagnostics(metadata: dict[str, Any]) -> str:
+    return (
+        f"runner_pid={metadata.get('runner_pid')} "
+        f"reviewer_pgid={metadata.get('reviewer_pgid')} "
+        f"started_at={metadata.get('started_at', metadata.get('created_at'))}"
+    )
+
+
 def request_stop(attempt: Path, reason: str) -> None:
     attempt = attempt.resolve()
     if not reason.strip():
@@ -1136,7 +1145,7 @@ def request_stop(attempt: Path, reason: str) -> None:
     # Probe the lock, never signal a PID loaded from disk (it may be reused).
     try:
         with chain_lock(root):
-            raise RunnerError("no live runner owns the chain; inspect recorded PID/PGID before a fresh review")
+            raise RunnerError("no live runner owns the chain; inspect before a fresh review: " + attempt_diagnostics(read_json(attempt / "metadata.json")))
     except RunnerError as exc:
         if "already running" not in str(exc):
             raise
@@ -1149,6 +1158,10 @@ def review_fingerprint(config: RunConfig, prompt: str, before: GitSnapshot) -> d
     if config.thread_file:
         paths[config.thread_file.rel] = config.thread_file.abs
     binary = config.claude_bin if config.backend == BACKEND_CLAUDE else config.codex_bin
+    try:
+        version = BACKENDS[config.backend].version_for(config)
+    except OSError as exc:
+        raise RunnerError(f"reviewer binary unavailable: {binary}; install it or check the explicit backend binary flag") from exc
     return {
         "worktree": str(config.worktree), "head": before.head,
         "files": {rel: hashlib.sha256(path.read_bytes()).hexdigest() for rel, path in paths.items()},
@@ -1158,7 +1171,7 @@ def review_fingerprint(config: RunConfig, prompt: str, before: GitSnapshot) -> d
         "backend": config.backend, "model": active_model(config), "effort": active_effort(config),
         "tier": config.selected_tier, "reason": config.driver_tier_reason,
         "binary": str(Path(shutil.which(binary) or binary).resolve()),
-        "version": BACKENDS[config.backend].version_for(config),
+        "version": version,
     }
 
 
@@ -1188,7 +1201,7 @@ def attempt_context(config: RunConfig, prompt: str, before: GitSnapshot):
             require_latest(root, source)
             previous = read_json(source / "metadata.json")
             if previous.get("outcome") not in ("timeout", "stopped", "interrupted"):
-                raise RunnerError(f"attempt is not resumable: outcome={previous.get('outcome')}; only cleaned timeout/stopped/interrupted attempts can resume")
+                raise RunnerError(f"attempt is not resumable: outcome={previous.get('outcome')}; only cleaned timeout/stopped/interrupted attempts can resume; {attempt_diagnostics(previous)}")
             if previous.get("cleanup_complete") is not True:
                 raise RunnerError("attempt is not resumable: process cleanup was not verified")
             if previous.get("fingerprint") != fingerprint:
@@ -1262,8 +1275,9 @@ def cleanup_process(proc: subprocess.Popen) -> None:
 
 
 @contextmanager
-def captured_signals():
-    received: list[int] = []
+def captured_signals(received: list[int] | None = None):
+    if received is None:
+        received = []
     previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
     for sig in previous:
         signal.signal(sig, lambda number, frame: received.append(number))
@@ -1300,6 +1314,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     stop_signal = None
     timed_out = False
     observed_session = False
+    captured_session = config.resume_session_id
     protocol_error = None
     print(
         f"{config.backend} review start mode={config.mode} type={config.review_type} "
@@ -1314,9 +1329,9 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     proc = None
     selector = selectors.DefaultSelector()
     buffers = {"stdout": b"", "stderr": b""}
-    with captured_signals() as received, logs.stdout.open("w", encoding="utf-8") as stdout_log, logs.stderr.open("w", encoding="utf-8") as stderr_log:
+    with captured_signals(logs.signals) as received, logs.stdout.open("w", encoding="utf-8") as stdout_log, logs.stderr.open("w", encoding="utf-8") as stderr_log:
         def consume(label: str, raw: bytes) -> None:
-            nonlocal malformed, token_usage, observed_session, protocol_error, last_event
+            nonlocal malformed, token_usage, observed_session, captured_session, protocol_error, last_event
             line = raw.decode("utf-8", errors="replace")
             last_event = time.monotonic()
             if label == "stderr":
@@ -1339,10 +1354,11 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
                         protocol_error = "backend emitted an invalid session ID"
                     elif config.resume_session_id and session != config.resume_session_id:
                         protocol_error = "backend did not resume the recorded session ID; fresh-session fallback refused"
-                    elif read_json(logs.metadata).get("session_id") not in (None, session):
+                    elif captured_session not in (None, session):
                         protocol_error = "backend changed session ID during attempt"
-                    else:
+                    elif not observed_session:
                         observed_session = True
+                        captured_session = session
                         patch_metadata(logs, session_id=session, session_observed=True, phase="session_captured")
                 if event.get("type") == "result":
                     if event.get("is_error") or event.get("subtype", "success") != "success":
@@ -1437,8 +1453,6 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
                 for stream in (proc.stdin, proc.stdout, proc.stderr):
                     if stream is not None and not stream.closed:
                         stream.close()
-        if received and not (stop_reason or timed_out):
-            patch_metadata(logs, late_signals=received)
     if protocol_error:
         raise RunnerError(protocol_error)
     if config.resume_session_id and not observed_session and not (timed_out or stop_reason):
@@ -1624,7 +1638,8 @@ def run(config: RunConfig) -> None:
     if config.mode == MODE_WRITE:
         assert config.thread_file is not None
         require_review_threads_anchor(config.thread_file.abs)
-    with attempt_context(config, prompt, before) as (config, logs):
+    with attempt_context(config, prompt, before) as (config, logs), captured_signals() as signals:
+        logs = replace(logs, signals=signals)
         result = None
         after = None
         try:
@@ -1638,7 +1653,7 @@ def run(config: RunConfig) -> None:
                 patch_metadata(logs, phase=outcome)
                 print(f"Review incomplete. Attempt: {logs.root}. Resume with --resume-run and the same scope/profile arguments after checking metadata.json.", file=sys.stderr)
                 raise RunnerError(message, exit_code=2 if result.timed_out else (128 + result.stop_signal if result.stop_signal else 3))
-            with captured_signals() as late_signals:
+            with captured_signals(signals) as late_signals:
                 write_metadata(config, logs, result, outcome="finalizing", before=before, after=after)
                 patch_metadata(logs, phase="finalizing")
                 if config.mode == MODE_WRITE:
@@ -1650,7 +1665,7 @@ def run(config: RunConfig) -> None:
                     verify_print_mode(config, before, after, result)
                     print(redactor.redact(result.review_text).rstrip())
                 write_metadata(config, logs, result, outcome="success", before=before, after=after)
-                patch_metadata(logs, phase="success", late_signals=read_json(logs.metadata).get("late_signals", []) + late_signals, late_stop_request=read_json(logs.root / "stop-request.json") or None)
+                patch_metadata(logs, phase="success", late_signals=list(late_signals), late_stop_request=read_json(logs.root / "stop-request.json") or None)
             print(f"{config.backend} structured review completed run_log={redactor.redact(str(logs.root))}", file=sys.stderr)
         except BaseException as exc:
             # Never turn an error or a finalization crash into a resumable attempt.

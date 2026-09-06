@@ -38,7 +38,7 @@ if not options.get('no_session'):
     event = {'type':'thread.started','thread_id':session} if codex else {'type':'system','subtype':'hook_started','session_id':session}
     print(json.dumps(event), flush=True)
 if not options.get('no_stdin'):
-    sys.stdin.read()
+    (base / 'stdin.txt').write_text(sys.stdin.read())
 if not resume and not options.get('finish'):
     if options.get('ignore_term'): signal.signal(signal.SIGTERM, signal.SIG_IGN)
     if options.get('child'):
@@ -127,6 +127,11 @@ class RecoveryTests(unittest.TestCase):
                 self.assertGreater(state['cumulative_elapsed_sec'],state['elapsed_sec'])
                 self.assertEqual(run_git(self.repo,'rev-list','--count',f'{head}..HEAD'),'1')
                 self.assertEqual(csr.read_json(self.initial/'metadata.json')['outcome'],'timeout')
+                continuation=(self.root/'stdin.txt').read_text()
+                self.assertTrue(continuation.startswith('Continue the interrupted review in this same conversation.'))
+                self.assertIn('ONE complete final review',continuation)
+                self.assertIn('The original scope',continuation)
+                self.assertIn('Review the plan.',continuation)
                 argv=json.loads((self.root/'argv.json').read_text())
                 self.assertIn('12345678-1234-4234-8234-123456789abc',argv)
                 if backend=='codex':
@@ -271,8 +276,49 @@ class RecoveryTests(unittest.TestCase):
         path=self.initial/'metadata.json'
         state=csr.read_json(path)
         csr.atomic_json(path,{**state,'outcome':'running','runner_pid':os.getpid()})
-        with self.assertRaisesRegex(csr.RunnerError,'no live runner'): csr.request_stop(self.initial,'stop')
+        with self.assertRaisesRegex(csr.RunnerError,f'no live runner.*runner_pid={os.getpid()}.*reviewer_pgid=.*started_at='):
+            csr.request_stop(self.initial,'stop')
         self.assertFalse((self.initial/'stop-request.json').exists())
+
+    def test_session_capture_is_persisted_once_for_many_events(self):
+        many=FAKE.replace("if not options.get('no_stdin'):",
+            "for _ in range(300):\n    print(json.dumps({'type':'stream_event','session_id':session,'event':{}}), flush=True)\nif not options.get('no_stdin'):")
+        self.bin.write_text(many)
+        self.options(finish=True)
+        updates=[]
+        original=csr.patch_metadata
+        def patch(logs,**fields):
+            updates.append(fields)
+            original(logs,**fields)
+        with mock.patch.object(csr,'patch_metadata',patch): csr.run(self.config())
+        captures=[u for u in updates if u.get('phase')=='session_captured']
+        self.assertEqual(len(captures),1)
+        self.assertLess(len(updates),15)
+
+    def test_actual_signals_in_post_exit_snapshot_do_not_lose_completed_review(self):
+        for sig in (signal.SIGINT,signal.SIGTERM):
+            with self.subTest(signal=sig):
+                self.initial=self.root/('gap-'+str(sig))
+                self.options(finish=True)
+                config=self.config(write=True)
+                head=run_git(self.repo,'rev-parse','HEAD')
+                original=csr.git_snapshot
+                calls=[]
+                def snapshot(root):
+                    calls.append(1)
+                    if len(calls)==2: os.kill(os.getpid(),sig)
+                    return original(root)
+                with mock.patch.object(csr,'git_snapshot',snapshot): csr.run(config)
+                state=csr.read_json(self.initial/'metadata.json')
+                self.assertEqual(state['outcome'],'success')
+                self.assertEqual(state['late_signals'],[sig])
+                self.assertEqual(run_git(self.repo,'rev-list','--count',head+'..HEAD'),'1')
+                with self.assertRaisesRegex(csr.RunnerError,'not resumable: outcome=success'):
+                    csr.run(self.resumed(config))
+
+    def test_missing_explicit_binary_has_actionable_runner_error(self):
+        with self.assertRaisesRegex(csr.RunnerError,'reviewer binary unavailable'):
+            csr.run(replace(self.config(),claude_bin=str(self.root/'absent-reviewer')))
 
     def test_graceful_stop_escalates_when_reviewer_ignores_sigterm(self):
         self.options(ignore_term=True, child=True)

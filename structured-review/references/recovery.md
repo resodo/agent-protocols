@@ -51,6 +51,9 @@ The chain lock is held through finalization. Before appending any text, the
 runner persists a non-resumable marker. Failure or a crash during write-back
 requires inspection and a fresh review, never replaying the old write-back.
 Late stop requests/signals do not retroactively cancel a completed result.
+The runner defers its own signals during finalization. A terminal Ctrl-C can
+still interrupt a foreground git child and leave the thread file dirty; that
+attempt is non-resumable and requires inspection before a fresh review.
 A changed HEAD, dirty target, changed artifact/prompt/protocol/profile/binary,
 missing ID, stale attempt, or live chain produces an explicit rejection.
 
