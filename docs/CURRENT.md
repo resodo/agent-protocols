@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-07-22
+Last updated: 2026-09-06
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -23,7 +23,9 @@ avoid treating historical plans as current instructions.
   available, with cross-vendor Claude and Codex reviewer backends, explicit
   driver-owned normal/hard tier selection, rationale-required hard profiles,
   and recommendation-only mechanical complexity signals. Legacy auto safely
-  selects normal with deprecation provenance.
+  selects normal with deprecation provenance. Normal/hard time limits are
+  1800/3600 seconds; hard profiles use Fable 5.1 / GPT-6 Astra. Driver stop
+  requests and guarded same-session recovery retain private per-attempt evidence.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work.
 - `planning/SKILL.md` - discussion-to-plan workflow before implementation.
@@ -45,6 +47,8 @@ avoid treating historical plans as current instructions.
 - Runner-loaded structured-review references:
   `structured-review/references/review-lenses.md` and
   `structured-review/references/collaboration.md`
+- Driver recovery operations: `structured-review/references/recovery.md`
+  (not a runner-loaded review lens).
 - Conditional UI review reference:
   `structured-review/references/ui-review.md`
 - Scout runner:

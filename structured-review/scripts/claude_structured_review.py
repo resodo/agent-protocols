@@ -4,6 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
+import signal
+import uuid
+from contextlib import contextmanager
 import json
 import os
 import re
@@ -14,7 +19,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TextIO, cast
@@ -23,12 +28,14 @@ MODE_WRITE = "write-commit-to-plan"
 MODE_PRINT = "print-review"
 REVIEW_TYPES = ("other-plan", "impl-plan", "impl", "closeout-review")
 DEFAULT_MODEL = "claude-opus-5"
-HARD_CLAUDE_MODEL = "claude-fable-5"
+HARD_CLAUDE_MODEL = "claude-fable-5-1"
 DEFAULT_EFFORT = "xhigh"
 DEFAULT_CODEX_MODEL = "gpt-5.6-terra"
-HARD_CODEX_MODEL = "gpt-5.6-sol"
+HARD_CODEX_MODEL = "gpt-6-astra"
 DEFAULT_CODEX_EFFORT = "xhigh"
-DEFAULT_TIMEOUT_SEC = 900
+DEFAULT_TIMEOUT_SEC = 1800
+HARD_TIMEOUT_SEC = 3600
+STOP_GRACE_SEC = 5.0
 DEFAULT_HEARTBEAT_SEC = 30
 HARD_REVIEW_LINE_THRESHOLD = 1000
 
@@ -196,6 +203,9 @@ class RunConfig:
     heartbeat_sec: int
     run_log_dir: Path | None
     dry_run: bool
+    timeout_source: str = "profile"
+    resume_run: Path | None = None
+    resume_session_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -212,6 +222,8 @@ class RunLogs:
     stderr: Path
     metadata: Path
     review: Path
+    chain_root: Path | None = None
+    signals: list[int] | None = None
 
 
 @dataclass(frozen=True)
@@ -242,6 +254,9 @@ class ClaudeRunResult:
     reviewer_version: str
     argv: list[str]
     token_usage: dict[str, Any] | None = None
+    stop_reason: str | None = None
+    stop_signal: int | None = None
+    elapsed_sec: float = 0.0
 
 
 class Redactor:
@@ -495,7 +510,7 @@ def build_prompt(config: RunConfig) -> str:
             f"- Model source: {config.model_source}",
             f"- Effort: {active_effort(config)}",
             f"- Effort source: {config.effort_source}",
-            "- Review tier affects model routing only. Apply the same readiness standard at both tiers; do not invent scope or low-value findings for a hard review.",
+            "- Review tier affects model routing and the default attempt time limit. Apply the same readiness standard at both tiers; do not invent scope or low-value findings for a hard review.",
             "",
             "Task-specific focus:",
             config.focus.strip(),
@@ -824,6 +839,7 @@ def claude_argv(config: RunConfig) -> list[str]:
     return [
         config.claude_bin,
         "-p",
+        *(["--resume", config.resume_session_id] if config.resume_session_id else []),
         "--permission-mode",
         "auto",
         "--model",
@@ -839,6 +855,14 @@ def claude_argv(config: RunConfig) -> list[str]:
 
 
 def codex_argv(config: RunConfig, logs: RunLogs) -> list[str]:
+    if config.resume_session_id:
+        return [
+            config.codex_bin, "exec", "resume", config.resume_session_id, "-",
+            "--json", "-m", config.codex_model,
+            "-c", f"model_reasoning_effort={config.codex_effort}",
+            "-c", 'sandbox_mode="workspace-write"',
+            "--output-last-message", str(logs.root / CODEX_LAST_MESSAGE_NAME),
+        ]
     # workspace-write (without any .git --add-dir grant) lets the reviewer run
     # tests, which need writable temp dirs, while commits stay impossible and
     # stray worktree writes are rejected by the runner's untouched-worktree
@@ -860,7 +884,7 @@ def codex_argv(config: RunConfig, logs: RunLogs) -> list[str]:
 
 
 def claude_finalize(state: ReviewState, logs: RunLogs) -> str:
-    return "".join(state.text_deltas) if state.text_deltas else state.final_message
+    return state.final_message or "".join(state.text_deltas)
 
 
 def codex_finalize(state: ReviewState, logs: RunLogs) -> str:
@@ -887,7 +911,7 @@ def default_run_log_dir(config: RunConfig) -> Path:
 
 def prepare_run_logs(config: RunConfig) -> RunLogs:
     root = config.run_log_dir if config.run_log_dir is not None else default_run_log_dir(config)
-    root.mkdir(parents=True, exist_ok=False)
+    root.mkdir(mode=0o700, parents=True, exist_ok=False)
     return RunLogs(
         root=root,
         prompt=root / "prompt.md",
@@ -1016,6 +1040,7 @@ def write_metadata(
         "model_source": config.model_source,
         "effort_source": config.effort_source,
         "timeout_sec": config.timeout_sec,
+        "timeout_source": config.timeout_source,
         "heartbeat_sec": config.heartbeat_sec,
         "run_log_dir": str(logs.root),
         "before": before.__dict__ if before else None,
@@ -1033,16 +1058,249 @@ def write_metadata(
                 "started_at": result.started_at,
                 "ended_at": result.ended_at,
                 "token_usage": result.token_usage,
+                "stop_reason": result.stop_reason,
+                "stop_signal": result.stop_signal,
+                "elapsed_sec": result.elapsed_sec,
+                "cumulative_elapsed_sec": read_json(logs.metadata).get("prior_elapsed_sec", 0) + result.elapsed_sec,
             }
         )
-    logs.metadata.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    patch_metadata(logs, **payload)
+
+
+def read_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError) as exc:
+        raise RunnerError(f"cannot read run state: {path}") from exc
+    if not isinstance(value, dict):
+        raise RunnerError(f"invalid run state: {path}")
+    return value
+
+
+def atomic_json(path: Path, value: dict[str, Any]) -> None:
+    temporary = path.with_name(f".{path.name}.{secrets.token_hex(6)}.tmp")
+    try:
+        with temporary.open("x", encoding="utf-8") as output:
+            os.chmod(temporary, 0o600)
+            json.dump(value, output, indent=2, sort_keys=True)
+            output.write("\n")
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def patch_metadata(logs: RunLogs, **fields: Any) -> None:
+    atomic_json(logs.metadata, {**read_json(logs.metadata), **fields})
+
+
+def chain_for(attempt: Path) -> Path:
+    metadata = read_json(attempt / "metadata.json")
+    root = Path(metadata.get("chain_root", str(attempt))).resolve()
+    if attempt != root and root not in attempt.parents:
+        raise RunnerError("attempt is outside its recorded run chain")
+    if not (root / "chain.json").is_file():
+        raise RunnerError("run has no recovery chain metadata")
+    return root
+
+
+def require_latest(root: Path, attempt: Path) -> None:
+    latest = read_json(root / "chain.json").get("latest_attempt")
+    if latest != str(attempt):
+        raise RunnerError(f"stale attempt; latest attempt is {latest}")
+
+
+@contextmanager
+def chain_lock(root: Path):
+    with (root / "chain.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RunnerError("review chain is already running; concurrent resume refused") from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
+
+
+def attempt_diagnostics(metadata: dict[str, Any]) -> str:
+    return (
+        f"runner_pid={metadata.get('runner_pid')} "
+        f"reviewer_pgid={metadata.get('reviewer_pgid')} "
+        f"started_at={metadata.get('started_at', metadata.get('created_at'))}"
+    )
+
+
+def request_stop(attempt: Path, reason: str) -> None:
+    attempt = attempt.resolve()
+    if not reason.strip():
+        raise RunnerError("--stop-reason must be non-empty")
+    root = chain_for(attempt)
+    require_latest(root, attempt)
+    if read_json(attempt / "metadata.json").get("outcome") != "running":
+        raise RunnerError("attempt is not running; stop request not queued")
+    # Probe the lock, never signal a PID loaded from disk (it may be reused).
+    try:
+        with chain_lock(root):
+            raise RunnerError("no live runner owns the chain; inspect before a fresh review: " + attempt_diagnostics(read_json(attempt / "metadata.json")))
+    except RunnerError as exc:
+        if "already running" not in str(exc):
+            raise
+    atomic_json(attempt / "stop-request.json", {"reason": reason.strip(), "requested_at": utc_now()})
+    print(f"Stop request queued for {attempt}; this is not an acknowledgement. Poll metadata.json for a terminal outcome.")
+
+
+def review_fingerprint(config: RunConfig, prompt: str, before: GitSnapshot) -> dict[str, Any]:
+    paths = {a.rel: a.abs for a in config.artifacts}
+    if config.thread_file:
+        paths[config.thread_file.rel] = config.thread_file.abs
+    binary = config.claude_bin if config.backend == BACKEND_CLAUDE else config.codex_bin
+    try:
+        version = BACKENDS[config.backend].version_for(config)
+    except OSError as exc:
+        raise RunnerError(f"reviewer binary unavailable: {binary}; install it or check the explicit backend binary flag") from exc
+    return {
+        "worktree": str(config.worktree), "head": before.head,
+        "files": {rel: hashlib.sha256(path.read_bytes()).hexdigest() for rel, path in paths.items()},
+        "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "mode": config.mode, "type": config.review_type, "topic": config.topic,
+        "backend": config.backend, "model": active_model(config), "effort": active_effort(config),
+        "tier": config.selected_tier, "reason": config.driver_tier_reason,
+        "binary": str(Path(shutil.which(binary) or binary).resolve()),
+        "version": version,
+    }
+
+
+def valid_session_id(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        return str(uuid.UUID(value)) == value.lower()
+    except ValueError:
+        return False
+
+
+@contextmanager
+def attempt_context(config: RunConfig, prompt: str, before: GitSnapshot):
+    source = config.resume_run.resolve() if config.resume_run else None
+    if source is None:
+        logs = prepare_run_logs(config)
+        root = logs.root
+    else:
+        if config.run_log_dir is not None:
+            raise RunnerError("--run-log-dir cannot accompany --resume-run; attempt logs are allocated in the chain")
+        root = chain_for(source)
+    with chain_lock(root):
+        fingerprint = review_fingerprint(config, prompt, before)
+        previous: dict[str, Any] = {}
+        if source is not None:
+            require_latest(root, source)
+            previous = read_json(source / "metadata.json")
+            if previous.get("outcome") not in ("timeout", "stopped", "interrupted"):
+                raise RunnerError(f"attempt is not resumable: outcome={previous.get('outcome')}; only cleaned timeout/stopped/interrupted attempts can resume; {attempt_diagnostics(previous)}")
+            if previous.get("cleanup_complete") is not True:
+                raise RunnerError("attempt is not resumable: process cleanup was not verified")
+            if previous.get("fingerprint") != fingerprint:
+                raise RunnerError("resume target or reviewer constraints changed; start a fresh review")
+            session_id = previous.get("session_id")
+            if not valid_session_id(session_id):
+                raise RunnerError("attempt has no valid captured session ID; start a fresh review")
+            config = replace(config, resume_session_id=session_id)
+            attempt_dir = root / "attempts" / f"{previous['attempt_number'] + 1}-{secrets.token_hex(4)}"
+            logs = prepare_run_logs(replace(config, run_log_dir=attempt_dir))
+        logs = replace(logs, chain_root=root)
+        write_metadata(config, logs, None, outcome="running", before=before)
+        patch_metadata(
+            logs, phase="created", chain_root=str(root), fingerprint=fingerprint,
+            attempt_number=previous.get("attempt_number", 0) + 1,
+            resumed_from=str(source) if source else None,
+            session_id=config.resume_session_id, session_observed=False,
+            runner_pid=os.getpid(), created_at=utc_now(), cleanup_complete=False,
+            prior_elapsed_sec=previous.get("cumulative_elapsed_sec", 0),
+        )
+        atomic_json(root / "chain.json", {"latest_attempt": str(logs.root)})
+        print(f"review run_log={logs.root} metadata={logs.metadata}", file=sys.stderr)
+        yield config, logs
+
+
+def group_is_executing(pgid: int) -> bool:
+    # killpg(0) also sees unreaped zombies. ps distinguishes those from writers.
+    result = subprocess.run(["ps", "-eo", "pgid=,stat="], capture_output=True, text=True, timeout=5)
+    if result.returncode:
+        raise RunnerError("cannot verify reviewer process-group cleanup")
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        if len(fields) >= 2 and fields[0] == str(pgid) and not fields[1].startswith("Z"):
+            return True
+    return False
+
+
+def cleanup_process(proc: subprocess.Popen) -> None:
+    def finished() -> bool:
+        proc.poll()
+        return not group_is_executing(proc.pid)
+
+    def send(sig: int) -> None:
+        try:
+            os.killpg(proc.pid, sig)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            # Some process sandboxes return EPERM for an already-gone group.
+            # Only accept it when the independent process-table check agrees.
+            if group_is_executing(proc.pid):
+                raise
+
+    if finished():
+        proc.wait(timeout=5)
+        return
+    send(signal.SIGTERM)
+    deadline = time.monotonic() + STOP_GRACE_SEC
+    while time.monotonic() < deadline:
+        if finished():
+            proc.wait(timeout=5)
+            return
+        time.sleep(0.05)
+    send(signal.SIGKILL)
+    proc.wait(timeout=5)
+    deadline = time.monotonic() + 5
+    while not finished():
+        if time.monotonic() > deadline:
+            raise RunnerError("reviewer process group still executing after cleanup; resume refused")
+        time.sleep(0.05)
+
+
+@contextmanager
+def captured_signals(received: list[int] | None = None):
+    if received is None:
+        received = []
+    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+    for sig in previous:
+        signal.signal(sig, lambda number, frame: received.append(number))
+    try:
+        yield received
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
 
 
 def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor) -> ClaudeRunResult:
-    """Run the selected reviewer backend; the name is kept for compatibility."""
+    """Run either reviewer, retaining recoverable state and owning its process group."""
     backend = BACKENDS[config.backend]
     argv = backend.argv_for(config, logs)
     version = backend.version_for(config)
+    if config.resume_session_id:
+        prompt = (
+            "Continue the interrupted review in this same conversation. Previously completed "
+            "reads and tool results remain evidence; an interrupted command may be incomplete. "
+            "Do not assume it succeeded or repeat side effects blindly. Complete the remaining "
+            "review and return ONE complete final review, not a delta. The original scope, "
+            "read-only role, and write-back restrictions still apply.\n\n" + prompt
+        )
     logs.prompt.write_text(prompt, encoding="utf-8")
     started_at = utc_now()
     started = time.monotonic()
@@ -1050,108 +1308,174 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     stdout_parts: list[str] = []
     stderr_parts: list[str] = []
     state = ReviewState()
-    token_usage: dict[str, Any] | None = None
+    token_usage = None
     malformed = 0
-    if config.selected_tier == REVIEW_TIER_HARD and config.timeout_sec == DEFAULT_TIMEOUT_SEC:
-        print(
-            "hard review selected with default timeout_sec=900; consider --timeout-sec 1800",
-            file=sys.stderr,
-        )
+    stop_reason = None
+    stop_signal = None
+    timed_out = False
+    observed_session = False
+    captured_session = config.resume_session_id
+    protocol_error = None
     print(
         f"{config.backend} review start mode={config.mode} type={config.review_type} "
         f"selected_tier={config.selected_tier} tier_source={config.tier_selection_source} "
         f"driver_tier_reason={json.dumps(config.driver_tier_reason)} "
         f"recommended_tier={config.recommended_tier} "
         f"recommendation_reasons={json.dumps(list(config.recommendation_reasons), separators=(',', ':'))} "
-        f"timeout_sec={config.timeout_sec} "
+        f"timeout_sec={config.timeout_sec} timeout_source={config.timeout_source} "
         f"model={active_model(config)} effort={active_effort(config)} "
-        f"artifacts={','.join(a.rel for a in config.artifacts)}",
-        file=sys.stderr,
+        f"artifacts={','.join(a.rel for a in config.artifacts)}", file=sys.stderr,
     )
-    proc = subprocess.Popen(
-        argv,
-        cwd=config.worktree,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,
-    )
-    assert proc.stdin is not None
-    proc.stdin.write(prompt)
-    proc.stdin.close()
-    assert proc.stdout is not None
-    assert proc.stderr is not None
+    proc = None
     selector = selectors.DefaultSelector()
-    selector.register(proc.stdout, selectors.EVENT_READ, "stdout")
-    selector.register(proc.stderr, selectors.EVENT_READ, "stderr")
-    timed_out = False
-    with logs.stdout.open("w", encoding="utf-8") as stdout_log, logs.stderr.open("w", encoding="utf-8") as stderr_log:
-        while selector.get_map():
-            now = time.monotonic()
-            if now - started > config.timeout_sec:
-                timed_out = True
-                proc.kill()
-                break
-            events = selector.select(timeout=1.0)
-            if not events:
+    buffers = {"stdout": b"", "stderr": b""}
+    with captured_signals(logs.signals) as received, logs.stdout.open("w", encoding="utf-8") as stdout_log, logs.stderr.open("w", encoding="utf-8") as stderr_log:
+        def consume(label: str, raw: bytes) -> None:
+            nonlocal malformed, token_usage, observed_session, captured_session, protocol_error, last_event
+            line = raw.decode("utf-8", errors="replace")
+            last_event = time.monotonic()
+            if label == "stderr":
+                stderr_parts.append(line)
+                stderr_log.write(line)
+                stderr_log.flush()
+                print(redactor.redact(line.rstrip()), file=sys.stderr)
+                return
+            stdout_parts.append(line)
+            stdout_log.write(line)
+            stdout_log.flush()
+            try:
+                event = json.loads(line)
+            except ValueError:
+                event = {}
+            if isinstance(event, dict):
+                session = event.get("session_id") if config.backend == BACKEND_CLAUDE else (event.get("thread_id") if event.get("type") == "thread.started" else None)
+                if session is not None:
+                    if not valid_session_id(session):
+                        protocol_error = "backend emitted an invalid session ID"
+                    elif config.resume_session_id and session != config.resume_session_id:
+                        protocol_error = "backend did not resume the recorded session ID; fresh-session fallback refused"
+                    elif captured_session not in (None, session):
+                        protocol_error = "backend changed session ID during attempt"
+                    elif not observed_session:
+                        observed_session = True
+                        captured_session = session
+                        patch_metadata(logs, session_id=session, session_observed=True, phase="session_captured")
+                if event.get("type") == "result":
+                    if event.get("is_error") or event.get("subtype", "success") != "success":
+                        protocol_error = "Claude session failed; consult private stderr and stream logs"
+                    elif isinstance(event.get("result"), str):
+                        state.final_message = event["result"]
+                if event.get("type") == "turn.failed":
+                    protocol_error = "Codex session failed; consult private stderr and stream logs"
+            parsed = backend.parse_line(line)
+            malformed += int(parsed.malformed)
+            if parsed.text_delta:
+                state.text_deltas.append(parsed.text_delta)
+            elif parsed.message_text:
+                state.final_message = parsed.message_text
+                state.messages.append(parsed.message_text)
+            if parsed.usage is not None:
+                token_usage = parsed.usage
+            print(f"{config.backend} review event", file=sys.stderr)
+
+        try:
+            proc = subprocess.Popen(argv, cwd=config.worktree, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+            patch_metadata(logs, outcome="running", phase="launched", reviewer_pid=proc.pid, reviewer_pgid=proc.pid, started_at=started_at, argv=argv, reviewer_version=version)
+            assert proc.stdin and proc.stdout and proc.stderr
+            pending = memoryview(prompt.encode())
+            for stream, label, mask in ((proc.stdin, "stdin", selectors.EVENT_WRITE), (proc.stdout, "stdout", selectors.EVENT_READ), (proc.stderr, "stderr", selectors.EVENT_READ)):
+                os.set_blocking(stream.fileno(), False)
+                selector.register(stream, mask, label)
+            while selector.get_map() or proc.poll() is None:
+                now = time.monotonic()
+                if received:
+                    stop_signal = received[0]
+                    stop_reason = signal.Signals(stop_signal).name
+                    break
+                request = read_json(logs.root / "stop-request.json")
+                if request:
+                    stop_reason = str(request.get("reason", "driver stop"))
+                    break
+                if now - started >= config.timeout_sec:
+                    timed_out = True
+                    break
+                if protocol_error:
+                    break
+                events = selector.select(timeout=0.2)
+                for key, _ in events:
+                    stream = key.fileobj
+                    label = key.data
+                    if label == "stdin":
+                        try:
+                            written = os.write(stream.fileno(), pending[:65536])
+                            pending = pending[written:]
+                        except BrokenPipeError:
+                            pending = memoryview(b"")
+                        if not pending:
+                            selector.unregister(stream)
+                            stream.close()
+                        continue
+                    try:
+                        chunk = os.read(stream.fileno(), 65536)
+                    except BlockingIOError:
+                        continue
+                    if not chunk:
+                        selector.unregister(stream)
+                        if buffers[label]:
+                            consume(label, buffers[label])
+                            buffers[label] = b""
+                        stream.close()
+                    else:
+                        buffers[label] += chunk
+                        while b"\n" in buffers[label]:
+                            line, buffers[label] = buffers[label].split(b"\n", 1)
+                            consume(label, line + b"\n")
                 if now - last_event >= config.heartbeat_sec:
-                    elapsed = int(now - started)
-                    print(f"{config.backend} review heartbeat elapsed_sec={elapsed}", file=sys.stderr)
+                    print(f"{config.backend} review heartbeat elapsed_sec={int(now - started)}", file=sys.stderr)
                     last_event = now
-                continue
-            for key, _ in events:
-                stream = cast(TextIO, key.fileobj)
-                line = stream.readline()
-                if not line:
-                    selector.unregister(stream)
-                    continue
-                last_event = time.monotonic()
-                if key.data == "stdout":
-                    stdout_parts.append(line)
-                    stdout_log.write(line)
-                    stdout_log.flush()
-                    stream_result = backend.parse_line(line)
-                    if stream_result.malformed:
-                        malformed += 1
-                    if stream_result.text_delta:
-                        state.text_deltas.append(stream_result.text_delta)
-                    elif stream_result.message_text:
-                        state.final_message = stream_result.message_text
-                        state.messages.append(stream_result.message_text)
-                    if stream_result.usage is not None:
-                        token_usage = stream_result.usage
-                    print(f"{config.backend} review event", file=sys.stderr)
-                else:
-                    stderr_parts.append(line)
-                    stderr_log.write(line)
-                    stderr_log.flush()
-                    print(redactor.redact(line.rstrip()), file=sys.stderr)
-    selector.close()
-    returncode = proc.wait()
-    proc.stdout.close()
-    proc.stderr.close()
+            cleanup_process(proc)
+            patch_metadata(logs, cleanup_complete=True, phase="reviewer_exited")
+        finally:
+            selector.close()
+            if proc is not None:
+                if not read_json(logs.metadata).get("cleanup_complete"):
+                    try:
+                        cleanup_process(proc)
+                    except BaseException:
+                        # Best-effort termination even when process-table verification
+                        # itself fails. The attempt remains non-resumable.
+                        try:
+                            os.killpg(proc.pid, signal.SIGKILL)
+                        except (ProcessLookupError, PermissionError):
+                            pass
+                        proc.wait(timeout=5)
+                        raise
+                for stream in (proc.stdin, proc.stdout, proc.stderr):
+                    if stream is not None and not stream.closed:
+                        stream.close()
+    if protocol_error:
+        raise RunnerError(protocol_error)
+    if config.resume_session_id and not observed_session and not (timed_out or stop_reason):
+        raise RunnerError("resumed backend did not confirm the recorded session; session state may be missing")
+    assert proc is not None
+    returncode = proc.returncode
     if timed_out:
         returncode = -9
+    elif stop_reason:
+        returncode = -(stop_signal or signal.SIGTERM)
     review_text = backend.finalize(state, logs)
     logs.review.write_text(review_text, encoding="utf-8")
     return ClaudeRunResult(
-        returncode=returncode,
-        stdout="".join(stdout_parts),
-        stderr="".join(stderr_parts),
-        review_text=review_text,
-        malformed_stream_lines=malformed,
-        timed_out=timed_out,
-        started_at=started_at,
-        ended_at=utc_now(),
-        reviewer_version=version,
-        argv=argv,
-        token_usage=token_usage,
+        returncode=returncode, stdout="".join(stdout_parts), stderr="".join(stderr_parts),
+        review_text=review_text, malformed_stream_lines=malformed, timed_out=timed_out,
+        started_at=started_at, ended_at=utc_now(), reviewer_version=version, argv=argv,
+        token_usage=token_usage, stop_reason=stop_reason, stop_signal=stop_signal,
+        elapsed_sec=time.monotonic() - started,
     )
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, epilog="Stop: --stop-run ATTEMPT_DIRECTORY --stop-reason REASON. Poll metadata.json for acknowledgement.")
     parser.add_argument("--protocol-dir")
     parser.add_argument("--worktree", required=True)
     parser.add_argument("--mode", required=True, choices=(MODE_WRITE, MODE_PRINT))
@@ -1188,7 +1512,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--codex-bin", default="codex")
     parser.add_argument("--codex-model", help="explicit Codex model override")
     parser.add_argument("--codex-effort", help="explicit Codex reasoning-effort override")
-    parser.add_argument("--timeout-sec", type=int, default=DEFAULT_TIMEOUT_SEC)
+    parser.add_argument("--timeout-sec", type=int, help="positive attempt limit; default normal/auto 1800, hard 3600 seconds")
+    parser.add_argument("--resume-run", help="resume the exact latest interrupted attempt directory with the same scope/profile arguments")
     parser.add_argument("--heartbeat-sec", type=int, default=DEFAULT_HEARTBEAT_SEC)
     parser.add_argument("--run-log-dir")
     parser.add_argument("--dry-run", action="store_true")
@@ -1208,7 +1533,7 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
             raise RunnerError("--topic is required in write-commit-to-plan mode")
     elif thread_file is not None:
         raise RunnerError("--thread-file is forbidden in print-review mode")
-    if args.timeout_sec <= 0 or args.heartbeat_sec <= 0:
+    if (args.timeout_sec is not None and args.timeout_sec <= 0) or args.heartbeat_sec <= 0:
         raise RunnerError("timeout and heartbeat must be positive")
     run_log_dir = Path(args.run_log_dir).expanduser().resolve() if args.run_log_dir else None
     backend, marker_resolved = resolve_reviewer_backend(
@@ -1290,7 +1615,9 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
         codex_bin=args.codex_bin,
         codex_model=codex_model,
         codex_effort=codex_effort,
-        timeout_sec=args.timeout_sec,
+        timeout_sec=args.timeout_sec if args.timeout_sec is not None else (HARD_TIMEOUT_SEC if selected_tier == REVIEW_TIER_HARD else DEFAULT_TIMEOUT_SEC),
+        timeout_source="explicit --timeout-sec" if args.timeout_sec is not None else "profile",
+        resume_run=Path(args.resume_run).expanduser().resolve() if args.resume_run else None,
         heartbeat_sec=args.heartbeat_sec,
         run_log_dir=run_log_dir,
         dry_run=args.dry_run,
@@ -1311,41 +1638,59 @@ def run(config: RunConfig) -> None:
     if config.mode == MODE_WRITE:
         assert config.thread_file is not None
         require_review_threads_anchor(config.thread_file.abs)
-    logs = prepare_run_logs(config)
-    result: ClaudeRunResult | None = None
-    after: GitSnapshot | None = None
-    try:
-        result = run_claude(config, prompt, logs, redactor)
-        after = git_snapshot(config.worktree)
-        if result.timed_out:
-            dirty = " with uncommitted changes" if after.status.strip() else ""
-            write_metadata(config, logs, result, outcome="timeout", error=f"{config.backend} review timed out{dirty}", before=before, after=after)
-            raise RunnerError(f"{config.backend} review timed out{dirty}", exit_code=2)
-        if config.mode == MODE_WRITE:
-            verify_reviewer_output(config, before, after, result)
-            append_and_commit_review(config, result.review_text)
+    with attempt_context(config, prompt, before) as (config, logs), captured_signals() as signals:
+        logs = replace(logs, signals=signals)
+        result = None
+        after = None
+        try:
+            result = run_claude(config, prompt, logs, redactor)
             after = git_snapshot(config.worktree)
-            verify_write_mode(config, before, after, result)
-        else:
-            verify_print_mode(config, before, after, result)
-            print(redactor.redact(result.review_text).rstrip())
-        write_metadata(config, logs, result, outcome="success", before=before, after=after)
-        print(f"{config.backend} structured review completed run_log={redactor.redact(str(logs.root))}", file=sys.stderr)
-    except RunnerError as exc:
-        if result is not None and not result.timed_out:
-            if after is None:
+            if result.timed_out or result.stop_reason:
+                dirty = " with uncommitted changes" if after.status.strip() else ""
+                outcome = "timeout" if result.timed_out else ("interrupted" if result.stop_signal else "stopped")
+                message = f"{config.backend} review timed out{dirty}" if result.timed_out else f"{config.backend} review {outcome}{dirty}: {result.stop_reason}"
+                write_metadata(config, logs, result, outcome=outcome, error=message, before=before, after=after)
+                patch_metadata(logs, phase=outcome)
+                print(f"Review incomplete. Attempt: {logs.root}. Resume with --resume-run and the same scope/profile arguments after checking metadata.json.", file=sys.stderr)
+                raise RunnerError(message, exit_code=2 if result.timed_out else (128 + result.stop_signal if result.stop_signal else 3))
+            with captured_signals(signals) as late_signals:
+                write_metadata(config, logs, result, outcome="finalizing", before=before, after=after)
+                patch_metadata(logs, phase="finalizing")
+                if config.mode == MODE_WRITE:
+                    verify_reviewer_output(config, before, after, result)
+                    append_and_commit_review(config, result.review_text)
+                    after = git_snapshot(config.worktree)
+                    verify_write_mode(config, before, after, result)
+                else:
+                    verify_print_mode(config, before, after, result)
+                    print(redactor.redact(result.review_text).rstrip())
+                write_metadata(config, logs, result, outcome="success", before=before, after=after)
+                patch_metadata(logs, phase="success", late_signals=list(late_signals), late_stop_request=read_json(logs.root / "stop-request.json") or None)
+            print(f"{config.backend} structured review completed run_log={redactor.redact(str(logs.root))}", file=sys.stderr)
+        except BaseException as exc:
+            # Never turn an error or a finalization crash into a resumable attempt.
+            current = read_json(logs.metadata).get("outcome")
+            if current not in ("timeout", "stopped", "interrupted", "success"):
                 after = git_snapshot(config.worktree)
-            write_metadata(config, logs, result, outcome="failed", error=str(exc), before=before, after=after)
-        raise
-    except Exception as exc:
-        after = git_snapshot(config.worktree)
-        write_metadata(config, logs, result, outcome="error", error=str(exc), before=before, after=after)
-        raise RunnerError(f"reviewer run errored: {exc}") from exc
+                outcome = "failed" if isinstance(exc, RunnerError) else "error"
+                write_metadata(config, logs, result, outcome=outcome, error=str(exc), before=before, after=after)
+                patch_metadata(logs, phase=outcome)
+            if isinstance(exc, (RunnerError, KeyboardInterrupt, SystemExit)):
+                raise
+            raise RunnerError(f"reviewer run errored: {exc}") from exc
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     try:
-        args = parse_args(sys.argv[1:] if argv is None else argv)
+        raw = list(sys.argv[1:] if argv is None else argv)
+        if "--stop-run" in raw:
+            parser = argparse.ArgumentParser(description="Queue a cooperative review stop; poll metadata for acknowledgement")
+            parser.add_argument("--stop-run", required=True)
+            parser.add_argument("--stop-reason", required=True)
+            stop = parser.parse_args(raw)
+            request_stop(Path(stop.stop_run).expanduser().resolve(), stop.stop_reason)
+            return 0
+        args = parse_args(raw)
         config = config_from_args(args)
         run(config)
         return 0

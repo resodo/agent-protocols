@@ -59,3 +59,6 @@ responses, and closeout evidence for changes to this repo's protocols.
 - `2026-07-22_explicit_review_tier_closeout.md` - closeout evidence for shared
   protocol PR #27, including traceability, validation, compatibility, and
   downstream submodule-bump handoff.
+
+- `2026-09-06_review_resume_plan.md` - model/time-limit upgrade, driver stop,
+  session recovery, independent reviews, and live dogfood evidence.

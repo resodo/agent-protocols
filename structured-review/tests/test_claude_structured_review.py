@@ -260,12 +260,12 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertNotIn("--allowed-tools", argv)
         self.assertNotIn("--disallowed-tools", argv)
 
-    def test_default_timeout_is_fifteen_minutes(self) -> None:
+    def test_default_timeout_is_thirty_minutes(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         config = self.config_for(repo, protocol)
 
-        self.assertEqual(config.timeout_sec, 900)
+        self.assertEqual(config.timeout_sec, 1800)
 
     def test_legacy_auto_selects_normal_with_compatibility_provenance(self) -> None:
         repo = self.init_target_repo()
@@ -294,9 +294,9 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         protocol = self.init_protocol_dir()
         expected = {
             ("claude", "normal"): ("claude-opus-5", "xhigh"),
-            ("claude", "hard"): ("claude-fable-5", "xhigh"),
+            ("claude", "hard"): ("claude-fable-5-1", "xhigh"),
             ("codex", "normal"): ("gpt-5.6-terra", "xhigh"),
-            ("codex", "hard"): ("gpt-5.6-sol", "xhigh"),
+            ("codex", "hard"): ("gpt-6-astra", "xhigh"),
         }
 
         for (backend, tier), profile in expected.items():
@@ -539,8 +539,8 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         protocol = self.init_protocol_dir()
 
         cases = (
-            ("claude", ["--model", "claude-fable-5"]),
-            ("codex", ["--codex-model", "gpt-5.6-sol"]),
+            ("claude", ["--model", "claude-fable-5-1"]),
+            ("codex", ["--codex-model", "gpt-6-astra"]),
         )
         for backend, override in cases:
             with self.subTest(backend=backend):
@@ -564,13 +564,13 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
                 "--tier-reason",
                 "irreversible migration correctness",
                 "--model",
-                "claude-fable-5",
+                "claude-fable-5-1",
             ],
         )
 
         self.assertEqual(config.selected_tier, "hard")
         self.assertEqual(config.driver_tier_reason, "irreversible migration correctness")
-        self.assertEqual(csr.active_model(config), "claude-fable-5")
+        self.assertEqual(csr.active_model(config), "claude-fable-5-1")
         self.assertEqual(config.model_source, "explicit --model")
 
     def test_explicit_profile_overrides_record_their_sources(self) -> None:
@@ -664,10 +664,10 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("Timeout Discipline", skill)
-        self.assertIn("900 seconds", skill)
-        self.assertIn("--timeout-sec 1800", skill)
-        self.assertIn("outer command/tool wait budget", skill)
-        self.assertIn("shorter than the runner timeout", skill)
+        self.assertIn("1800 seconds", skill)
+        self.assertIn("3600 seconds", skill)
+        self.assertIn("outer process lifetime", skill)
+        self.assertIn("polling must not kill the process", skill)
 
     def test_skill_and_closeout_pin_central_reviewer_selection_policy(self) -> None:
         skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
@@ -677,9 +677,9 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             "--review-tier auto",
             "--tier-reason",
             "claude-opus-5",
-            "claude-fable-5",
+            "claude-fable-5-1",
             "gpt-5.6-terra",
-            "gpt-5.6-sol",
+            "gpt-6-astra",
             "another or unrecognized coding agent",
         ):
             self.assertIn(value, skill)
@@ -773,7 +773,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             logs.review.write_text("### Review\n\nNo blockers.\n", encoding="utf-8")
             return self.result(review_text="### Review\n\nNo blockers.\n")
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude), mock.patch("sys.stdout", new_callable=lambda: __import__("io").StringIO()) as stdout:
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude), mock.patch("sys.stdout", new_callable=lambda: __import__("io").StringIO()) as stdout:
             csr.run(config)
 
         self.assertIn("No blockers.", stdout.getvalue())
@@ -1021,7 +1021,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Done."
         self.assertEqual(result.returncode, 0)
         self.assertIn("timeout_sec=7", stderr.getvalue())
 
-    def test_hard_review_with_default_timeout_emits_guidance(self) -> None:
+    def test_hard_review_uses_one_hour_profile_timeout(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         fake_bin = self.root / "bin"
@@ -1063,7 +1063,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Done."
             result = csr.run_claude(config, "prompt", logs, csr.Redactor([repo]))
 
         self.assertEqual(result.returncode, 0)
-        self.assertIn("consider --timeout-sec 1800", stderr.getvalue())
+        self.assertIn("timeout_sec=3600", stderr.getvalue())
         self.assertIn("selected_tier=hard", stderr.getvalue())
         self.assertIn("tier_source=explicit-driver", stderr.getvalue())
         self.assertIn(
@@ -1130,7 +1130,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             (config.worktree / "docs/plan.md").write_text("# Plan\n\nDirty after timeout.\n", encoding="utf-8")
             return self.result(timed_out=True, returncode=-9)
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude):
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude):
             with self.assertRaisesRegex(csr.RunnerError, "timed out with uncommitted changes") as ctx:
                 csr.run(config)
 
@@ -1147,7 +1147,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         def fake_run_claude(config: csr.RunConfig, prompt: str, logs: csr.RunLogs, redactor: csr.Redactor) -> csr.ClaudeRunResult:
             raise ValueError("boom")
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude):
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude):
             with self.assertRaisesRegex(csr.RunnerError, "errored"):
                 csr.run(config)
 
@@ -1481,7 +1481,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             logs.stderr.write_text("", encoding="utf-8")
             return self.result(review_text="### Reviewer pass 1 (impl-plan, claude reviewer)\n\nNo blocking issues.\n")
 
-        with mock.patch.object(csr, "run_claude", fake_run_claude):
+        with mock.patch.object(csr, "binary_version", return_value="test-version"), mock.patch.object(csr, "run_claude", fake_run_claude):
             csr.run(config)
 
         self.assertEqual(run_git(repo, "log", "-1", "--pretty=%s"), "structured-review: add reviewer comments for plan")
