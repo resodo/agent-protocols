@@ -122,8 +122,8 @@ driver markers require an explicit backend.
 
 Drivers must pass `--review-tier normal` or `--review-tier hard` for new
 repo-backed reviews. Hard additionally requires `--tier-reason` with a concrete
-semantic rationale. The profile matrix is Claude Opus 5 / Fable 5 and Codex
-GPT-5.6 Terra / Sol for normal / hard respectively, all at `xhigh`.
+semantic rationale. The profile matrix is Claude Opus 5 / Fable 5.1 and Codex
+GPT-5.6 Terra / GPT-6 Astra for normal / hard respectively, all at `xhigh`.
 
 For legacy callers, omitted tier or `--review-tier auto` emits a deprecation
 warning and always selects normal. The runner may recommend hard from review
@@ -140,3 +140,11 @@ override for the non-selected provider is ignored with a warning.
 `--protocol-dir` is optional and mainly for tests or intentional alternate
 checkouts; normal usage relies on the script's own `structured-review`
 directory.
+
+Review attempts default to 1800 seconds for normal and 3600 seconds for hard,
+with explicit `--timeout-sec` overrides. Drivers can queue a reasoned stop via
+`--stop-run RUN --stop-reason REASON`, then resume a cleaned incomplete attempt
+with `--resume-run RUN` and the same review arguments. Each launch prints its
+private attempt directory. Recovery preserves the CLI conversation and rejects
+changed targets, concurrent/stale attempts, and repeated write-back. See
+`structured-review/references/recovery.md` for lifecycle and limitations.

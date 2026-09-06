@@ -71,7 +71,8 @@ self-modification involving cancellation, persistent state, and recovery.
   fails closed; it cannot start another writer. Record PID/PGID for diagnosis,
   but never automatically kill a recorded PID after a crash (PID reuse).
 - A live runner holds the chain flock through finalization. Stop uses a file
-  request in the exact latest attempt directory; if the chain lock is free,
+  request in the exact latest attempt directory; stale handles are rejected
+  with the latest attempt path; if the chain lock is free,
   report no live runner and do not signal the recorded PID. The command returns
   after queuing, explicitly says it is not an acknowledgement, and directs the
   caller to poll metadata for the terminal outcome. A crashed running attempt
@@ -140,6 +141,36 @@ unsaved generation or guarantee restoration of an in-flight external command.
 If a live model or recovery path is unavailable, report the actual evidence and
 leave that acceptance item incomplete rather than claiming success. A runner
 crash may require a new review; broad arbitrary-crash repair is outside scope.
+
+## Implementation and execution evidence
+
+Driver-reported validation, 2026-09-06:
+
+| Acceptance | Evidence | Status |
+| --- | --- | --- |
+| Models and 1800/3600 profiles | Matrix and timeout tests cover both backends, normal/hard/legacy auto and explicit overrides | Done |
+| Cooperative stop and signals | Real fake-provider subprocess tests observe stop exit 3, SIGINT 130, SIGTERM 143, cleanup and successful recovery | Done |
+| Timeout without blocking I/O | Tests exercise partial lines, closed output pipes, unread large stdin, and ignored SIGTERM requiring SIGKILL | Done |
+| Recovery guards | Tests execute concurrent/stale/completed/running/finalizing/failed/error attempts, missing/wrong IDs, missing provider history, changed HEAD/prompt/protocol/model/effort/version and unverified cleanup | Done |
+| Write-back ordering | Tests inject failure between append and commit, restore clean target to reach the eligibility guard, and observe rejection; late signal/stop tests finish once | Done |
+| Claude Fable 5.1 live recovery | Claude Code 2.1.261, hard/xhigh: stopped with exit 3, cleanup verified, same session resumed successfully, random session-only marker retained, seeded empty-input defect found, exactly one review commit, clean fixture | Done |
+| GPT-6 Astra live recovery | Codex CLI 0.153.4, hard/xhigh: explicit 150-second test limit produced timeout exit 2, same thread resumed successfully, marker retained, seeded defect found, exactly one review commit, clean fixture | Done |
+| Codex permissions on resume | Original and resumed native rollout turn_context both record model gpt-6-astra, effort xhigh, workspace-write and network_access=false | Done |
+| Other local CI checks | Backlog schema check; 18 root tests; 31 Scout tests; compile and diff whitespace checks | Done |
+| Independent implementation review and remote CI | Performed after implementation commit; final outcome recorded below | Pending |
+
+Both live smokes used isolated synthetic repositories, not this implementation
+as the defect fixture. Success means the recovery workflow completed; the seeded
+artifact was correctly judged NOT ready because average([]) divides by zero.
+Claude cumulative attempt time was about 100 seconds; Codex about 208 seconds.
+Raw logs, exact session IDs, and provider transcripts remain private temporary
+execution output. They are not committed. Tests additionally cover the final
+best-effort kill fallback when process-table verification itself fails; that
+failure path is simulated, not claimed as a live-provider observation.
+
+The retained limits are intentional: POSIX process groups only, no detached
+process ownership, no arbitrary runner-crash recovery, and same-machine CLI
+transcript retention owned by the caller. No planned feature has been deferred.
 
 ## Review Threads
 
@@ -309,3 +340,8 @@ Ready for implementation. The new section turns every enforcing claim from pass 
 - Codex sandbox on resume: if the rollout context does not expose the effective policy, the untouched-worktree and HEAD checks catch a stray write after the fact but do not prevent it. Record that outcome honestly rather than leaving the acceptance row implied.
 - Process-group termination confirms "no executing members" but detached descendants outside the group are unmanaged by design. macOS still has no parent-death signal. Both are now accepted limits rather than open questions.
 - Retention of CLI sessions remains with the CLIs. A late resume that finds the session gone is the "missing session state" path and must be tested as such.
+
+### Driver response to reviewer pass 2
+
+Accepted Thread 10: stale stop/resume handles fail and name the latest attempt.
+All prior blocking threads were resolved by Claude; implementation started.

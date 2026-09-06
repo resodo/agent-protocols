@@ -110,15 +110,14 @@ The resolved profile matrix is:
 
 | Reviewer backend | `normal` | `hard` | Effort |
 | --- | --- | --- | --- |
-| `claude` | `claude-opus-5` | `claude-fable-5` | `xhigh` |
-| `codex` | `gpt-5.6-terra` | `gpt-5.6-sol` | `xhigh` |
+| `claude` | `claude-opus-5` | `claude-fable-5-1` | `xhigh` |
+| `codex` | `gpt-5.6-terra` | `gpt-6-astra` | `xhigh` |
 
 The prompt, start log, and run metadata separately record selected tier,
 selection source, driver reason, recommended tier, recommendation reasons,
 final model/effort, and whether model/effort came from the profile or an
 explicit provider flag. Metadata temporarily retains deprecated
-`review_tier`/`review_tier_reasons` compatibility keys. Tier changes model
-routing only: both tiers apply the same readiness standard, and `hard` does not
+`review_tier`/`review_tier_reasons` compatibility keys. Tier selects model routing and the default time limit: both tiers apply the same readiness standard, and `hard` does not
 authorize invented scope or low-value findings. Review threads continue to
 record the reviewer backend in each pass heading.
 
@@ -201,22 +200,56 @@ different checkout of this protocol. By default the runner uses the
 
 ### Timeout Discipline
 
-Normal repo-backed review gates should usually use the runner default timeout
-of 900 seconds. Hard reviews should usually pass `--timeout-sec 1800`. If a
-hard review keeps the default 900-second timeout, the runner emits a non-fatal
-guidance notice without changing the caller's timeout.
+Defaults are 1800 seconds for normal (including legacy auto) and 3600 seconds
+for hard, on both backends. `--timeout-sec` explicitly overrides the positive
+per-attempt limit. Metadata records timeout source and cumulative attempt time.
+Recovery grants a fresh attempt limit, not a remaining slice of the first run.
 
-Once a driver invokes the runner with a timeout, the driver must wait until the
-reviewer exits, the runner timeout expires, or a genuine external interruption
-occurs. A genuine external interruption is a human stop request, OS/process
-signal, infrastructure failure, or session/tool crash.
+The driver may stop a reviewer with a concrete reason, using `--stop-run` and
+`--stop-reason`. Quiet output or elapsed time alone does not prove lack of
+progress; examine progress, repeated failures, changed task needs, or budget.
+A stopped review is incomplete, never a passed quality gate.
 
-The driver's outer command/tool wait budget must be greater than or equal to
-the runner `--timeout-sec`, plus enough buffer for process teardown and
-metadata writing. A driver-chosen outer timeout shorter than the runner timeout
-is not an external interruption; it violates this protocol. Do not kill a
-reviewer early because output is quiet, sparse, repetitive, or taking longer
-than expected.
+The outer process lifetime must cover the runner timeout plus cleanup and
+metadata writing (allow at least 30 seconds of teardown buffer). If the calling
+agent's tool imposes a shorter lifetime, launch using its supported background
+execution and poll the run metadata. A short per-poll wait budget is fine;
+polling must not kill the process. A heartbeat shows runner liveness, not
+substantive reviewer progress.
+
+The runner prints the attempt log directory at launch. Stop requests are
+queued there; queueing is not acknowledgement. Poll `metadata.json` until a
+terminal outcome before resuming. SIGINT/SIGTERM and timeout clean up the owned
+POSIX process group, first gracefully and then forcibly if needed. Detached
+processes outside that group are not managed. During finalization, signals are
+deferred and late stop requests do not undo completed write-back.
+
+### Recovery
+
+Use `--resume-run ATTEMPT_DIRECTORY` with the same original scope/profile
+arguments (omit `--run-log-dir`). Timeout may be changed. Each attempt has its
+own logs; always use the latest attempt directory printed at launch. Old
+attempt handles fail with the latest path, rather than silently redirecting.
+
+Recovery is supported for Claude and Codex on POSIX systems, and restores a
+persisted CLI conversation, not an in-flight computation. Only cleaned
+`timeout`, `stopped`, or `interrupted` attempts with a captured session ID may
+resume. A runner crash or outer SIGKILL is not resumable; inspect its recorded
+PID/PGID for a possible orphan before starting a fresh review. The runner never
+signals a stale PID from metadata. Missing CLI history, changed target or
+reviewer constraints, a running chain, and finalizing/completed/failed attempts
+are rejected. No --last selection, automatic retry, or fresh-session fallback.
+
+Run metadata and provider transcripts are trusted private local state. Retain
+both on the original machine for as long as recovery is needed; copying just
+the run log is insufficient. The caller owns retention and cleanup. Do not
+commit raw logs or transcripts. Keep model/effort, CLI binary/version, worktree,
+commit, artifacts, focus, and protocol stable across recovery. An incomplete
+attempt never appends review threads. The runner marks finalization before
+mutation and holds the chain lock through verification and write-back.
+
+See `references/recovery.md` for commands, outcomes, and compatibility checks.
+That operational reference is driver guidance, not a runner-loaded review lens.
 
 ## Local Overlay
 
