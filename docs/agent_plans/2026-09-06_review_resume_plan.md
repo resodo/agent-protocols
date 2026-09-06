@@ -57,6 +57,61 @@ self-modification involving cancellation, persistent state, and recovery.
    ban on driver cancellation. Outer process lifetime must cover reviewer time
    plus teardown, while individual polling waits may be short.
 
+## Concrete lifecycle and recovery rules
+
+- `RUN` is the absolute attempt log directory, printed at launch. Each attempt
+  persists `outcome=running`, `phase=created/launched/session_captured`, runner
+  PID, reviewer PID/PGID once launched, and timestamps. Capture the first valid
+  session_id on any Claude event, and Codex thread.started/thread_id.
+- Start reviewers in their own POSIX process group. Atomically persist each
+  phase change. Only terminal timeout/stopped/interrupted with
+  cleanup_complete=true and a captured session ID may resume. Running, created,
+  launched, session_captured, error, failed, finalizing, and success are NOT
+  resumable, even if their lock was released. Abrupt runner death therefore
+  fails closed; it cannot start another writer. Record PID/PGID for diagnosis,
+  but never automatically kill a recorded PID after a crash (PID reuse).
+- A live runner holds the chain flock through finalization. Stop uses a file
+  request in the exact latest attempt directory; if the chain lock is free,
+  report no live runner and do not signal the recorded PID. The command returns
+  after queuing, explicitly says it is not an acknowledgement, and directs the
+  caller to poll metadata for the terminal outcome. A crashed running attempt
+  requires operator diagnosis and a fresh review, not automatic orphan repair.
+- Terminate the owned process group with SIGTERM, wait a bounded grace period,
+  then SIGKILL remaining members and reap the leader. Confirm no executing
+  members remain (zombies are not executing); failure makes the attempt an
+  error, ineligible for resume. Detached descendants outside the process group
+  are not managed; document this limitation rather than claiming universal
+  descendant cleanup.
+- Exact Claude resume shape: `claude -p --resume ID --permission-mode auto
+  --model MODEL --effort EFFORT --output-format stream-json
+  --include-partial-messages --include-hook-events --verbose`, prompt on stdin.
+  Exact Codex shape: `codex exec resume ID - --json -m MODEL
+  -c model_reasoning_effort=EFFORT -c sandbox_mode="workspace-write"
+  --output-last-message FILE`, cwd explicitly set by Popen. Neither initial nor
+  resumed calls pass --ephemeral or --no-session-persistence. Live Codex dogfood
+  inspects recorded rollout context for the effective workspace-write policy.
+- Fingerprint inputs: canonical worktree, pre-launch HEAD, artifact/thread-file
+  sha256 hashes, complete built prompt hash (including protocol and overlays),
+  runner source hash, mode, type, topic, focus, backend, model, effort, tier,
+  reason, binary path, and binary version. Timeout may change on resume; target
+  and reviewer constraints may not. Private metadata is trusted local state,
+  not a portable or untrusted import format. Resume validates UUID session IDs
+  and rejects a backend that emits a different session ID or cannot load it.
+- Persist phase=finalizing and outcome=finalizing BEFORE any append. Defer
+  SIGINT/SIGTERM through this section; late requests never undo completed
+  output. Failed finalization is terminal and cannot resume. Before-resume HEAD
+  and clean-status checks provide a second backstop. No automatic replay of
+  write-back, even after a crash between file write and commit.
+- Preserve outcomes success/failed/error/timeout; add running/finalizing/stopped/
+  interrupted. Timeout remains exit 2; driver stop uses 3; SIGINT/SIGTERM use
+  130/143. Late signals in finalization are recorded without converting success
+  to interruption. Every resumed attempt receives a fresh time limit, records
+  attempt elapsed time and cumulative elapsed time, and uses distinct logs.
+- Use nonblocking pipe reads/writes so partial log lines or a reviewer that does
+  not consume stdin cannot suspend timeout/cancellation checks. Drivers whose
+  tools impose shorter execution lifetimes launch in supported background mode
+  and poll; a per-poll wait budget is not a process lifetime budget.
+
 ## Validation and acceptance
 
 - Unit/integration tests with fake CLIs for both backend argument shapes, early
@@ -167,3 +222,15 @@ Not yet ready for implementation. The scope is bounded and feasible against the 
 - Codex `thread.started` shape and inherited sandbox on resume are unverified locally.
 - Fable 5.1 and GPT-6 Astra availability for dogfood is not checked here; the plan's fallback wording already covers the honest-incomplete case.
 - Session and transcript retention is left to the CLIs; a resume long after the fact may find the session gone, which is the "missing session state" path and should be tested as such.
+
+### Driver response to reviewer pass 1
+
+- Accepted Threads 1, 2, 3, 4, 5, 6, 7, 8: concrete lifecycle section now pins
+  phases, argv, sandbox, fingerprint, handle, signal behavior, and exit codes.
+- Thread 1 eligibility suggestion partially rejected: launched/session_captured
+  are never resumable after abrupt runner death. Only terminal attempts with
+  verified cleanup may resume. This deliberately avoids orphan/PID-reuse repair.
+- Thread 9 accepted for index updates. A new orphan-repair/retention subsystem is
+  outside the accepted task; existing CLI retention ownership is intentional,
+  not incomplete implementation. No speculative follow-up mechanism is added.
+- Ready for reviewer recheck of these plan clarifications. No code edited yet.
