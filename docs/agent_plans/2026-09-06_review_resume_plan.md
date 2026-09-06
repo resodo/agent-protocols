@@ -345,3 +345,66 @@ Ready for implementation. The new section turns every enforcing claim from pass 
 
 Accepted Thread 10: stale stop/resume handles fail and name the latest attempt.
 All prior blocking threads were resolved by Claude; implementation started.
+
+### Reviewer pass 3 (impl, claude reviewer)
+
+Human concern, restated: long hard reviews were being killed by outer tool limits and their work lost, so the driver wants a deliberate stop, recovery of the same reviewer session, and no chance of the review being written back twice.
+
+Verified before judging: branch `feat/review-resume` at `001acde`, worktree clean, five commits ahead of `origin/main`, nine files changed. I read the full diff and the current runner end to end, the new `structured-review/tests/test_recovery.py`, the updated existing tests, `structured-review/SKILL.md`, `structured-review/references/recovery.md`, `README.md`, `docs/CURRENT.md`, and `docs/agent_plans/README.md`. Executed here:
+
+- `python -m unittest test_recovery -v`: 17 tests pass in about 34 seconds, all with real subprocesses and a fake provider.
+- `python -m unittest test_claude_structured_review`: 87 pass.
+- `python -m compileall -q structured-review scout` and `git diff --check origin/main..HEAD`: clean.
+- CLI help, plus the visible stop and resume rejection messages for a nonexistent attempt directory.
+- Two throwaway probes against the fake provider (not committed): one counting metadata writes per stream event, one raising `KeyboardInterrupt` in the window after the reviewer exits and before the finalization marker. Results are in Threads 11 and 12.
+- Not executed here: `scripts/check_backlog.py`, the root tests, and the scout tests all import PyYAML, which is absent from my local interpreter. Those three rows stay driver-reported. No live provider calls were made, per the focus. Remote CI is still pending per the plan's own table.
+- A grep for the retired values (`claude-fable-5`, `gpt-5.6-sol`, 900 seconds, the old `--timeout-sec 1800` guidance, "outer command/tool wait budget", "not an external interruption") finds them only in historical plans under `docs/agent_plans/`, which is correct.
+
+#### Traceability against the implementation contract
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| 1. Profiles, tier timeouts, timeout source | Done | Constants at `structured-review/scripts/claude_structured_review.py:31-38`; `timeout_source` set in `config_from_args`; `test_profiles_default_and_override_for_both_backends` covers normal, legacy auto, hard, and explicit override for both backends. |
+| 2. Cooperative stop, signals, group cleanup, exit codes | Done | `request_stop`, `cleanup_process`, `captured_signals`; `test_stop_command_and_signals_cleanup_and_can_resume` observes exit 3, 130, and 143 from a real runner subprocess with a real grandchild, verifies the group is gone, then resumes; `test_graceful_stop_escalates_when_reviewer_ignores_sigterm` covers SIGKILL escalation. |
+| 3. Atomic metadata, early session capture, fingerprint, private logs | Done, one efficiency defect (Thread 11) | `atomic_json` does fsync then rename; first session-bearing event captured for Claude, `thread.started` for Codex; `review_fingerprint` matches the plan's input list with timeout excluded. |
+| 4. `--resume-run`, exact argv shapes, continuation instruction | Done | `claude_argv` and `codex_argv` match the pinned shapes exactly; argv asserted in `test_both_backends_timeout_resume_and_exactly_one_commit`; the continuation text at `:1284` is not asserted by any test (Thread 14). |
+| 5. Per-attempt logs, chain lock, latest pointer, rejection set, fresh timeout, cumulative time | Done | `attempt_context` holds `chain_lock` through the yield; `require_latest` rejects stale handles by naming the latest path; tests execute running, finalizing, success, failed, and error outcomes, missing, invalid, and `--last` session ids, unverified cleanup, changed focus, model, effort, protocol, HEAD, artifact, and binary version, a dirty target, a held lock, and a stale stop. |
+| 6. Finalizing marker before append, deferred signals, exactly-once, descendants gone before repo check | Done, with two narrow windows (Threads 12 and 13) | `write_metadata(outcome="finalizing")` precedes `append_and_commit_review`; `cleanup_process` runs before the post-run snapshot; `test_failure_between_append_and_commit_is_terminal` restores the clean target so the eligibility guard itself is what rejects; `test_late_signal_during_finalization_is_recorded_not_replayed` fires a real in-process SIGTERM plus a late stop file and observes one success and a refused resume. |
+| 7. Docs: SKILL, README, CURRENT, plan index, recovery reference, blanket ban removed | Done | Diffs read; the old "do not kill a reviewer early" paragraph is replaced by the reasoned-stop text; `docs/CURRENT.md` last-updated line moved to 2026-09-06. |
+
+Guard reach: the state-machine claims from pass 2's residual list (resume against `running`, `finalizing`, `success`, and `failed`; concurrent resume against a held lock; failure injected between append and commit followed by a resume that must produce no second commit) are each executed by a test that observes the specific intended error string rather than an unrelated setup failure. After a successful resume, a second write-back is refused three independent ways: stale-attempt rejection for the old handle, `outcome=success` rejection for the new one, and a fingerprint HEAD mismatch. I traced the write-back path and found no state in which an attempt is both resumable and has a review commit.
+
+#### Blocking issues
+
+None.
+
+#### Non-blocking issues
+
+##### Thread 11: Every session-bearing stream event rewrites metadata with an fsync
+
+At `structured-review/scripts/claude_structured_review.py:1342-1346`, each event whose session id matches falls through to `patch_metadata`, which performs a JSON read, a second read inside the patch, a dump, an `fsync`, and an `os.replace`. In Claude Code's stream-json output every top-level message carries `session_id`, and `--include-partial-messages` turns every text delta into a message. My probe with a fake provider emitting 300 session-bearing events produced 310 metadata writes. A one-hour Fable review can emit tens of thousands of events, so the runner spends its event loop on synchronous disk I/O and lags behind the pipe. Stop and timeout checks happen only between loop iterations, so detection latency grows with the backlog. Correctness is unaffected and the live dogfood succeeded, so this is not blocking. Suggested fix: keep the captured id in a local variable, do the "changed session ID" comparison in memory, and call `patch_metadata` only on the first capture.
+
+##### Thread 12: A signal in the gap between reviewer exit and the finalization marker discards a completed review
+
+`run_claude` restores default signal handlers when its `captured_signals` block exits at `:1317`, and finalization only re-arms them at `:1641`. Between those points `run()` takes a git snapshot and decides the outcome (`:1631-1632`). My probe raised `KeyboardInterrupt` from that snapshot call: the attempt ended with `outcome=error`, `cleanup_complete=true`, `review.md` fully written, and resume refused. That is the fail-closed result the plan requires. By the same reading, a SIGTERM there (not executed) kills the runner with `outcome=running`, which is also non-resumable. The cost is that a review the reviewer had already finished is thrown away for a signal that lands in a window the length of one `git status`. Suggested fix: open one `captured_signals` scope around the snapshot, the outcome decision, and finalization, so a signal in that window is recorded as late exactly as it is a few lines later. The plan sentence "SIGINT and SIGTERM use the same cleanup path" would then hold without exception.
+
+##### Thread 13: The `git commit` child remains exposed to a terminal SIGINT during finalization
+
+Found by reading, not executed. `run_git` at `:291` spawns git in the runner's own process group. The runner defers its own SIGINT during finalization, but a terminal Ctrl-C is delivered to the whole foreground group, so git itself dies. The result is `CalledProcessError`, `outcome=error`, thread file appended but uncommitted, and resume refused. That is safe and matches the documented "requires inspection and a fresh review" rule, but the SKILL sentence "During finalization, signals are deferred" over-promises slightly. Either run finalization git commands with SIGINT ignored in the child, or add half a sentence to `structured-review/references/recovery.md` saying a terminal interrupt can still stop the commit and leave the thread file dirty. Driver-queued stops are unaffected because they send no signal.
+
+##### Thread 14: Small evidence and usability gaps
+
+- The continuation instruction prepended on resume (`:1284`) is not asserted by any test. The fake provider reads stdin and discards it; recording the prompt and asserting its first sentence would close the gap cheaply.
+- Pass 2 asked, as an implementation note, that the rejection for a `running` or crashed attempt print the recorded runner PID, reviewer PGID, and launch time. The error at `:1191` and the no-live-runner error at `:1139` both tell the operator to inspect those values but do not print them. One-line improvement.
+- The PyYAML-dependent check rows and the remote CI row are driver-reported or pending. Closeout should convert them to CI-backed provenance before treating the PR as validated.
+
+#### Overall judgment
+
+Ready for closeout. The implementation matches the accepted contract item by item, the negative tests exercise the real transitions and assert the intended error strings, and I could not construct a path to a second review commit or to resuming an attempt that had reached finalization. Threads 11 and 12 are each a few lines and I recommend fixing them before the PR, but neither weakens the exactly-once or fail-closed guarantees. This pass is not a merge-readiness handoff; that belongs to closeout after CI.
+
+#### Residual risks and validation gaps
+
+- Live provider behaviour is driver-reported only: same-session resume on Claude Code 2.1.261 and Codex CLI 0.153.4, the Codex workspace-write policy on resume, and the marker-retention check. I did not rerun them and cannot independently confirm them here. The sanitized evidence is consistent with the runner's own checks, since resume refuses a different id, so a successful dogfood implies the id was preserved.
+- Linux CI has not yet run this branch. The `ps -eo pgid=,stat=` parsing, `flock`, and the kqueue versus epoll selector paths are exercised only on macOS so far.
+- The runner now imports `fcntl` at module load, so the whole script is POSIX-only, not just the recovery feature. Consistent with the SKILL text, but worth one sentence if any consumer runs it elsewhere.
+- Detached descendants, orphaned reviewers after a runner SIGKILL, PID reuse, and CLI transcript retention remain the accepted limits from pass 2. The implementation neither narrows nor widens them.
