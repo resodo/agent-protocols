@@ -449,3 +449,54 @@ An implementing agent can code adapters, identity, ordered selection, fingerprin
 - Fallback chains must stay separate conversations, print exact successor handles, and write back exactly once. The planned fake-provider subprocess tests remain the right guard.
 
 There are no blocking issues. The artifact is ready for implementation.
+
+Verified before judging: branch `feat/grok-review` at `1d78679` (five commits ahead of `origin/main` `277edca`), worktree clean, no local `.agent-protocols/` overlay. Inspected `git diff origin/main` for the runner, `structured-review/tests/test_grok_selection.py`, `structured-review/tests/test_recovery.py`, `structured-review/tests/test_claude_structured_review.py`, `structured-review/SKILL.md`, `structured-review/references/recovery.md`, `README.md`, `docs/CURRENT.md`, `closeout/SKILL.md`, and `docs/agent_plans/README.md`. Compared that diff item-by-item to the accepted plan body after reviewer pass 2. Independently re-ran `python3 -m unittest discover -s structured-review/tests -p 'test_grok_selection.py'` (13 tests, OK). Scout, backlog, and unrelated checker paths were not in the feature diff. This live Grok session already carried the runner continuation prefix after an interrupted attempt.
+
+Human concern: add Grok as the third reviewer backend with ordered Claude then Codex then Grok selection, authoritative exhausted-allowance fallback, same-session recovery, append-once write-back, no per-provider permission questions, and rare-hard guidance, then dogfood the updated runner with a real Grok implementation review.
+
+### Reviewer pass 1 (impl, grok reviewer)
+
+#### Blocking issues
+
+None.
+
+#### Thread 1 — Non-blocking: leftover `resolve_reviewer_backend` still pins the retired two-provider mapping
+
+Live selection is `coding_identity` plus `BACKEND_ORDER` in `run()`, and resume never re-enters that loop. That matches the accepted plan: Claude then Codex then Grok, skip missing binaries, fall back only on pinned `credit_exhausted`, exclude `--coding-agent`, and keep explicit pins from falling back.
+
+`resolve_reviewer_backend` is no longer called from `config_from_args` or `run()`, but it still implements the old mapping (Claude marker -> Codex reviewer, Codex marker -> Claude, neither -> Claude). `test_resolve_reviewer_backend_cross_vendor_auto` and `test_resolve_reviewer_backend_both_markers_error` keep that unused helper green. The live contract is covered by `test_grok_selection.py`, which I re-ran.
+
+This does not change current behavior. It is leftover two-provider surface area: a later edit could wire the helper back in and silently restore the old auto rule. Prefer deleting the helper and those two tests, or turning them into assertions that production selection does not call it.
+
+Not blocking for closeout.
+
+#### Traceability against the accepted plan
+
+| Acceptance item | State | Evidence |
+| --- | --- | --- |
+| Grok profiles, overrides, defaults, CLI | Done | `REVIEW_MODEL_MATRIX` pins `grok-4.6` at `medium`/`xhigh` and 1800/3600s; `grok_argv` matches the accepted new/resume argv; shared-model hard-model guard is skipped when normal and hard models are equal; `--help` includes `--coding-agent` and the hardest-20% text. Covered by `test_grok_profiles_argv_help_and_override`. |
+| Identity, order, exclusion, missing binaries, pins | Done | Explicit identity wins; env Claude/Codex markers and conflict remain; unknown warns; Grok has no driver markers. `run()` skips `coding_agent_excluded` and `binary_unavailable`, attempts each eligible backend once, and explicit pins raise `CreditExhausted` without a second call. Covered by `test_every_driver_exclusion_order`, `test_kimi_selects_available_codex`, `test_missing_binary_skip_and_all_missing`, `test_pins_never_fall_back`. |
+| Credit positive/negative controls and single write | Done | Adapter classifiers: Claude weekly-limit `result` with `is_error=true`; Codex `turn.failed` usage-limit/quota envelopes; Grok fail-closed as `provider_error`. Prose/tool copies, auth/network/generic rate limit, dirty/moved HEAD, malformed credit, and write-back failure do not select another provider. Fallback writes exactly one review commit. Re-ran those tests in this session. |
+| Grok output/session validation | Done | Final Grok result requires `end_turn`, nonempty text, and a consistent UUID; missing/truncated/malformed/empty/`max_turns`/error paths do not write. `prompt_on_stdin=False` and tests assert empty stdin plus `--prompt-file`. Forbidden `--session-id`/`--restore-code` asserted in the fake CLI. |
+| Fake three-backend recovery and guards | Done | Timeout/stop then same-ID resume, stale handle, concurrent resume, missing/mismatched session, changed scope/profile/binary/identity/backend, and single append remain in `test_recovery.py` and `test_auto_resume_keeps_grok_when_claude_recovers_and_rejects_changes` / `test_grok_stop_then_same_session_resume_and_profile_guard`. Resume fingerprint includes `coding_agent`; timeout is not fingerprinted. |
+| Documentation and hard/availability policy | Done | Skill, prompt, CLI help, `README.md`, `docs/CURRENT.md`, `closeout/SKILL.md`, `structured-review/references/recovery.md`, and `docs/agent_plans/README.md` Current Records all state ordered fallback without per-provider permission, rare-hard judgment, and Grok 4.6 medium/xhigh. |
+| Real updated-runner Grok dogfood and resume | Partial, in progress on this gate | This review is a live Grok `impl` pass through the updated runner. The session already received the same-conversation continuation prefix after an interrupt, which is the recovery contract. Closeout still needs the driver to record the actual stop/resume outcome and selected model/effort. Fake CLI tests cannot close that row by themselves. |
+
+Scout’s independent provider policy and `docs/backlog.yml` were not changed.
+
+#### Overall judgment
+
+Ready for closeout.
+
+The committed runner implements the accepted selection, classifier, recovery, append-once, and documentation contracts without requiring the next agent to guess argv, identity, or fallback rules. Subsequent reviews of this change should stay on `normal` unless new semantic difficulty appears; the mechanical hard recommendation on this artifact (length, two artifacts, keyword signals) does not change readiness.
+
+Do not treat this pass as merge authorization. Closeout still owns final git/CI/handoff rechecks and must record the live stop/resume result in the evidence table.
+
+#### Residual risks and validation gaps
+
+- Grok exhausted-allowance classification remains fail-closed until a real envelope is observed. That is the accepted policy, not a defect.
+- Full `python3 -m unittest discover -s structured-review/tests` (driver-reported 120), Scout (31), and checker (18) were not re-run in this session. I independently re-ran the 13 Grok selection tests, including the fallback, negative-credit, append-once, and stop/resume cases that this review is supposed to stress.
+- Live stop/resume integration: plan-mode Grok in this session could read the worktree and run the selection tests. Resume restored the original scope and asked for one complete review rather than a delta. The in-band skill copy was truncated and offloaded both before and after resume; the runner-written private prompt file remains the full source of truth. Driver must resume the latest attempt directory printed at launch, poll `metadata.json` to a terminal outcome, and must not treat a stopped attempt as a passed gate. A stop during finalization/write-back is still not resumable; inspect an uncommitted thread append before a fresh review.
+- No persistent availability cache was added. A successful Grok review proves current usability, not remaining credit.
+
+There are no blocking issues.
