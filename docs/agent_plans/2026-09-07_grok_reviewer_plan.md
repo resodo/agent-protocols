@@ -537,3 +537,45 @@ There are no blocking issues.
 
 Request Grok resolution of implementation Thread 1 and review of the focused
 post-review changes. Human policy and accepted scope are unchanged.
+
+### Reviewer pass 2 (impl, grok reviewer)
+
+Verified before judging: branch `feat/grok-review` at `91d5f5f` (seven commits ahead of `origin/main` `277edca`), worktree clean, no local `.agent-protocols/` overlay. Started from `git diff d12ce52..HEAD` and Driver response 2. Inspected `structured-review/scripts/claude_structured_review.py`, `structured-review/tests/test_grok_selection.py`, `structured-review/tests/test_claude_structured_review.py`, `structured-review/references/recovery.md`, and the plan body evidence table. Independently re-ran `python3 -m unittest discover -s structured-review/tests -p 'test_grok_selection.py'` (14 tests, OK), including the new override-skip case, the eligible-provider hard-model guard, generic `provider_error` metadata, and `exit_error` non-fallback.
+
+Human concern: add Grok as the third reviewer backend with ordered Claude then Codex then Grok selection, then dogfood the updated runner with a real Grok implementation review and resolve remaining implementation findings.
+
+#### Blocking issues
+
+None.
+
+#### Thread 1 — Non-blocking: leftover `resolve_reviewer_backend` still pins the retired two-provider mapping
+
+Resolved. Artifact body and runner updated in commit `91d5f5f`.
+
+`resolve_reviewer_backend` is gone from `structured-review/scripts/claude_structured_review.py`. The two tests that kept the retired Claude-marker-to-Codex / Codex-marker-to-Claude mapping green are gone from `structured-review/tests/test_claude_structured_review.py`. There are no remaining production callers under `structured-review/`. Live selection remains `coding_identity` plus `BACKEND_ORDER` in `run()`, with resume still outside that loop. Conflicting inherited markers still fail in `coding_identity` unless the caller pins a backend.
+
+#### Follow-up changes (no new thread)
+
+The post-review edits match Driver response 2 and do not reopen accepted plan or implementation scope.
+
+- Fresh auto selection now returns from `config_from_args` before `select_profile`. `run()` checks `binary_unavailable` first, then calls `select_profile` only for an eligible backend. `test_unavailable_provider_override_does_not_block_selection` is a two-sided guard: missing Claude plus `--model claude-fable-5-1` skips to Grok; the same flag still raises `pinned hard-profile model` when Claude is eligible. Resume, explicit pins, and dry-run still apply the selected backend profile in `config_from_args`.
+- Incomplete Grok results and nonzero provider return codes record `reason_category=provider_error`. `test_grok_incomplete_error_and_malformed_results_never_write` asserts that metadata on the `no_session` / `truncated` / `malformed` / `empty` / `max_turns` / `error` paths. `exit_error` is in the non-quota loop and does not fall back.
+- The recovery example is now a normal invocation with `--coding-agent` and an explicit pin, which matches the accepted identity and rare-hard rules.
+
+Live dogfood of the previous runner at `1d78679` remains driver-reported, with prior reviewer corroboration: stop then resume kept the same UUID, wrote exactly one review commit `d12ce52`, and left private transcripts out of git. This pass is a later real Grok re-review of `91d5f5f`; I did not re-open those private logs.
+
+#### Overall judgment
+
+Ready for closeout.
+
+The accepted implementation still matches the plan. The leftover two-provider helper is gone, and the small selection/metadata follow-up is covered by tests that fail in both directions where that matters. Subsequent reviews of this change should stay on `normal` unless new semantic difficulty appears.
+
+Do not treat this pass as merge authorization. Closeout still owns final git, CI, documentation, and handoff rechecks.
+
+#### Residual risks and validation gaps
+
+- Grok exhausted-allowance classification remains fail-closed until a real envelope is observed. That is the accepted policy, not a defect.
+- Driver-reported full suite: 119 reviewer tests after this follow-up (120 minus two obsolete helper tests plus one override-selection regression). I independently re-ran the 14 Grok selection tests, not the full discover suite, Scout, or checker.
+- A successful Grok review still proves current usability, not remaining credit. No persistent availability cache was added.
+
+There are no blocking issues.
