@@ -351,3 +351,69 @@ Validation provenance: driver-reported baseline 107 tests passed; Grok pass 1
 was a real tool-using review with successful terminal result. Real runner Grok
 recovery and ordered fallback remain planned, not claimed complete. Request
 reviewer resolution of threads 1–3 and review of the human-directed additions.
+
+### Reviewer pass 2 (impl-plan, grok reviewer)
+
+Verified before judging: branch `feat/grok-review` at `454e3ee`, worktree clean, implementation not started. Inspected `git diff bb2e470 454e3ee -- docs/agent_plans/2026-09-07_grok_reviewer_plan.md` and Driver response 1 first, then the updated Goal, Five gates, Provider adapter, Ordered selection, Recovery, and Acceptance sections. Compared those pins against the current runner's argv, session extraction, fingerprint, hard-model guard, and missing-binary fail-closed path, plus installed Grok help for `--permission-mode plan` and `--prompt-file`. No local `.agent-protocols/` overlay.
+
+Human concern: close the three blocking routing/recovery gaps, then confirm the human policy additions (no per-provider permission, rare hard for about the hardest 20 percent of tasks, real updated-runner Grok dogfood) are implementable without guessing.
+
+#### Thread 1 — Blocking: credit-fallback classification has no pinned authoritative signal
+
+Resolved. Artifact body updated in Ordered selection and credit evidence.
+
+Claude is pinned to an observed `type=result` / `is_error=true` envelope whose string `result` begins `You've hit your weekly limit`, with sanitized reset-suffix fixtures and an explicit rule that a successful or ordinary assistant copy of the same text is not evidence. Codex is pinned to `type=turn.failed` / `error.message` prefixes from upstream `codex-rs/protocol/src/error.rs` (`You've hit your usage limit.` / `You've hit your usage limit for `) plus exact `Quota exceeded. Check your plan and billing details.`, with source-backed sanitized fixtures allowed and no live-account-exhaustion requirement. Grok unknown errors fail closed as `provider_error`. Reason categories are named: `credit_exhausted` with terminal `failed`, `binary_unavailable` as a skip, other failures as `provider_error`. Classification belongs on adapter callbacks. That is enough to write the negative and positive credit tests without inventing envelopes.
+
+#### Thread 2 — Blocking: Grok new/resume argv and session evidence are not implementable from the plan
+
+Resolved. Artifact body updated in Provider adapter and profile.
+
+New-attempt argv is exact: `grok --model MODEL --reasoning-effort EFFORT --permission-mode plan --no-subagents --output-format streaming-messages-json --prompt-file PRIVATE_ATTEMPT/prompt.md`. Resume adds only `--resume UUID`. Forbidden flags are named. Session evidence is observed `session_id` on `system` and `result`, with the same UUID required on resume. The bootstrap observation (tool-using prompt-file loop, `system/init` UUID, successful `result` with the same UUID) supersedes the pass-1 premise that this stream has no session field. Adapter callbacks own session and error extraction. Live stop/resume remains an acceptance item, not a missing argv contract.
+
+#### Thread 3 — Blocking: auto identity and candidate construction are not a closed CLI contract
+
+Resolved. Artifact body updated in Ordered selection and Recovery.
+
+Public flag is `--coding-agent NAME` (nonempty normalized lowercase). `claude` / `codex` / `grok` exclude that backend; `kimicode` and other names exclude none. Explicit identity wins inherited markers; env-only Claude/Codex markers and both-families conflict are unchanged; Grok has no verified marker and its drivers must pass `--coding-agent grok`. Unknown warns and cannot promise same-agent exclusion. Resume resolves metadata before candidate construction: `auto` keeps the recorded backend, explicit backend/identity disagreement is rejected, and the candidate loop is not entered. Missing binaries may be skipped with a recorded reason; explicit pins still do not fall back. SKILL/README/`docs/CURRENT.md` remain in the same-change file list for that behavior change.
+
+#### Thread 4 — Non-blocking: Grok’s hard/normal split is effort-only
+
+Resolved. Artifact body updated in Provider adapter and Goal.
+
+The shared-model hard-model guard exception stays. Explicit effort overrides remain allowed, including normal plus Grok `xhigh`, with provenance. Docs must say drivers must not use those overrides to evade the rare-hard guidance. Profiles are unchanged.
+
+#### Thread 5 — Non-blocking: record the bootstrap authorization in the plan body
+
+Resolved. Artifact body updated in Five gates.
+
+Direct Grok bootstrap via the checkout prompt builder and append path is settled authorization for remaining plan-review passes. Later gates use the implemented runner. This is not reopened.
+
+#### Blocking issues
+
+None.
+
+#### Non-blocking issues
+
+None that should delay implementation. Treat the pinned argv/session/classifier paragraphs as source of truth if they overlap older discovery hedges in the same sections (stdin vs prompt-file is already decided: write the private prompt file; Grok does not consume the runner stdin prompt). Adding this plan to `docs/agent_plans/README.md` Current Records remains in-scope documentation follow-through from pass 1.
+
+#### Overall judgment
+
+Ready for implementation.
+
+Threads 1–3 are closed by body pins, not by driver assertion alone. Human additions are in the Goal and gates and do not reopen those contracts:
+
+- No per-provider permission is a driver/SKILL workflow rule, distinct from the runner’s automatic `credit_exhausted` candidate loop. Non-quota failures still stop that loop; the driver may start a fresh review on the next eligible backend without asking, after cleanup and an unchanged target. Escalate availability only when every backend is unavailable or excluded by same-agent policy.
+- Rare hard is a judgment aid for roughly the hardest 20 percent of tasks (major design, major architecture, unusually difficult bugs), not a quota and not a runner-enforced count. Mechanical signals, artifact length/count, review type, and keywords still do not qualify. Skill, CLI help, prompt, README, `docs/CURRENT.md`, and closeout tier guidance update in the same change; existing hard model/effort/timeout profiles stay. Subsequent reviews of this change stay on normal unless new semantic difficulty appears.
+- Implementation Review must dogfood this branch’s updated runner and a real Grok call. Automatic Codex-driver routing may still land on Claude if Claude is actually available; do not fabricate exhaustion. Deterministic fallback stays on fixtures, and Grok must still be smoked for real.
+
+An implementing agent can code adapters, identity, ordered selection, fingerprints, and tests from this body without inventing CLI contracts.
+
+#### Residual risks and validation gaps
+
+- Live Grok stop/resume through the implemented runner is still unexecuted. Fake CLIs cannot mark provider integration Done. Keep that acceptance row.
+- Grok credit classification remains fail-closed until an exhausted-allowance envelope is observed. That is accepted, not a gap to fill with invented fields.
+- Common spawn currently writes the review prompt on stdin. Grok’s prompt channel is the private file; close or omit that stdin prompt rather than dual-feeding. Live smoke is the check.
+- A successful review still proves current usability only, not remaining credit. No availability cache.
+- Fallback chains must stay separate conversations, print exact successor handles, and write back exactly once. The planned fake-provider subprocess tests remain the right guard.
+
+There are no blocking issues. The artifact is ready for implementation.
