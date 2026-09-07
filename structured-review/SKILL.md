@@ -1,6 +1,6 @@
 ---
 name: structured-review
-description: Use when a written reviewable artifact needs structured human-agent review, including plans, implementation plans, implementation reviews, optional closeout evidence reviews, and review-response passes. Defaults repo-backed review gates to the bundled runner when available, with Claude and Codex reviewer backends, explicit reviewer/driver roles, and driver-owned post-review decisions.
+description: Use when a written reviewable artifact needs structured human-agent review, including plans, implementation plans, implementation reviews, optional closeout evidence reviews, and review-response passes. Uses the bundled Claude, Codex, and Grok runner with ordered availability selection, explicit roles, and driver-owned decisions.
 ---
 
 # Structured Review
@@ -62,27 +62,40 @@ The runner resolves reviewer selection in two steps: backend, then a
 driver-selected review tier. Callers should describe the actual artifact scope
 and review focus; they should not duplicate model-selection logic in prompts.
 
-For the backend, `--reviewer-backend auto` selects the cross-vendor reviewer
-from the driver's environment:
+For the backend, `--reviewer-backend auto` tries **Claude > Codex > Grok**,
+excluding the current coding agent. Missing binaries and authoritative
+exhausted-allowance errors advance to the next eligible backend without asking
+the human. No provider-balance polling or persistent availability cache is used.
 
-- Claude Code driver -> `codex` reviewer;
-- Codex driver -> `claude` reviewer;
-- another or unrecognized coding agent -> `claude` reviewer;
-- both Claude and Codex driver markers -> fail and require an explicit
-  `--reviewer-backend`.
+Pass `--coding-agent NAME` on new calls (`claude`, `codex`, `grok`, `kimicode`,
+or another agent name). Explicit identity overrides inherited environment
+markers. Without it, Claude/Codex markers identify those drivers; conflicting
+markers require explicit identity or an intentional backend pin. Grok drivers
+must pass `--coding-agent grok`, because no reliable marker is pinned. Another
+or unrecognized coding agent excludes none; unknown identity warns that
+same-agent exclusion cannot be guaranteed.
+
+Examples: Codex driver with Claude allowance exhausted -> Grok; Kimi Code driver
+with Claude exhausted but Codex available -> Codex. Explicit backend pins do not
+fall back. Resume keeps the recorded backend and identity and never re-enters
+automatic selection. See the recovery reference for failure categories.
 
 For repo-backed gates, the driver must pass `--review-tier normal` or
 `--review-tier hard`. The review type, artifact count, artifact length, and
 keywords never change that selection or its model profile.
 
-`hard` requires `--tier-reason` with a non-empty, concrete explanation of the
-semantic difficulty. Appropriate reasons include consistency across multiple
-authoritative data models, irreversible or high-risk data migration, complex
-concurrency/locking/transaction/recovery correctness, shared protocol
-self-modification, or evidence that Opus could not reliably complete the
-review. Artifact count, document length, Closeout Review type, and a sensitive
-keyword alone are not reasons. The runner rejects `--tier-reason` with normal
-or auto.
+Normal is the default. Keep hard scarce: before choosing it, judge whether this
+task belongs to roughly the hardest 20% of tasks you handle. Major design, major
+architecture changes, or unusually difficult bugs can qualify when the actual
+reasoning difficulty warrants it. The 20% is a judgment aid, not a numerical
+quota or a mechanically enforced percentile.
+
+`hard` requires `--tier-reason` with a non-empty, concrete explanation of what
+makes this task unusually difficult. Routine shared-protocol edits, artifact
+count, document length, Closeout Review type, keywords, and mechanical runner
+recommendations alone do not qualify. Use normal when in doubt. The runner
+rejects `--tier-reason` with normal or auto; it cannot validate your subjective
+difficulty judgment.
 
 For compatibility, omitted `--review-tier` and explicit `--review-tier auto`
 select `normal`, emit a deprecation warning, and record
@@ -112,6 +125,7 @@ The resolved profile matrix is:
 | --- | --- | --- | --- |
 | `claude` | `claude-opus-5` | `claude-fable-5-1` | `xhigh` |
 | `codex` | `gpt-5.6-terra` | `gpt-6-astra` | `xhigh` |
+| `grok` | `grok-4.6` | `grok-4.6` | normal `medium`; hard `xhigh` |
 
 The prompt, start log, and run metadata separately record selected tier,
 selection source, driver reason, recommended tier, recommendation reasons,
@@ -121,9 +135,8 @@ explicit provider flag. Metadata temporarily retains deprecated
 authorize invented scope or low-value findings. Review threads continue to
 record the reviewer backend in each pass heading.
 
-If an auto-selected backend binary is unavailable, the runner fails with an
-actionable error. Substituting the same-vendor reviewer is an explicit
-human/driver decision via `--reviewer-backend`, never a silent fallback.
+Automatic fallback never selects the identified coding agent. An intentional
+explicit backend pin remains an override, not an automatic fallback.
 
 `Default` means use the runner unless:
 - the human explicitly says not to use the runner or a specific reviewer
@@ -135,12 +148,19 @@ The runner is available when:
 - the runner script exists in this protocol checkout or submodule;
 - the target worktree is a git repository;
 - Python can run the script;
-- the selected reviewer backend binary is available through the configured
-  `--claude-bin` or `--codex-bin`.
+- an eligible reviewer backend binary is available through the configured
+  `--claude-bin`, `--codex-bin`, or `--grok-bin`.
 
 Do not silently substitute driver self-review, chat-only commentary, or a
-manually constructed reviewer prompt for a required repo-backed review gate. If
-the runner is unavailable, report that blocker and ask how to proceed.
+manually constructed reviewer prompt for a required repo-backed review gate.
+Do not ask the human for permission to try the next eligible reviewer or repeat
+a needed review. For non-quota failures, the runner stops; the driver diagnoses
+the error, verifies cleanup and unchanged target, and may launch a fresh review
+on the next eligible backend without asking. Use same-session recovery for
+stopped/timed-out attempts when appropriate. Never replay an unresolved mutation
+or finalization failure. Escalate reviewer availability only after all three
+backends are unavailable or excluded by same-agent policy. Other scope and
+safety escalations still follow their own rules.
 
 ### Runner Modes
 
@@ -154,6 +174,7 @@ python structured-review/scripts/claude_structured_review.py \
   --type impl-plan \
   --thread-file docs/example_plan.md \
   --artifact docs/example_plan.md \
+  --coding-agent codex \
   --review-tier normal \
   --focus "Review acceptance, validation, scope, and role boundaries." \
   --topic "example plan"
@@ -175,14 +196,18 @@ provides a thread file that already has a `## Review Threads` section.
 The explicit runner `--mode` is the write-back authorization for that run. The
 driver still owns the decision after receiving reviewer output.
 
-Pass `--reviewer-backend claude|codex` to pin the reviewer backend; the
-default `auto` selects the cross-vendor reviewer for the detected driver.
+Pass `--reviewer-backend claude|codex|grok` to pin the reviewer backend; the
+default `auto` uses ordered selection excluding the identified driver.
 
 Pass `--review-tier normal|hard` for every new repo-backed call. Provider-
-specific `--model`, `--effort`, `--codex-model`, and `--codex-effort` flags
+specific `--model`, `--effort`, `--codex-model`, `--codex-effort`, `--grok-model`,
+and `--grok-effort` flags
 override only the selected backend's profile and are intended for deliberate
 exceptions. A non-hard tier cannot use those flags to select that backend's
-pinned hard-profile model; select hard and provide `--tier-reason` instead.
+pinned hard-only profile model; select hard and provide `--tier-reason` instead.
+Grok shares its model across tiers, so that model is allowed for normal too.
+Effort overrides remain deliberate exceptions with provenance; do not use them
+to evade the rare-hard guidance.
 Repeating the pinned hard model as an override on a valid hard run is allowed.
 If a caller supplies an override for the non-selected provider, the runner
 warns that the flag is ignored.
@@ -201,7 +226,7 @@ different checkout of this protocol. By default the runner uses the
 ### Timeout Discipline
 
 Defaults are 1800 seconds for normal (including legacy auto) and 3600 seconds
-for hard, on both backends. `--timeout-sec` explicitly overrides the positive
+for hard, on all three backends. `--timeout-sec` explicitly overrides the positive
 per-attempt limit. Metadata records timeout source and cumulative attempt time.
 Recovery grants a fresh attempt limit, not a remaining slice of the first run.
 
@@ -232,7 +257,7 @@ arguments (omit `--run-log-dir`). Timeout may be changed. Each attempt has its
 own logs; always use the latest attempt directory printed at launch. Old
 attempt handles fail with the latest path, rather than silently redirecting.
 
-Recovery is supported for Claude and Codex on POSIX systems, and restores a
+Recovery is supported for Claude, Codex, and Grok on POSIX systems, and restores a
 persisted CLI conversation, not an in-flight computation. Only cleaned
 `timeout`, `stopped`, or `interrupted` attempts with a captured session ID may
 resume. A runner crash or outer SIGKILL is not resumable; inspect its recorded

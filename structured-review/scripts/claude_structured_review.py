@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Claude Code or Codex as a structured-review reviewer for a target worktree."""
+"""Run Claude Code, Codex, or Grok Build as a structured-review reviewer."""
 
 from __future__ import annotations
 
@@ -42,6 +42,8 @@ HARD_REVIEW_LINE_THRESHOLD = 1000
 BACKEND_AUTO = "auto"
 BACKEND_CLAUDE = "claude"
 BACKEND_CODEX = "codex"
+BACKEND_GROK = "grok"
+BACKEND_ORDER = (BACKEND_CLAUDE, BACKEND_CODEX, BACKEND_GROK)
 REVIEW_TIER_AUTO = "auto"
 REVIEW_TIER_NORMAL = "normal"
 REVIEW_TIER_HARD = "hard"
@@ -60,6 +62,10 @@ REVIEW_MODEL_MATRIX = {
     BACKEND_CODEX: {
         REVIEW_TIER_NORMAL: (DEFAULT_CODEX_MODEL, DEFAULT_CODEX_EFFORT),
         REVIEW_TIER_HARD: (HARD_CODEX_MODEL, DEFAULT_CODEX_EFFORT),
+    },
+    BACKEND_GROK: {
+        REVIEW_TIER_NORMAL: ("grok-4.6", "medium"),
+        REVIEW_TIER_HARD: ("grok-4.6", "xhigh"),
     },
 }
 
@@ -169,6 +175,12 @@ class RunnerError(RuntimeError):
         self.exit_code = exit_code
 
 
+class CreditExhausted(RunnerError):
+    """Authoritative provider error, eligible for a fresh auto candidate."""
+
+    attempt: Path | None = None
+
+
 @dataclass(frozen=True)
 class ResolvedPath:
     rel: str
@@ -206,6 +218,13 @@ class RunConfig:
     timeout_source: str = "profile"
     resume_run: Path | None = None
     resume_session_id: str | None = None
+    grok_bin: str = "grok"
+    grok_model: str = "grok-4.6"
+    grok_effort: str = "medium"
+    requested_backend: str = BACKEND_CLAUDE
+    coding_agent: str = "unknown"
+    profile_overrides: tuple[tuple[str, str | None, str | None], ...] = ()
+    selection_history: tuple[dict[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -407,12 +426,17 @@ def resolve_review_profile(
     claude_effort: str | None,
     codex_model: str | None,
     codex_effort: str | None,
+    grok_model: str | None = None,
+    grok_effort: str | None = None,
 ) -> tuple[str, str, str, str]:
     model, effort = REVIEW_MODEL_MATRIX[backend][selected_tier]
-    model_override = claude_model if backend == BACKEND_CLAUDE else codex_model
-    effort_override = claude_effort if backend == BACKEND_CLAUDE else codex_effort
-    model_flag = "--model" if backend == BACKEND_CLAUDE else "--codex-model"
-    effort_flag = "--effort" if backend == BACKEND_CLAUDE else "--codex-effort"
+    model_override, effort_override = {
+        BACKEND_CLAUDE: (claude_model, claude_effort),
+        BACKEND_CODEX: (codex_model, codex_effort),
+        BACKEND_GROK: (grok_model, grok_effort),
+    }[backend]
+    prefix = "--" if backend == BACKEND_CLAUDE else f"--{backend}-"
+    model_flag, effort_flag = prefix + "model", prefix + "effort"
     model_source = "profile"
     effort_source = "profile"
     if model_override is not None:
@@ -426,7 +450,8 @@ def resolve_review_profile(
 
 def require_hard_profile_model_has_hard_tier(backend: str, selected_tier: str, model: str) -> None:
     hard_model = REVIEW_MODEL_MATRIX[backend][REVIEW_TIER_HARD][0]
-    if selected_tier != REVIEW_TIER_HARD and model == hard_model:
+    normal_model = REVIEW_MODEL_MATRIX[backend][REVIEW_TIER_NORMAL][0]
+    if hard_model != normal_model and selected_tier != REVIEW_TIER_HARD and model == hard_model:
         model_flag = "--model" if backend == BACKEND_CLAUDE else "--codex-model"
         raise RunnerError(
             f"{model_flag} cannot select pinned hard-profile model '{hard_model}' with "
@@ -441,13 +466,46 @@ def unused_profile_override_flags(
     claude_effort: str | None,
     codex_model: str | None,
     codex_effort: str | None,
+    grok_model: str | None = None,
+    grok_effort: str | None = None,
 ) -> tuple[str, ...]:
-    candidates = (
-        (("--codex-model", codex_model), ("--codex-effort", codex_effort))
-        if backend == BACKEND_CLAUDE
-        else (("--model", claude_model), ("--effort", claude_effort))
-    )
-    return tuple(flag for flag, value in candidates if value is not None)
+    providers = {BACKEND_CLAUDE: (claude_model, claude_effort),
+                 BACKEND_CODEX: (codex_model, codex_effort),
+                 BACKEND_GROK: (grok_model, grok_effort)}
+    return tuple(("--" if name == BACKEND_CLAUDE else f"--{name}-") + kind
+                 for name, values in providers.items() if name != backend
+                 for kind, value in zip(("model", "effort"), values) if value is not None)
+
+
+def select_profile(config: RunConfig, backend: str) -> RunConfig:
+    overrides = {f"{name}_{kind}": value
+                 for name, model, effort in config.profile_overrides
+                 for kind, value in (("model", model), ("effort", effort))}
+    for name in BACKEND_ORDER:
+        overrides.setdefault(f"{name}_model", None)
+        overrides.setdefault(f"{name}_effort", None)
+    model, effort, model_source, effort_source = resolve_review_profile(backend, config.selected_tier, **overrides)
+    require_hard_profile_model_has_hard_tier(backend, config.selected_tier, model)
+    unused = unused_profile_override_flags(backend, **overrides)
+    if unused:
+        print(f"warning: reviewer backend '{backend}' ignores override flags for the non-selected provider: {', '.join(unused)}", file=sys.stderr)
+    prefix = "" if backend == BACKEND_CLAUDE else backend + "_"
+    return replace(config, backend=backend, model_source=model_source, effort_source=effort_source,
+                   **{prefix + "model": model, prefix + "effort": effort})
+
+
+def coding_identity(raw: str | None, env: Mapping[str, str], *, explicit_backend: bool = False) -> str:
+    if raw is not None:
+        value = raw.strip().lower()
+        if not value:
+            raise RunnerError("--coding-agent must be a nonempty name")
+        return value
+    claude, codex = detect_driver_markers(env)
+    if claude and codex:
+        if explicit_backend:
+            return "unknown"  # Preserve intentional legacy explicit pin behavior.
+        raise RunnerError("conflicting driver markers; pass --coding-agent (or --reviewer-backend to pin intentionally)")
+    return BACKEND_CLAUDE if claude else (BACKEND_CODEX if codex else "unknown")
 
 
 def default_protocol_dir() -> Path:
@@ -511,6 +569,7 @@ def build_prompt(config: RunConfig) -> str:
             f"- Effort: {active_effort(config)}",
             f"- Effort source: {config.effort_source}",
             "- Review tier affects model routing and the default attempt time limit. Apply the same readiness standard at both tiers; do not invent scope or low-value findings for a hard review.",
+            "- Normal is the default. Reserve hard for roughly the hardest 20% of the driver's tasks: major design, major architecture, or unusually difficult bugs. This is judgment, not a numerical quota. Mechanical recommendations and routine protocol edits alone do not qualify; do not evade this guidance with provider overrides.",
             "",
             "Task-specific focus:",
             config.focus.strip(),
@@ -883,6 +942,63 @@ def codex_argv(config: RunConfig, logs: RunLogs) -> list[str]:
     ]
 
 
+def grok_argv(config: RunConfig, logs: RunLogs) -> list[str]:
+    return [
+        config.grok_bin, "--model", config.grok_model,
+        "--reasoning-effort", config.grok_effort, "--permission-mode", "plan",
+        "--no-subagents", "--output-format", "streaming-messages-json",
+        "--prompt-file", str(logs.prompt),
+        *(["--resume", config.resume_session_id] if config.resume_session_id else []),
+    ]
+
+
+def message_session(event: dict[str, Any]) -> Any:
+    return event.get("session_id")
+
+
+def codex_session(event: dict[str, Any]) -> Any:
+    return event.get("thread_id") if event.get("type") == "thread.started" else None
+
+
+def grok_session(event: dict[str, Any]) -> Any:
+    return event.get("session_id") if event.get("type") in ("system", "result") else None
+
+
+def claude_failure(event: dict[str, Any]) -> str | None:
+    if event.get("type") != "result" or not (event.get("is_error") or event.get("subtype", "success") != "success"):
+        return None
+    # Observed Claude CLI error envelope; never scan assistant/tool content.
+    text = event.get("result")
+    if event.get("is_error") is True and isinstance(text, str) and re.match(
+        r"^You've hit your weekly limit\s*·\s*resets\s+\S", text
+    ):
+        return "credit_exhausted"
+    return "provider_error"
+
+
+def codex_failure(event: dict[str, Any]) -> str | None:
+    if event.get("type") != "turn.failed":
+        return None
+    error = event.get("error")
+    text = error.get("message") if isinstance(error, dict) else None
+    # Upstream codex-rs/protocol/src/error.rs UsageLimitReached / QuotaExceeded.
+    if isinstance(text, str) and (text.startswith(("You've hit your usage limit.", "You've hit your usage limit for "))
+                                or text == "Quota exceeded. Check your plan and billing details."):
+        return "credit_exhausted"
+    return "provider_error"
+
+
+def grok_failure(event: dict[str, Any]) -> str | None:
+    if event.get("type") != "result":
+        return None
+    if (event.get("subtype") != "success" or event.get("is_error") is not False
+            or event.get("stop_reason") != "end_turn"
+            or not valid_session_id(event.get("session_id"))
+            or not isinstance(event.get("result"), str) or not event["result"].strip()):
+        return "provider_error"
+    return None
+
+
 def claude_finalize(state: ReviewState, logs: RunLogs) -> str:
     return state.final_message or "".join(state.text_deltas)
 
@@ -955,6 +1071,9 @@ class ReviewerBackend:
     finalize: Callable[[ReviewState, RunLogs], str]
     version_for: Callable[[RunConfig], str]
     driver_markers: tuple[str, ...]
+    session_for: Callable[[dict[str, Any]], Any]
+    failure_for: Callable[[dict[str, Any]], str | None]
+    prompt_on_stdin: bool = True
 
 
 BACKENDS: dict[str, ReviewerBackend] = {
@@ -966,6 +1085,8 @@ BACKENDS: dict[str, ReviewerBackend] = {
         finalize=claude_finalize,
         version_for=claude_version,
         driver_markers=CLAUDE_DRIVER_MARKERS,
+        session_for=message_session,
+        failure_for=claude_failure,
     ),
     BACKEND_CODEX: ReviewerBackend(
         name=BACKEND_CODEX,
@@ -975,6 +1096,20 @@ BACKENDS: dict[str, ReviewerBackend] = {
         finalize=codex_finalize,
         version_for=codex_version,
         driver_markers=CODEX_DRIVER_MARKERS,
+        session_for=codex_session,
+        failure_for=codex_failure,
+    ),
+    BACKEND_GROK: ReviewerBackend(
+        name=BACKEND_GROK,
+        bin_for=lambda config: config.grok_bin,
+        argv_for=grok_argv,
+        parse_line=process_stream_line,
+        finalize=claude_finalize,
+        version_for=lambda config: binary_version(config.grok_bin, BACKEND_GROK, config.worktree),
+        driver_markers=(),
+        session_for=grok_session,
+        failure_for=grok_failure,
+        prompt_on_stdin=False,
     ),
 }
 
@@ -985,28 +1120,12 @@ def detect_driver_markers(env: Mapping[str, str]) -> tuple[bool, bool]:
     return claude_marker, codex_marker
 
 
-def resolve_reviewer_backend(raw: str, env: Mapping[str, str]) -> tuple[str, bool]:
-    """Resolve the reviewer backend name and whether a driver marker chose it."""
-    if raw != BACKEND_AUTO:
-        return raw, False
-    claude_marker, codex_marker = detect_driver_markers(env)
-    if claude_marker and codex_marker:
-        raise RunnerError(
-            "driver environment carries both Claude and Codex markers; pass --reviewer-backend explicitly"
-        )
-    if claude_marker:
-        return BACKEND_CODEX, True
-    if codex_marker:
-        return BACKEND_CLAUDE, True
-    return BACKEND_CLAUDE, False
-
-
 def active_model(config: RunConfig) -> str:
-    return config.model if config.backend == BACKEND_CLAUDE else config.codex_model
+    return {BACKEND_CLAUDE: config.model, BACKEND_CODEX: config.codex_model, BACKEND_GROK: config.grok_model}[config.backend]
 
 
 def active_effort(config: RunConfig) -> str:
-    return config.effort if config.backend == BACKEND_CLAUDE else config.codex_effort
+    return {BACKEND_CLAUDE: config.effort, BACKEND_CODEX: config.codex_effort, BACKEND_GROK: config.grok_effort}[config.backend]
 
 
 def write_metadata(
@@ -1028,6 +1147,9 @@ def write_metadata(
         "thread_file": config.thread_file.rel if config.thread_file else None,
         "topic": config.topic,
         "backend": config.backend,
+        "requested_backend": config.requested_backend,
+        "coding_agent": config.coding_agent,
+        "selection_history": list(config.selection_history),
         "selected_tier": config.selected_tier,
         "tier_selection_source": config.tier_selection_source,
         "driver_tier_reason": config.driver_tier_reason,
@@ -1157,7 +1279,7 @@ def review_fingerprint(config: RunConfig, prompt: str, before: GitSnapshot) -> d
     paths = {a.rel: a.abs for a in config.artifacts}
     if config.thread_file:
         paths[config.thread_file.rel] = config.thread_file.abs
-    binary = config.claude_bin if config.backend == BACKEND_CLAUDE else config.codex_bin
+    binary = BACKENDS[config.backend].bin_for(config)
     try:
         version = BACKENDS[config.backend].version_for(config)
     except OSError as exc:
@@ -1169,6 +1291,7 @@ def review_fingerprint(config: RunConfig, prompt: str, before: GitSnapshot) -> d
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "mode": config.mode, "type": config.review_type, "topic": config.topic,
         "backend": config.backend, "model": active_model(config), "effort": active_effort(config),
+        "coding_agent": config.coding_agent,
         "tier": config.selected_tier, "reason": config.driver_tier_reason,
         "binary": str(Path(shutil.which(binary) or binary).resolve()),
         "version": version,
@@ -1314,8 +1437,10 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     stop_signal = None
     timed_out = False
     observed_session = False
+    completed_result = False
     captured_session = config.resume_session_id
     protocol_error = None
+    failure_category = None
     print(
         f"{config.backend} review start mode={config.mode} type={config.review_type} "
         f"selected_tier={config.selected_tier} tier_source={config.tier_selection_source} "
@@ -1331,7 +1456,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     buffers = {"stdout": b"", "stderr": b""}
     with captured_signals(logs.signals) as received, logs.stdout.open("w", encoding="utf-8") as stdout_log, logs.stderr.open("w", encoding="utf-8") as stderr_log:
         def consume(label: str, raw: bytes) -> None:
-            nonlocal malformed, token_usage, observed_session, captured_session, protocol_error, last_event
+            nonlocal malformed, token_usage, observed_session, captured_session, protocol_error, last_event, completed_result, failure_category
             line = raw.decode("utf-8", errors="replace")
             last_event = time.monotonic()
             if label == "stderr":
@@ -1348,7 +1473,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
             except ValueError:
                 event = {}
             if isinstance(event, dict):
-                session = event.get("session_id") if config.backend == BACKEND_CLAUDE else (event.get("thread_id") if event.get("type") == "thread.started" else None)
+                session = backend.session_for(event)
                 if session is not None:
                     if not valid_session_id(session):
                         protocol_error = "backend emitted an invalid session ID"
@@ -1360,13 +1485,17 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
                         observed_session = True
                         captured_session = session
                         patch_metadata(logs, session_id=session, session_observed=True, phase="session_captured")
-                if event.get("type") == "result":
-                    if event.get("is_error") or event.get("subtype", "success") != "success":
-                        protocol_error = "Claude session failed; consult private stderr and stream logs"
-                    elif isinstance(event.get("result"), str):
+                category = backend.failure_for(event)
+                if category:
+                    failure_category = category
+                    if protocol_error is None:
+                        protocol_error = f"{config.backend} session failed; consult private stderr and stream logs"
+                if event.get("type") == "result" and not category:
+                    completed_result = True
+                    if isinstance(event.get("result"), str):
                         state.final_message = event["result"]
-                if event.get("type") == "turn.failed":
-                    protocol_error = "Codex session failed; consult private stderr and stream logs"
+                    if isinstance(event.get("usage"), dict):
+                        token_usage = event["usage"]
             parsed = backend.parse_line(line)
             malformed += int(parsed.malformed)
             if parsed.text_delta:
@@ -1382,7 +1511,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
             proc = subprocess.Popen(argv, cwd=config.worktree, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
             patch_metadata(logs, outcome="running", phase="launched", reviewer_pid=proc.pid, reviewer_pgid=proc.pid, started_at=started_at, argv=argv, reviewer_version=version)
             assert proc.stdin and proc.stdout and proc.stderr
-            pending = memoryview(prompt.encode())
+            pending = memoryview(prompt.encode() if backend.prompt_on_stdin else b"")
             for stream, label, mask in ((proc.stdin, "stdin", selectors.EVENT_WRITE), (proc.stdout, "stdout", selectors.EVENT_READ), (proc.stderr, "stderr", selectors.EVENT_READ)):
                 os.set_blocking(stream.fileno(), False)
                 selector.register(stream, mask, label)
@@ -1454,9 +1583,17 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
                     if stream is not None and not stream.closed:
                         stream.close()
     if protocol_error:
+        patch_metadata(logs, reason_category=failure_category or "provider_error")
+        if failure_category == "credit_exhausted" and not (timed_out or stop_reason or malformed):
+            # Session/protocol inconsistencies never qualify for availability fallback.
+            if protocol_error == f"{config.backend} session failed; consult private stderr and stream logs":
+                raise CreditExhausted(f"{config.backend} credit allowance exhausted")
         raise RunnerError(protocol_error)
     if config.resume_session_id and not observed_session and not (timed_out or stop_reason):
         raise RunnerError("resumed backend did not confirm the recorded session; session state may be missing")
+    if config.backend == BACKEND_GROK and not (timed_out or stop_reason) and (not completed_result or not observed_session or malformed):
+        patch_metadata(logs, reason_category="provider_error")
+        raise RunnerError("Grok review lacks a valid complete result/session or has malformed output")
     assert proc is not None
     returncode = proc.returncode
     if timed_out:
@@ -1489,7 +1626,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--reviewer-backend",
         default=BACKEND_AUTO,
-        choices=(BACKEND_AUTO, BACKEND_CLAUDE, BACKEND_CODEX),
+        choices=(BACKEND_AUTO, *BACKEND_ORDER),
         dest="reviewer_backend",
     )
     parser.add_argument(
@@ -1498,7 +1635,8 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         choices=(REVIEW_TIER_AUTO, REVIEW_TIER_NORMAL, REVIEW_TIER_HARD),
         dest="review_tier",
         help=(
-            "driver-selected review tier; pass normal or hard explicitly. "
+            "driver-selected review tier; pass normal or hard explicitly. Normal is the default; "
+            "reserve hard for roughly the hardest 20%% of tasks (major design/architecture or difficult bugs), not a quota. "
             "Legacy auto compatibility always selects normal and is deprecated"
         ),
     )
@@ -1512,6 +1650,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--codex-bin", default="codex")
     parser.add_argument("--codex-model", help="explicit Codex model override")
     parser.add_argument("--codex-effort", help="explicit Codex reasoning-effort override")
+    parser.add_argument("--grok-bin", default="grok")
+    parser.add_argument("--grok-model", help="explicit Grok model override")
+    parser.add_argument("--grok-effort", help="explicit Grok reasoning-effort override; do not evade rare-hard guidance")
+    parser.add_argument("--coding-agent", help="current coding agent name; explicit identity wins markers. Grok drivers must pass grok")
     parser.add_argument("--timeout-sec", type=int, help="positive attempt limit; default normal/auto 1800, hard 3600 seconds")
     parser.add_argument("--resume-run", help="resume the exact latest interrupted attempt directory with the same scope/profile arguments")
     parser.add_argument("--heartbeat-sec", type=int, default=DEFAULT_HEARTBEAT_SEC)
@@ -1536,9 +1678,21 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
     if (args.timeout_sec is not None and args.timeout_sec <= 0) or args.heartbeat_sec <= 0:
         raise RunnerError("timeout and heartbeat must be positive")
     run_log_dir = Path(args.run_log_dir).expanduser().resolve() if args.run_log_dir else None
-    backend, marker_resolved = resolve_reviewer_backend(
-        args.reviewer_backend, os.environ if env is None else env
-    )
+    identity = coding_identity(args.coding_agent, os.environ if env is None else env,
+                               explicit_backend=args.reviewer_backend != BACKEND_AUTO)
+    backend = args.reviewer_backend
+    if args.resume_run:
+        previous = read_json(Path(args.resume_run).expanduser().resolve() / "metadata.json")
+        recorded = previous.get("backend")
+        if recorded not in BACKENDS or (backend != BACKEND_AUTO and backend != recorded):
+            raise RunnerError("resume reviewer backend disagrees with recorded attempt")
+        if previous.get("coding_agent") != identity:
+            raise RunnerError("resume coding identity changed or legacy handle lacks identity; start a fresh review")
+        backend = recorded
+    elif backend == BACKEND_AUTO:
+        backend = next(name for name in BACKEND_ORDER if name != identity)
+    if identity == "unknown" and args.reviewer_backend == BACKEND_AUTO:
+        print("warning: unknown coding agent cannot guarantee same-agent exclusion; pass --coding-agent NAME (required for Grok drivers)", file=sys.stderr)
     recommended_tier, recommendation_reasons = recommend_review_tier(
         args.review_type, artifacts, focus
     )
@@ -1557,42 +1711,11 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
             f"({'; '.join(recommendation_reasons)}); selected tier and model remain normal",
             file=sys.stderr,
         )
-    model, effort, model_source, effort_source = resolve_review_profile(
-        backend,
-        selected_tier,
-        claude_model=args.model,
-        claude_effort=args.effort,
-        codex_model=args.codex_model,
-        codex_effort=args.codex_effort,
-    )
-    require_hard_profile_model_has_hard_tier(backend, selected_tier, model)
-    unused_flags = unused_profile_override_flags(
-        backend,
-        claude_model=args.model,
-        claude_effort=args.effort,
-        codex_model=args.codex_model,
-        codex_effort=args.codex_effort,
-    )
-    if unused_flags:
-        print(
-            f"warning: reviewer backend '{backend}' ignores override flags for the "
-            f"non-selected provider: {', '.join(unused_flags)}",
-            file=sys.stderr,
-        )
-    if marker_resolved:
-        backend_bin = args.claude_bin if backend == BACKEND_CLAUDE else args.codex_bin
-        if shutil.which(backend_bin) is None:
-            raise RunnerError(
-                f"reviewer backend '{backend}' was auto-selected from the driver environment "
-                "but its binary is unavailable; install it or pass --reviewer-backend explicitly"
-            )
+        print("notice: mechanical hints do not qualify for hard; reserve it for roughly the hardest 20% of tasks", file=sys.stderr)
     claude_model, claude_effort = REVIEW_MODEL_MATRIX[BACKEND_CLAUDE][selected_tier]
     codex_model, codex_effort = REVIEW_MODEL_MATRIX[BACKEND_CODEX][selected_tier]
-    if backend == BACKEND_CLAUDE:
-        claude_model, claude_effort = model, effort
-    else:
-        codex_model, codex_effort = model, effort
-    return RunConfig(
+    grok_model, grok_effort = REVIEW_MODEL_MATRIX[BACKEND_GROK][selected_tier]
+    config = RunConfig(
         protocol_dir=protocol_dir,
         worktree=worktree,
         mode=args.mode,
@@ -1609,12 +1732,20 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
         recommendation_reasons=recommendation_reasons,
         model=claude_model,
         effort=claude_effort,
-        model_source=model_source,
-        effort_source=effort_source,
+        model_source="profile",
+        effort_source="profile",
         claude_bin=args.claude_bin,
         codex_bin=args.codex_bin,
         codex_model=codex_model,
         codex_effort=codex_effort,
+        grok_bin=args.grok_bin,
+        grok_model=grok_model,
+        grok_effort=grok_effort,
+        requested_backend=args.reviewer_backend,
+        coding_agent=identity,
+        profile_overrides=(("claude", args.model, args.effort),
+                           ("codex", args.codex_model, args.codex_effort),
+                           ("grok", args.grok_model, args.grok_effort)),
         timeout_sec=args.timeout_sec if args.timeout_sec is not None else (HARD_TIMEOUT_SEC if selected_tier == REVIEW_TIER_HARD else DEFAULT_TIMEOUT_SEC),
         timeout_source="explicit --timeout-sec" if args.timeout_sec is not None else "profile",
         resume_run=Path(args.resume_run).expanduser().resolve() if args.resume_run else None,
@@ -1622,9 +1753,14 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
         run_log_dir=run_log_dir,
         dry_run=args.dry_run,
     )
+    # Fresh auto selection checks binary availability before applying overrides.
+    # An unavailable provider's override must not block an eligible provider.
+    if args.reviewer_backend == BACKEND_AUTO and not args.resume_run and not args.dry_run:
+        return config
+    return select_profile(config, backend)
 
 
-def run(config: RunConfig) -> None:
+def run_attempt(config: RunConfig) -> None:
     redactor_paths = [config.worktree, *(artifact.abs for artifact in config.artifacts)]
     if config.thread_file is not None:
         redactor_paths.append(config.thread_file.abs)
@@ -1654,6 +1790,8 @@ def run(config: RunConfig) -> None:
                 print(f"Review incomplete. Attempt: {logs.root}. Resume with --resume-run and the same scope/profile arguments after checking metadata.json.", file=sys.stderr)
                 raise RunnerError(message, exit_code=2 if result.timed_out else (128 + result.stop_signal if result.stop_signal else 3))
             with captured_signals(signals) as late_signals:
+                if result.returncode != 0:
+                    patch_metadata(logs, reason_category="provider_error")
                 write_metadata(config, logs, result, outcome="finalizing", before=before, after=after)
                 patch_metadata(logs, phase="finalizing")
                 if config.mode == MODE_WRITE:
@@ -1675,9 +1813,54 @@ def run(config: RunConfig) -> None:
                 outcome = "failed" if isinstance(exc, RunnerError) else "error"
                 write_metadata(config, logs, result, outcome=outcome, error=str(exc), before=before, after=after)
                 patch_metadata(logs, phase=outcome)
+            if isinstance(exc, CreditExhausted):
+                exc.attempt = logs.root
+                if (after != before or not read_json(logs.metadata).get("cleanup_complete")
+                        or signals or read_json(logs.root / "stop-request.json")):
+                    raise RunnerError("credit failure is not safe to advance: changed target, stop request, or unverified cleanup") from exc
             if isinstance(exc, (RunnerError, KeyboardInterrupt, SystemExit)):
                 raise
             raise RunnerError(f"reviewer run errored: {exc}") from exc
+
+
+def run(config: RunConfig) -> None:
+    if config.requested_backend != BACKEND_AUTO or config.resume_run or config.dry_run:
+        run_attempt(config)
+        return
+    before = git_snapshot(config.worktree)
+    require_clean(before)
+    history: list[dict[str, str]] = []
+    previous_attempt: Path | None = None
+    for backend in BACKEND_ORDER:
+        if backend == config.coding_agent:
+            history.append({"backend": backend, "reason": "coding_agent_excluded"})
+            print(f"review selection skip backend={backend} reason=coding_agent_excluded", file=sys.stderr)
+            continue
+        binary = BACKENDS[backend].bin_for(config)
+        if shutil.which(binary) is None:
+            history.append({"backend": backend, "reason": "binary_unavailable"})
+            print(f"review selection skip backend={backend} reason=binary_unavailable", file=sys.stderr)
+            continue
+        if git_snapshot(config.worktree) != before:
+            raise RunnerError("review target changed between candidates; fallback refused")
+        candidate = select_profile(config, backend)
+        candidate = replace(candidate, selection_history=tuple(history))
+        if previous_attempt is not None:
+            next_dir = previous_attempt / "fallback" / backend
+            atomic_json(previous_attempt / "selection.json", {"next_backend": backend, "next_attempt": str(next_dir)})
+            candidate = replace(candidate, run_log_dir=next_dir)
+        try:
+            run_attempt(candidate)
+            return
+        except CreditExhausted as exc:
+            assert exc.attempt is not None
+            previous_attempt = exc.attempt
+            history.append({"backend": backend, "reason": "credit_exhausted", "attempt": str(exc.attempt)})
+            print(f"review selection unavailable backend={backend} reason=credit_exhausted; trying next eligible backend", file=sys.stderr)
+    if previous_attempt is not None:
+        atomic_json(previous_attempt / "selection.json", {"outcome": "exhausted", "selection_history": history})
+    summary = ", ".join(f"{item['backend']}:{item['reason']}" for item in history)
+    raise RunnerError(f"no eligible reviewer available ({summary}); all three backends unavailable or excluded; human assistance required")
 
 
 def main(argv: Sequence[str] | None = None) -> int:

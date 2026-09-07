@@ -18,6 +18,10 @@ responses, and closeout evidence for changes to this repo's protocols.
 
 ## Current Records
 
+- `2026-09-07_grok_reviewer_plan.md` - third reviewer backend, ordered credit
+  fallback, no per-provider availability permission, rare-hard guidance, and
+  real Grok dogfood/recovery evidence.
+
 - `2026-08-07_evidence_discipline_rules_plan.md` - two `Shared Review Rules`
   bullets (a mechanism described with enforcing verbs is unverified until a
   sample it must catch has made it fail; an absence is not a fact until the

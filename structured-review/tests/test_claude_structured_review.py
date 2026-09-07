@@ -680,7 +680,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             "claude-fable-5-1",
             "gpt-5.6-terra",
             "gpt-6-astra",
-            "another or unrecognized coding agent",
+            "or unrecognized coding agent",
         ):
             self.assertIn(value, skill)
         self.assertIn("driver owns tier selection", closeout)
@@ -1184,18 +1184,7 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         fake_codex.chmod(0o755)
         return fake_codex
 
-    def test_resolve_reviewer_backend_cross_vendor_auto(self) -> None:
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CLAUDECODE": "1"}), ("codex", True))
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CODEX_THREAD_ID": "t"}), ("claude", True))
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CODEX_SANDBOX": "seatbelt"}), ("claude", True))
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {}), ("claude", False))
-        self.assertEqual(csr.resolve_reviewer_backend("codex", {"CLAUDECODE": "1"}), ("codex", False))
-
-    def test_resolve_reviewer_backend_both_markers_error(self) -> None:
-        with self.assertRaisesRegex(csr.RunnerError, "--reviewer-backend"):
-            csr.resolve_reviewer_backend("auto", {"CLAUDECODE": "1", "CODEX_SANDBOX": "seatbelt"})
-
-    def test_auto_marker_resolved_missing_binary_errors(self) -> None:
+    def test_auto_defers_binary_availability_to_ordered_execution(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         args = csr.parse_args(
@@ -1215,8 +1204,9 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             ]
         )
         with mock.patch.object(csr.shutil, "which", return_value=None):
-            with self.assertRaisesRegex(csr.RunnerError, "--reviewer-backend"):
-                csr.config_from_args(args, env={"CLAUDECODE": "1"})
+            config = csr.config_from_args(args, env={"CLAUDECODE": "1"})
+        self.assertEqual(config.backend, "codex")
+        self.assertEqual(config.coding_agent, "claude")
 
     def test_auto_neither_marker_skips_preflight(self) -> None:
         repo = self.init_target_repo()

@@ -38,7 +38,11 @@ if not options.get('no_session'):
     event = {'type':'thread.started','thread_id':session} if codex else {'type':'system','subtype':'hook_started','session_id':session}
     print(json.dumps(event), flush=True)
 if not options.get('no_stdin'):
-    (base / 'stdin.txt').write_text(sys.stdin.read())
+    stdin = sys.stdin.read()
+    if '--prompt-file' in sys.argv:
+        assert not stdin
+        stdin = Path(sys.argv[sys.argv.index('--prompt-file')+1]).read_text()
+    (base / 'stdin.txt').write_text(stdin)
 if not resume and not options.get('finish'):
     if options.get('ignore_term'): signal.signal(signal.SIGTERM, signal.SIG_IGN)
     if options.get('child'):
@@ -56,7 +60,7 @@ if codex:
     print(json.dumps({'type':'turn.completed','usage':{'input_tokens':10,'output_tokens':5}}), flush=True)
 else:
     print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':text}]}}), flush=True)
-    print(json.dumps({'type':'result','subtype':'success','is_error':False,'result':text,'session_id':session}), flush=True)
+    print(json.dumps({'type':'result','subtype':'success','is_error':False,'stop_reason':'end_turn','result':text,'session_id':session}), flush=True)
 '''
 
 
@@ -82,7 +86,7 @@ class RecoveryTests(unittest.TestCase):
             mode=csr.MODE_WRITE if write else csr.MODE_PRINT,
             topic='recovery' if write else None,
             extra=['--reviewer-backend', backend, '--claude-bin', str(self.bin),
-                   '--codex-bin', str(self.bin), '--timeout-sec', '1',
+                   '--codex-bin', str(self.bin), '--grok-bin', str(self.bin), '--timeout-sec', '1',
                    '--run-log-dir', str(self.initial)])
 
     def timeout(self, config=None):
@@ -101,7 +105,7 @@ class RecoveryTests(unittest.TestCase):
         return replace(config, run_log_dir=None, resume_run=self.initial, timeout_sec=10)
 
     def test_profiles_default_and_override_for_both_backends(self):
-        for backend in ('claude', 'codex'):
+        for backend in ('claude', 'codex', 'grok'):
             for tier, limit in [('normal',1800), ('auto',1800), ('hard',3600)]:
                 extra=['--reviewer-backend', backend, '--review-tier', tier]
                 if tier=='hard': extra += ['--tier-reason','recovery correctness']
@@ -113,7 +117,7 @@ class RecoveryTests(unittest.TestCase):
                 self.assertEqual(explicit.timeout_source,'explicit --timeout-sec')
 
     def test_both_backends_timeout_resume_and_exactly_one_commit(self):
-        for backend in ('claude','codex'):
+        for backend in ('claude','codex','grok'):
             with self.subTest(backend=backend):
                 self.initial=self.root/backend
                 config=self.timeout(self.config(backend,write=True))
@@ -191,9 +195,9 @@ class RecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(csr.RunnerError,'stale attempt'): csr.request_stop(self.initial,'stop')
 
     def test_missing_provider_history_or_wrong_session_never_writes(self):
-        for backend,option in [('claude','missing'),('codex','mismatch')]:
+        for backend,option in [('claude','missing'),('codex','mismatch'),('grok','missing'),('grok','mismatch')]:
             with self.subTest(backend=backend):
-                self.initial=self.root/backend
+                self.initial=self.root/(backend+'-'+option)
                 self.options()
                 config=self.timeout(self.config(backend,write=True))
                 head=run_git(self.repo,'rev-parse','HEAD')
