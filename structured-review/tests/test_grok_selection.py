@@ -57,6 +57,9 @@ if behavior in ('auth','network','rate','error'):
     message={'auth':'Authentication failed','network':'Connection failed','rate':'Rate limit exceeded','error':'Unknown error'}[behavior]
     emit({'type':'turn.failed','error':{'message':message}} if name=='codex' else {'type':'result','subtype':'error','is_error':True,'result':message})
     raise SystemExit(1)
+if behavior=='exit_error':
+    print('Provider transport failure',file=sys.stderr)
+    raise SystemExit(1)
 if behavior=='timeout' and not resume: time.sleep(120)
 text="### Reviewer pass 1 (impl-plan, "+name+" reviewer)\n\nNo blocking issues."
 if behavior=='prose': text+=" You've hit your weekly limit · resets SYNTHETIC"
@@ -171,6 +174,15 @@ class GrokSelectionTests(unittest.TestCase):
         with self.assertRaises(csr.CreditExhausted): csr.run(self.config('--reviewer-backend','claude'))
         self.assertEqual(self.calls(), ['claude'])
 
+    def test_unavailable_provider_override_does_not_block_selection(self):
+        config = self.config('--claude-bin',str(self.root/'missing'), '--model','claude-fable-5-1')
+        csr.run(config)
+        self.assertEqual(self.calls(), ['grok'])
+        # The same flag still fails when Claude is eligible; not a weakened guard.
+        with self.assertRaisesRegex(csr.RunnerError,'pinned hard-profile model'):
+            csr.run(self.config('--model','claude-fable-5-1','--run-log-dir',str(self.root/'other')))
+        self.assertEqual(self.calls(), ['grok'])
+
     def test_fallback_profile_provenance_and_single_write(self):
         self.options(claude='credit')
         head = git(self.repo, 'rev-parse', 'HEAD')
@@ -187,7 +199,7 @@ class GrokSelectionTests(unittest.TestCase):
 
     def test_nonquota_and_dirty_errors_do_not_fall_back(self):
         head = git(self.repo, 'rev-parse', 'HEAD')
-        for behavior in ('auth','network','rate','error','dirty_credit','malformed_credit','moved_credit'):
+        for behavior in ('auth','network','rate','error','exit_error','dirty_credit','malformed_credit','moved_credit'):
             with self.subTest(behavior=behavior):
                 self.options(claude=behavior)
                 (self.root / 'calls.jsonl').unlink(missing_ok=True)
@@ -219,6 +231,7 @@ class GrokSelectionTests(unittest.TestCase):
                 csr.run(self.config('--reviewer-backend','grok','--run-log-dir',str(self.root / behavior)))
             self.assertEqual(git(self.repo,'rev-parse','HEAD'), head)
             self.assertEqual(git(self.repo,'status','--porcelain'), '')
+            self.assertEqual(csr.read_json(self.root/behavior/'metadata.json')['reason_category'],'provider_error')
 
     def test_auto_resume_keeps_grok_when_claude_recovers_and_rejects_changes(self):
         self.options(claude='credit', grok='timeout')

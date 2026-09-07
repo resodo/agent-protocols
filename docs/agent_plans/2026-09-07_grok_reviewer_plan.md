@@ -263,12 +263,33 @@ CLI help. Expanded reviewer suite: 120 tests passed in 65.128 seconds with
 | Credit positive/negative controls and single write | Done | Fallback/provenance test; quota-like prose/tool controls; auth/network/rate/dirty/moved/malformed/finalization negatives |
 | Grok output/session validation | Done | `test_grok_incomplete_error_and_malformed_results_never_write`; sanitized observed init/result shape |
 | Fake CLI three-backend recovery and guards | Done | Expanded `test_recovery.py`; auto Grok resume after Claude recovers; Grok stop/profile-change guards |
-| Real updated-runner Grok dogfood and resume | Partial | Next operation; bootstrap review is real but does not prove the updated runner |
+| Real updated-runner Grok dogfood and resume | Done | Driver-reported live run on `1d78679`: automatic selection reached Grok, stop cleaned the process group without target changes, resume confirmed the same UUID, final outcome success and exactly one review commit `d12ce52` |
 | Documentation and hard/availability policy | Done | Skill, help, prompt, root/current/recovery/closeout guidance and plan index updated |
 | Implementation Review / closeout | Partial | Real dogfood review and final handoff remain |
 
 Real dogfood/recovery must be completed and recorded before closeout. No mock
 result substitutes for a live review gate.
+
+Live integration evidence (driver-reported, with reviewer corroboration in
+implementation pass 1): selected normal / `grok-4.6` / `medium`. The initial Grok
+attempt stopped after completed reads, with cleanup verified and no write-back.
+The resumed attempt confirmed the original UUID and finished successfully;
+metadata showed clean `1d78679` before and clean `d12ce52` after. Private
+conversation export contained pre-stop reads followed by the continuation
+instruction. Reviewer independently reran 13 Grok selection tests and returned
+ready for closeout. Raw provider responses, session IDs, and transcripts remain
+private and are not committed.
+
+Before final handoff the driver reproduced and fixed one additional parameter
+edge: an absent Claude binary must be skipped before validating its model
+override. Eligible providers still enforce the hard-only model guard. The
+reviewer's obsolete-selection-helper cleanup was accepted, and generic provider
+failure metadata and the recovery example were made consistent. These small
+changes receive a fresh real Grok implementation re-review after regression.
+
+Post-review regression: 119 reviewer tests passed in 63.695 seconds
+(driver-reported). Count changed from 120 because two obsolete helper tests
+were removed and one production override-selection regression was added.
 
 ## Review Threads
 
@@ -500,3 +521,19 @@ Do not treat this pass as merge authorization. Closeout still owns final git/CI/
 - No persistent availability cache was added. A successful Grok review proves current usability, not remaining credit.
 
 There are no blocking issues.
+
+### Driver response 2 (implementation, Codex)
+
+- Grok implementation Thread 1 accepted: remove the unused two-provider helper
+  and its two tests; production identity/order tests remain authoritative.
+- Driver-found parameter bug accepted: skip unavailable binaries before applying
+  their profile overrides. Add a positive skip case and a negative eligible-
+  provider hard-only-model guard to prevent accidental weakening.
+- Driver consistency follow-through: classify incomplete/nonzero provider
+  results as provider_error and make the recovery example normal by default.
+- Live dogfood acceptance is now Done with actual terminal success and one
+  review commit, as recorded in the body. Same UUID was observed on resume and
+  pre-stop history persisted. No source/model-run transcripts enter git.
+
+Request Grok resolution of implementation Thread 1 and review of the focused
+post-review changes. Human policy and accepted scope are unchanged.

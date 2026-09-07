@@ -1184,17 +1184,6 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         fake_codex.chmod(0o755)
         return fake_codex
 
-    def test_resolve_reviewer_backend_cross_vendor_auto(self) -> None:
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CLAUDECODE": "1"}), ("codex", True))
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CODEX_THREAD_ID": "t"}), ("claude", True))
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {"CODEX_SANDBOX": "seatbelt"}), ("claude", True))
-        self.assertEqual(csr.resolve_reviewer_backend("auto", {}), ("claude", False))
-        self.assertEqual(csr.resolve_reviewer_backend("codex", {"CLAUDECODE": "1"}), ("codex", False))
-
-    def test_resolve_reviewer_backend_both_markers_error(self) -> None:
-        with self.assertRaisesRegex(csr.RunnerError, "--reviewer-backend"):
-            csr.resolve_reviewer_backend("auto", {"CLAUDECODE": "1", "CODEX_SANDBOX": "seatbelt"})
-
     def test_auto_defers_binary_availability_to_ordered_execution(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()

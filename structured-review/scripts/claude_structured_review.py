@@ -1120,22 +1120,6 @@ def detect_driver_markers(env: Mapping[str, str]) -> tuple[bool, bool]:
     return claude_marker, codex_marker
 
 
-def resolve_reviewer_backend(raw: str, env: Mapping[str, str]) -> tuple[str, bool]:
-    """Resolve the reviewer backend name and whether a driver marker chose it."""
-    if raw != BACKEND_AUTO:
-        return raw, False
-    claude_marker, codex_marker = detect_driver_markers(env)
-    if claude_marker and codex_marker:
-        raise RunnerError(
-            "driver environment carries both Claude and Codex markers; pass --reviewer-backend explicitly"
-        )
-    if claude_marker:
-        return BACKEND_CODEX, True
-    if codex_marker:
-        return BACKEND_CLAUDE, True
-    return BACKEND_CLAUDE, False
-
-
 def active_model(config: RunConfig) -> str:
     return {BACKEND_CLAUDE: config.model, BACKEND_CODEX: config.codex_model, BACKEND_GROK: config.grok_model}[config.backend]
 
@@ -1608,6 +1592,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
     if config.resume_session_id and not observed_session and not (timed_out or stop_reason):
         raise RunnerError("resumed backend did not confirm the recorded session; session state may be missing")
     if config.backend == BACKEND_GROK and not (timed_out or stop_reason) and (not completed_result or not observed_session or malformed):
+        patch_metadata(logs, reason_category="provider_error")
         raise RunnerError("Grok review lacks a valid complete result/session or has malformed output")
     assert proc is not None
     returncode = proc.returncode
@@ -1768,6 +1753,10 @@ def config_from_args(args: argparse.Namespace, env: Mapping[str, str] | None = N
         run_log_dir=run_log_dir,
         dry_run=args.dry_run,
     )
+    # Fresh auto selection checks binary availability before applying overrides.
+    # An unavailable provider's override must not block an eligible provider.
+    if args.reviewer_backend == BACKEND_AUTO and not args.resume_run and not args.dry_run:
+        return config
     return select_profile(config, backend)
 
 
@@ -1801,6 +1790,8 @@ def run_attempt(config: RunConfig) -> None:
                 print(f"Review incomplete. Attempt: {logs.root}. Resume with --resume-run and the same scope/profile arguments after checking metadata.json.", file=sys.stderr)
                 raise RunnerError(message, exit_code=2 if result.timed_out else (128 + result.stop_signal if result.stop_signal else 3))
             with captured_signals(signals) as late_signals:
+                if result.returncode != 0:
+                    patch_metadata(logs, reason_category="provider_error")
                 write_metadata(config, logs, result, outcome="finalizing", before=before, after=after)
                 patch_metadata(logs, phase="finalizing")
                 if config.mode == MODE_WRITE:
@@ -1852,7 +1843,7 @@ def run(config: RunConfig) -> None:
             continue
         if git_snapshot(config.worktree) != before:
             raise RunnerError("review target changed between candidates; fallback refused")
-        candidate = select_profile(config, backend) if backend != config.backend else config
+        candidate = select_profile(config, backend)
         candidate = replace(candidate, selection_history=tuple(history))
         if previous_attempt is not None:
             next_dir = previous_attempt / "fallback" / backend

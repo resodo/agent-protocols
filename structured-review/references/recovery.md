@@ -15,8 +15,7 @@ Example initial invocation (all paths below are illustrative):
 python structured-review/scripts/claude_structured_review.py \
   --worktree /path/to/repo --mode print-review --type impl \
   --artifact docs/change.md --focus 'Check acceptance and recovery behavior.' \
-  --reviewer-backend codex --review-tier hard \
-  --tier-reason 'Concurrent recovery correctness'
+  --coding-agent claude --reviewer-backend codex --review-tier normal
 ```
 
 The runner prints `run_log=...` before launching. Use that absolute attempt
