@@ -1,7 +1,7 @@
 # Grok reviewer and ordered availability policy
 
-Status: active implementation record; plan review passed, implementation validation
-and dogfood review in progress.
+Status: historical plan, implementation, and review record. Execution and
+engineering closeout completed; PR/CI handoff state is reported separately.
 
 ## Goal and accepted decisions
 
@@ -265,10 +265,11 @@ CLI help. Expanded reviewer suite: 120 tests passed in 65.128 seconds with
 | Fake CLI three-backend recovery and guards | Done | Expanded `test_recovery.py`; auto Grok resume after Claude recovers; Grok stop/profile-change guards |
 | Real updated-runner Grok dogfood and resume | Done | Driver-reported live run on `1d78679`: automatic selection reached Grok, stop cleaned the process group without target changes, resume confirmed the same UUID, final outcome success and exactly one review commit `d12ce52` |
 | Documentation and hard/availability policy | Done | Skill, help, prompt, root/current/recovery/closeout guidance and plan index updated |
-| Implementation Review / closeout | Partial | Real dogfood review and final handoff remain |
+| Implementation Review | Done | Real updated-runner Grok passes at `1d78679` and `91d5f5f`; final reviewer resolution recorded in `8c2c4e6` |
+| Engineering closeout | Done | Final diff/placement/lifecycle/privacy/ancestry checks below; exact remote head and CI state reported with PR handoff |
 
-Real dogfood/recovery must be completed and recorded before closeout. No mock
-result substitutes for a live review gate.
+Real dogfood/recovery completed before closeout. No mock result substituted
+for a live review gate.
 
 Live integration evidence (driver-reported, with reviewer corroboration in
 implementation pass 1): selected normal / `grok-4.6` / `medium`. The initial Grok
@@ -285,11 +286,42 @@ edge: an absent Claude binary must be skipped before validating its model
 override. Eligible providers still enforce the hard-only model guard. The
 reviewer's obsolete-selection-helper cleanup was accepted, and generic provider
 failure metadata and the recovery example were made consistent. These small
-changes receive a fresh real Grok implementation re-review after regression.
+changes received a fresh real Grok implementation re-review after regression.
 
 Post-review regression: 119 reviewer tests passed in 63.695 seconds
 (driver-reported). Count changed from 120 because two obsolete helper tests
 were removed and one production override-selection regression was added.
+
+## Closeout record (2026-09-08)
+
+All plan and implementation review threads are resolved. Final Grok
+implementation pass 2 independently reran the 14 selection/recovery tests and
+returned ready for closeout. Both implementation passes used the actual updated
+runner with normal tier and reached Grok through automatic ordered selection.
+
+Validation provenance: driver-reported full reviewer suite 119, Scout 31,
+checker 18, backlog schema, compile and CLI-help checks passed. CI `python` on
+implementation commit `91d5f5f` passed; later record-only commits are checked
+again at handoff. No default CI suite is intentionally excluded or nonblocking.
+Real Grok quota exhaustion was not fabricated or forced; its unknown error
+classifier intentionally remains fail-closed until an authoritative fixture is
+available. This is the accepted integration boundary.
+
+Hygiene: feature work stayed in a linked worktree; main checkout stayed on main
+and clean. All new durable artifacts are under `docs/agent_plans/`. Required
+README/current/protocol/recovery/closeout/index references agree; dated review
+threads retain their historical text. No private logs, transcripts, credentials,
+account values, or local user-home paths were added. The profile/order/error
+tables are owned by protocol maintainers and their update/removal triggers are
+documented in the skill/recovery guide. No persistent balance cache exists.
+
+Delivery: PR #31 targets main. The reviewed implementation is a descendant of
+main `277edca`, with no rebase/conflict resolution required. GitHub reported the
+PR mergeable; main protection is disabled and merge/rebase/squash options are
+enabled. No merge or branch deletion was performed. Final remote head and its
+CI result belong to the PR/chat handoff rather than a self-referential commit
+hash in this file. No server or reviewer process is left running after handoff;
+private logs remain available for caller-owned retention.
 
 ## Review Threads
 
