@@ -1,6 +1,6 @@
 # Grok reviewer and ordered availability policy
 
-Status: active implementation plan; plan review pending.
+Status: active implementation plan; revised plan review pending.
 
 ## Goal and accepted decisions
 
@@ -14,6 +14,22 @@ Use `grok-4.6` for both tiers: normal `medium`, hard `xhigh`. Keep Claude/Codex
 profiles unchanged. Keep common modes, explicit tier rationale, 1800/3600-second
 attempt defaults, timeout override, heartbeat, private logs, stop, and guarded
 same-session resume. A resumed review stays on its recorded backend.
+
+Human follow-up decisions: do not ask permission to try another available
+reviewer or repeat plan reviews. Escalate reviewer availability only when all
+three backends are unavailable or excluded by the same-agent policy. Keep other
+scope/safety decisions distinct from availability. Implementation Review must
+dogfood this branch's updated runner and real Grok, not substitute mock results.
+
+Normal is the default. Reserve hard for roughly the hardest 20% of the agent's
+tasks: major design, major architecture, or unusually difficult bugs. This is
+a judgment aid, not a numerical quota. Require a concrete semantic reason;
+routine protocol edits, artifact length/count, review type, keywords, or a
+mechanical recommendation alone do not qualify. Update skill, CLI help, prompt,
+README, CURRENT and closeout tier guidance consistently. Existing hard model,
+effort and timeout profiles remain unchanged. Subsequent reviews of this change
+use normal unless actual new difficulty justifies hard; the first pass's hard
+configuration remains historical evidence.
 
 Driver: Codex. Reviewer: first eligible provider under the accepted policy.
 Work branch: `feat/grok-review`, based on fresh `origin/main` at `277edca`.
@@ -43,13 +59,11 @@ independent provider policy or unrelated backlog items.
 ## Five gates
 
 1. Plan: commit this reviewable plan and establish CLI evidence.
-2. Plan review: invoke the existing checkout runner with Claude, hard tier
-   because this changes shared routing and recovery contracts. Resolve blocking
-   threads before implementation. If Claude has no allowance, the current
-   two-backend runner cannot select Grok and Codex is excluded by user policy.
-   Report the bootstrap conflict before substituting a manual review or
-   implementing a backend ahead of the gate; agree the bootstrap path with the
-   human. Never label a failed provider call a passed review.
+2. Plan review: the existing checkout runner was invoked first; the human then
+   authorized direct Grok bootstrap reviews using the checkout's prompt builder
+   and append operation. This is settled authorization for as many plan review
+   passes as needed. Resolve blocking threads before implementation. Never label
+   a failed provider call a passed review. Later gates use the implemented runner.
 3. Implementation: implement the accepted plan and tests only after plan review.
 4. Implementation review: dogfood automatic routing through the updated runner,
    resolve findings and re-review required fixes.
@@ -60,12 +74,32 @@ independent provider policy or unrelated backlog items.
 
 ### Provider adapter and profile
 
+Pin Grok argv to `grok --model MODEL --reasoning-effort EFFORT
+--permission-mode plan --no-subagents --output-format streaming-messages-json
+--prompt-file PRIVATE_ATTEMPT/prompt.md`; resume adds only `--resume UUID`.
+The common runner writes the complete prompt file before spawning. Grok does
+not consume the runner's stdin prompt. Do not pass `--session-id`, `--continue`,
+`--fork-session`, `--restore-code`, or Grok's `--worktree`. The provider generates
+the new UUID; the runner observes `session_id` on `system` and `result` events.
+This exact entrypoint performed local reads and terminal commands in bootstrap
+pass 1, emitted `system/init` with a UUID and model `grok-4.6`, and emitted
+`result/subtype=success/is_error=false/result=<review>/session_id=<same UUID>`.
+Usage is in final `usage`. This is observed CLI behavior, not inferred solely
+from the Anthropic wire format. The result must have `stop_reason=end_turn`,
+nonempty text and an observed consistent UUID; missing/truncated/error results
+fail. Resume must confirm that same UUID. Adapter callbacks own session and
+error extraction for all backends. Plan permission mode supports the observed
+read-only review flow; any test execution limitations are reported, and the
+common untouched-worktree check remains mandatory.
+
 Register Grok with its own binary, argv, output parser, final-result extraction,
 session event extraction, and version retrieval. Add `--grok-bin`,
 `--grok-model`, `--grok-effort`; allow `--reviewer-backend grok`. Selected-provider
 overrides apply only to that provider, including after fallback; ignored flags
 warn. Both Grok tiers share a model, so the existing hard-model-only guard must
 apply only when normal and hard models differ. Hard still requires a reason.
+Explicit effort exceptions remain allowed (including normal plus Grok xhigh),
+with source provenance; drivers must not use overrides to evade tier guidance.
 
 Use headless Grok with explicit model/effort, persisted conversation, and review
 permissions. Verify actual stdout before settling stream parsing. Use a private
@@ -75,6 +109,48 @@ cannot be treated as a successful review. Preserve common cleanup and mutation
 checks. Verify permission behavior and process ownership in the live smoke.
 
 ### Ordered selection and credit evidence
+
+Public identity flag: `--coding-agent NAME`, accepting a nonempty normalized
+lowercase name. `claude`, `codex`, `grok` exclude that backend; `kimicode` and
+other names exclude none. Explicit identity wins over inherited markers.
+Without it, CLAUDECODE means claude, CODEX_THREAD_ID or CODEX_SANDBOX means
+codex, both families conflict, and neither means unknown. Grok has no verified
+marker: its drivers MUST pass `--coding-agent grok`; all new repo-backed callers
+should pass their known identity. Unknown cannot promise same-agent exclusion
+and emits a warning. Explicit pins preserve intentional override behavior and
+never fall back. No marker guesses are introduced.
+
+Adapter classifiers return `credit_exhausted` only for pinned error envelopes:
+
+- Claude: observed `type=result`, `is_error=true`, string `result` beginning
+  `You've hit your weekly limit` followed by the CLI reset separator. Match a
+  sanitized reset suffix, never a real account/reset value. An ordinary
+  assistant message or successful result with identical text is not evidence.
+- Codex: `type=turn.failed`, `error.message` beginning the upstream rendered
+  `You've hit your usage limit.` or `You've hit your usage limit for `; exact
+  `Quota exceeded. Check your plan and billing details.` is also supported.
+  Source: upstream `codex-rs/protocol/src/error.rs` UsageLimitReachedError and
+  QuotaExceeded, read 2026-09-07. Store sanitized synthetic fixtures with that
+  provenance; they are source-backed, not a claim of live Codex exhaustion.
+- Grok: no exhausted-allowance error fixture has been observed. Fail closed as
+  `provider_error` until such evidence exists; it is the last candidate so no
+  further automatic fallback depends on classifying its credit error. Do not
+  invent Grok quota fields. A live success proves availability only.
+
+`credit_exhausted` is persisted as reason category with terminal outcome
+`failed`; `binary_unavailable` is a selection skip reason; other provider
+failures use `provider_error`. Record attempted/skipped backends and reasons,
+plus predecessor/successor private attempt paths. No raw billing text in git.
+Binary skips are printed and retained in selection provenance. Every credit
+attempt owns a separate recovery chain; the original `--run-log-dir` may hold
+subdirectories for subsequent candidate chains with printed exact handles.
+
+Non-quota failures stop the automatic candidate loop. The driver investigates
+and may start a fresh review on the next eligible backend without asking a
+human, after confirming cleanup and unchanged target. Timeout/stop should use
+same-session recovery first. Do not retry mutation/finalization failures until
+the target is repaired and verified. This distinguishes the mechanical credit
+policy from the user's no-per-provider-permission workflow.
 
 Provide an explicit coding-agent identity argument to cover Kimi Code and other
 drivers without reliable environment markers. Retain known Claude/Codex marker
@@ -100,6 +176,14 @@ error, never same-agent fallback. Do not commit raw provider responses or
 account details.
 
 ### Recovery
+
+Resolve `--resume-run` metadata before candidate construction: auto selects the
+recorded backend, explicit backend must agree, and resolved coding identity
+must match the original. Do not enter the candidate loop. Keep all original
+scope/profile/binary/runner fingerprint checks and allow only timeout changes.
+Keep the resolved coding identity in new fingerprints; preserve legacy
+fingerprint compatibility only where absent fields are semantically unchanged,
+or explicitly reject legacy handles rather than weakening validation.
 
 Fresh fallback attempts are separate provider conversations. Resume loads the
 latest attempt's original backend before auto selection, retains the original
@@ -242,3 +326,28 @@ Three blocking gaps would force the implementing agent to guess the shared routi
 - CI commands in the plan match `.github/workflows/ci.yml` (`unittest discover` for `structured-review/tests` and `scout/tests`, plus compile). That part of acceptance is executable.
 
 There are blocking issues. The artifact is not ready for implementation until threads 1–3 are resolved in the plan body.
+
+### Driver response 1 (Codex)
+
+- Thread 1 accepted: pin error envelope classifiers and reason categories in
+  the body. Claude uses observed CLI evidence, Codex uses upstream error source;
+  Grok unknown errors fail closed rather than fabricating a quota signature.
+- Thread 2 accepted for exact argv and adapter ownership. The premise that the
+  selected stream lacks UUIDs is rejected by this real bootstrap run: both
+  system init and final result carried the same UUID. The body records the
+  actual event shape, prompt-file tool loop, plan permissions, forbidden flags,
+  final-result requirement, and live resume acceptance still to execute.
+- Thread 3 accepted: name `--coding-agent`, pin explicit/environment precedence,
+  require Grok drivers to identify themselves, and resolve resume metadata before
+  any auto candidate construction. Unknown identity warns about exclusion limits.
+- Thread 4 accepted: effort overrides retain existing exception semantics and
+  explicit provenance; docs prohibit evading the rare-hard guidance via overrides.
+- Thread 5 accepted: the bootstrap authorization is recorded and settled.
+- Human follow-ups added: no per-provider availability permission requests;
+  roughly top-20%-difficulty hard guidance; actual updated-runner implementation
+  dogfood mandatory. These are human decisions, not reviewer suggestions.
+
+Validation provenance: driver-reported baseline 107 tests passed; Grok pass 1
+was a real tool-using review with successful terminal result. Real runner Grok
+recovery and ordered fallback remain planned, not claimed complete. Request
+reviewer resolution of threads 1–3 and review of the human-directed additions.
