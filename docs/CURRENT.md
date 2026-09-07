@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-09-06
+Last updated: 2026-09-07
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -20,11 +20,16 @@ avoid treating historical plans as current instructions.
 - `structured-review/SKILL.md` - structured review for plans,
   implementations, optional closeout evidence reviews, and review-response
   passes. Repo-backed review gates default to the bundled runner when
-  available, with cross-vendor Claude and Codex reviewer backends, explicit
+  available, with Claude > Codex > Grok ordering excluding the coding agent,
+  automatic missing-binary/exhausted-allowance fallback without per-provider
+  permission, and explicit
   driver-owned normal/hard tier selection, rationale-required hard profiles,
   and recommendation-only mechanical complexity signals. Legacy auto safely
   selects normal with deprecation provenance. Normal/hard time limits are
-  1800/3600 seconds; hard profiles use Fable 5.1 / GPT-6 Astra. Driver stop
+  1800/3600 seconds; hard profiles use Fable 5.1 / GPT-6 Astra. Grok uses 4.6
+  at medium/xhigh. Normal is default; hard is reserved by agent judgment for
+  roughly the hardest 20% (major design/architecture or difficult bugs).
+  Driver stop
   requests and guarded same-session recovery retain private per-attempt evidence.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work.

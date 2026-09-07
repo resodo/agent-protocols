@@ -114,16 +114,24 @@ python structured-review/scripts/claude_structured_review.py \
 The runner loads the shared skill from this repo and target-repo overlays from
 the explicit `--worktree`.
 
-The runner drives either Claude Code or Codex as the reviewer.
-`--reviewer-backend` defaults to `auto`, which picks the cross-vendor
-reviewer for the detected driver (Claude Code driver -> Codex reviewer, Codex
-driver -> Claude reviewer, unknown driver -> Claude reviewer); conflicting
-driver markers require an explicit backend.
+The runner supports Claude Code, Codex, and Grok Build. `--reviewer-backend auto`
+tries Claude > Codex > Grok, excluding `--coding-agent NAME`. Missing binaries
+and authoritative exhausted-allowance errors advance without human permission.
+For Codex with Claude exhausted this selects Grok; for Kimi Code it can select
+Codex. Pass the coding identity explicitly, especially for Grok (no pinned
+environment marker). Explicit backend pins do not fall back. Diagnose other
+failures and try eligible alternatives without asking per-provider permission;
+escalate availability only when all three are unavailable or excluded.
 
 Drivers must pass `--review-tier normal` or `--review-tier hard` for new
 repo-backed reviews. Hard additionally requires `--tier-reason` with a concrete
-semantic rationale. The profile matrix is Claude Opus 5 / Fable 5.1 and Codex
-GPT-5.6 Terra / GPT-6 Astra for normal / hard respectively, all at `xhigh`.
+semantic rationale. Normal is the default; hard is for roughly the hardest 20%
+of the agent's tasks, such as major design/architecture or unusually difficult
+bugs. This is judgment, not a numerical quota. Routine protocol edits and
+mechanical complexity hints alone do not qualify; use normal when in doubt.
+Claude Opus 5 / Fable 5.1 and Codex GPT-5.6 Terra / GPT-6 Astra are the normal /
+hard profiles, all at `xhigh`. Grok uses `grok-4.6` for both, with `medium` /
+`xhigh` effort respectively.
 
 For legacy callers, omitted tier or `--review-tier auto` emits a deprecation
 warning and always selects normal. The runner may recommend hard from review
@@ -134,7 +142,9 @@ selection/reason separately from runner recommendation/reasons.
 
 Provider-specific model/effort flags remain deliberate overrides for the
 selected backend, but normal/auto cannot use them to select that backend's
-pinned hard-profile model; select hard with `--tier-reason` instead. An
+pinned hard-only profile model; select hard with `--tier-reason` instead. Grok's
+shared model is allowed for normal. Do not evade rare-hard guidance with effort
+overrides. Grok flags are `--grok-bin`, `--grok-model`, and `--grok-effort`. An
 override for the non-selected provider is ignored with a warning.
 
 `--protocol-dir` is optional and mainly for tests or intentional alternate
@@ -144,7 +154,9 @@ directory.
 Review attempts default to 1800 seconds for normal and 3600 seconds for hard,
 with explicit `--timeout-sec` overrides. Drivers can queue a reasoned stop via
 `--stop-run RUN --stop-reason REASON`, then resume a cleaned incomplete attempt
-with `--resume-run RUN` and the same review arguments. Each launch prints its
+with `--resume-run RUN` and the same review arguments. Auto resume stays on the
+recorded backend/identity, even if a preferred provider becomes available.
+Each launch prints its
 private attempt directory. Recovery preserves the CLI conversation and rejects
 changed targets, concurrent/stale attempts, and repeated write-back. See
 `structured-review/references/recovery.md` for lifecycle and limitations.

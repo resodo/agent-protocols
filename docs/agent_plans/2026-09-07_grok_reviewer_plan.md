@@ -1,6 +1,7 @@
 # Grok reviewer and ordered availability policy
 
-Status: active implementation plan; revised plan review pending.
+Status: active implementation record; plan review passed, implementation validation
+and dogfood review in progress.
 
 ## Goal and accepted decisions
 
@@ -237,6 +238,37 @@ cannot resume through the old runner. Do not rewrite private run fingerprints
 or translate conversations between providers. Deployment, account funding,
 provider authentication changes, merges, and consumer submodule bumps are out
 of scope.
+
+## Implementation evidence
+
+Plan gate: Grok reviewer pass 2 closed all five threads and returned ready for
+implementation. Driver accepted that result before editing executable code.
+
+Implementation adds Grok adapter callbacks, profile/identity parameters,
+ordered fresh-provider selection, private selection provenance, and fixed
+backend/identity resume. Grok final results require an observed UUID and complete
+successful end-turn result. Existing Claude/Codex invocation modes remain.
+Protocol text now requires normal by default, rare-hard agent judgment, and no
+per-provider availability permission questions.
+
+Driver-reported checks already run: baseline 107 reviewer tests; 31 Scout
+tests; backlog schema checker and 18 checker tests; compile checks and rendered
+CLI help. Expanded reviewer suite: 120 tests passed in 65.128 seconds with
+`python3 -m unittest discover -s structured-review/tests` (driver-reported).
+
+| Acceptance | State | Evidence / remaining verification |
+| --- | --- | --- |
+| Grok profiles, overrides, defaults and CLI | Done | `test_grok_profiles_argv_help_and_override`, three-backend recovery profile matrix, rendered `--help` |
+| Identity/order/exclusion, missing binaries and pins | Done | `test_every_driver_exclusion_order`, Kimi, identity, missing-binary and explicit-pin subprocess tests |
+| Credit positive/negative controls and single write | Done | Fallback/provenance test; quota-like prose/tool controls; auth/network/rate/dirty/moved/malformed/finalization negatives |
+| Grok output/session validation | Done | `test_grok_incomplete_error_and_malformed_results_never_write`; sanitized observed init/result shape |
+| Fake CLI three-backend recovery and guards | Done | Expanded `test_recovery.py`; auto Grok resume after Claude recovers; Grok stop/profile-change guards |
+| Real updated-runner Grok dogfood and resume | Partial | Next operation; bootstrap review is real but does not prove the updated runner |
+| Documentation and hard/availability policy | Done | Skill, help, prompt, root/current/recovery/closeout guidance and plan index updated |
+| Implementation Review / closeout | Partial | Real dogfood review and final handoff remain |
+
+Real dogfood/recovery must be completed and recorded before closeout. No mock
+result substitutes for a live review gate.
 
 ## Review Threads
 
