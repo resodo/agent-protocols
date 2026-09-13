@@ -31,6 +31,9 @@ avoid treating historical plans as current instructions.
   roughly the hardest 20% (major design/architecture or difficult bugs).
   Driver stop
   requests and guarded same-session recovery retain private per-attempt evidence.
+  Implementation Review readiness requires candidate-bound evidence that the
+  intended changed behavior works, with explicit handling when access or cost
+  prevents that proof.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work, including verification
   that change-specific core-path evidence preceded review and merge.
