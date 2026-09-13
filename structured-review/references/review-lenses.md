@@ -18,6 +18,16 @@ fields, also check:
 - whether the correct source-of-truth layer is being used;
 - whether different representations are being confused.
 
+For implementation reviews, require candidate-bound evidence that demonstrates
+the intended changed behavior before review. A focused unit invocation may be
+the whole core path for a pure function; integrated provider, database, operator,
+or UI behavior needs the corresponding faithful exercise. CI cannot substitute
+for that first change-specific proof. A related failure blocks readiness until
+fixed and re-exercised; a clearly unrelated pre-existing failure may be isolated
+with evidence. When cost or access prevents proof, record `not validated` with
+an owner and next action. Use readable scenarios for routine or documentation-
+only changes instead of inventing costly or production work.
+
 ## Guard Reach
 
 When an artifact claims a test, check, gate, validator, or guard enforces,
@@ -91,8 +101,6 @@ For plans, require explicit coverage of:
 - cache freshness, stale behavior, and refresh trigger;
 - source database vs target database role boundary;
 - validation strategy, including tests or explicit deferral.
-
-For implementation reviews, verify that change-specific core-path evidence was produced before the review and is bound to the candidate being reviewed. CI and broad regression suites cannot substitute for the first faithful exercise of the changed provider, database, operator, or rendered user path. Use a readable scenario or artifact inspection for documentation-only changes, and do not demand a costly or production experiment when it cannot resolve a material uncertainty.
 
 For implementation reviews, check:
 - code follows the accepted lifecycle contract;

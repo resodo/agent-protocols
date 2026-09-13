@@ -160,7 +160,16 @@ owning doc/code/plan or list the unresolved lifecycle question as residual risk.
 
 Run the relevant regression tests.
 
-Confirm that the implemented, reviewable candidate received its first faithful core-path exercise before Implementation Review and before merge whenever the change had a runnable core path. CI may repeat or broaden that evidence; it cannot substitute for change-specific acceptance, and a post-merge first exercise is too late. For documentation-only and other non-runnable changes, use a readable scenario check rather than inventing runtime work.
+Confirm that change-specific evidence demonstrated the intended behavior on the
+reviewable candidate before Implementation Review and before merge whenever
+acceptance depended on runnable behavior. A focused unit invocation may fully
+exercise a pure function. CI may repeat or broaden the evidence; it cannot
+substitute for it. If a pre-merge exercise was genuinely prevented by cost,
+access, or environment policy, carry its `not validated` owner and next action
+forward and mark the item `Partial`, not `Done`. Use a readable scenario for
+routine or documentation-only changes instead of inventing runtime work. The
+post-deploy interaction required below is additional evidence, not a substitute
+for this pre-review proof.
 
 Validation must match the acceptance criteria, not only the code touched.
 

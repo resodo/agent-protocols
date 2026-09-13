@@ -323,9 +323,22 @@ rule, reject that overlay instruction and say why.
 
 ## Evidence Before Implementation Review
 
-When the implementation has a runnable core path, the driver must exercise that path against the reviewable candidate before opening Implementation Review. Use the narrowest faithful evidence for the changed behavior: for example, the real service with an isolated database, a bounded provider call, an operator dry/write/readback path, or a rendered user interaction. Unit tests, static checks, and CI support this evidence but do not replace it when acceptance depends on the real path.
+When acceptance depends on runnable behavior, the driver must demonstrate the
+intended behavior through the narrowest faithful exercise of the reviewable
+candidate before opening Implementation Review. A focused unit invocation can
+be the complete core-path evidence for a pure function. Changes whose behavior
+depends on integration use the relevant real service, isolated database, bounded
+provider call, operator dry/write/readback path, or rendered interaction. Static
+checks and CI support this evidence but do not replace it.
 
-If cost, access, or environment policy prevents the exercise, record it as `not validated` with an owner and next action; do not call a planned first run after merge sufficient. Documentation-only or otherwise non-runnable changes use a readable scenario check instead of a meaningless runtime exercise.
+A failure in the changed behavior blocks review until the implementation is
+fixed and that exercise succeeds. A clearly unrelated pre-existing failure may
+be isolated with evidence. If cost, access, or environment policy prevents the
+exercise, record it as `not validated` with an owner and next action; do not
+treat a planned first run after merge as sufficient. Routine changes with no
+material behavioral uncertainty and documentation-only changes use a readable
+scenario or direct inspection instead of invented integration or production
+work.
 
 ## Boundary With Closeout
 
@@ -423,6 +436,9 @@ An artifact is ready for its next step only when:
 - key assumptions are explicit;
 - acceptance is specific;
 - validation can be executed by the next agent where applicable;
+- for `impl`, change-specific evidence already demonstrates the intended
+  behavior on the reviewed candidate, or the item is explicitly `not validated`
+  with an owner and next action;
 - unresolved questions are closed or explicitly tracked;
 - blocking review threads are resolved or explicitly escalated.
 
