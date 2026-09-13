@@ -439,11 +439,12 @@ An artifact is ready for its next step only when:
 - for `impl` whose acceptance depends on runnable behavior, change-specific
   evidence already demonstrates the intended behavior on the reviewed
   candidate; if the exercise is prevented, `not validated` records the gap but
-  does not satisfy readiness, and the item remains blocked or `Partial` unless
-  the human explicitly accepts that residual limitation for the scoped next
-  step;
-- for routine or documentation-only `impl`, a readable scenario or direct
-  inspection demonstrates the intended change;
+  does not satisfy readiness, the item stays `Partial`, and the next step stays
+  blocked unless the human explicitly accepts that residual limitation for the
+  scoped next step;
+- for documentation-only `impl`, or routine `impl` with no material behavioral
+  uncertainty, a readable scenario or direct inspection demonstrates the
+  intended change;
 - unresolved questions are closed or explicitly tracked;
 - blocking review threads are resolved or explicitly escalated.
 
