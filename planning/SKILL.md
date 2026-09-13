@@ -38,9 +38,11 @@ Overlays are loaded only when this protocol is loaded. Unknown overlay files are
 5. If the phase is brainstorming or discussion, do not write an executable plan yet. Build shared understanding first: list the open questions, explain the current mechanism or source-of-truth evidence, and converge one decision at a time until the human explicitly asks to write the plan.
 6. For each unresolved issue, first explain context in plain language, then list only reasonable options.
 7. Recommend one option when there is a clear recommendation, and explain the reason.
-8. Record accepted decisions in the plan or backlog, not only in chat.
-9. Define validation and human acceptance before implementation starts.
-10. If scope expands materially, update the plan and decide whether another review is needed before continuing.
+8. Before freezing a plan, identify the few uncertainties that could change its architecture, scope, safety, cost, or acceptance. Reduce those uncertainties with the cheapest faithful evidence available: inspect the current path first, then use a bounded prototype, representative query, rendered sketch, or provider call only when it will change a decision. Record what the evidence establishes and what remains unknown.
+9. Do not turn this into a requirement to write tests or run production for every small change. A routine, reversible change with a well-understood mechanism may proceed from code inspection and existing evidence; keep experiments scoped and respect explicit cost and environment boundaries.
+10. Record accepted decisions in the plan or backlog, not only in chat.
+11. Define validation and human acceptance before implementation starts. Separate low-cost planning evidence from the post-implementation core-path evidence that will prove the chosen solution.
+12. If scope expands materially, update the plan and decide whether another review is needed before continuing.
 
 ## SAFETY Rules
 

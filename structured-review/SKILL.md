@@ -321,6 +321,12 @@ rule, reject that overlay instruction and say why.
 - If review rounds keep adding low-value issues, raise the possibility that the
   artifact is already good enough for the next step.
 
+## Evidence Before Implementation Review
+
+When the implementation has a runnable core path, the driver must exercise that path against the reviewable candidate before opening Implementation Review. Use the narrowest faithful evidence for the changed behavior: for example, the real service with an isolated database, a bounded provider call, an operator dry/write/readback path, or a rendered user interaction. Unit tests, static checks, and CI support this evidence but do not replace it when acceptance depends on the real path.
+
+If cost, access, or environment policy prevents the exercise, record it as `not validated` with an owner and next action; do not call a planned first run after merge sufficient. Documentation-only or otherwise non-runnable changes use a readable scenario check instead of a meaningless runtime exercise.
+
 ## Boundary With Closeout
 
 Structured-review is a quality gate. Closeout is the delivery gate.

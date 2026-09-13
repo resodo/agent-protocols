@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-09-07
+Last updated: 2026-09-13
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -32,8 +32,10 @@ avoid treating historical plans as current instructions.
   Driver stop
   requests and guarded same-session recovery retain private per-attempt evidence.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
-  implementation, documentation, review, or phase work.
-- `planning/SKILL.md` - discussion-to-plan workflow before implementation.
+  implementation, documentation, review, or phase work, including verification
+  that change-specific core-path evidence preceded review and merge.
+- `planning/SKILL.md` - discussion-to-plan workflow before implementation, with
+  bounded low-cost evidence for decision-changing uncertainties.
 - `retrospective/SKILL.md` - evidence-based post-incident or post-closeout
   learning workflow.
 - `backlog-maintenance/SKILL.md` - YAML backlog registry maintenance protocol.
