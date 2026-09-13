@@ -118,7 +118,7 @@ instruction and say why.
 - Build a short traceability list from the accepted plan or acceptance criteria:
   - `Done` requires concrete evidence.
   - `Partial` means implemented or observed only partly.
-  - `Missing` means planned but not implemented or not validated.
+  - `Missing` means planned but not implemented.
   - `Deferred` requires explicit human decision.
 - Do not treat "tests pass", "service is active", "deployment succeeded", or
   "production smoke is green" as proof that every planned item is complete.

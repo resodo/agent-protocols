@@ -436,9 +436,14 @@ An artifact is ready for its next step only when:
 - key assumptions are explicit;
 - acceptance is specific;
 - validation can be executed by the next agent where applicable;
-- for `impl`, change-specific evidence already demonstrates the intended
-  behavior on the reviewed candidate, or the item is explicitly `not validated`
-  with an owner and next action;
+- for `impl` whose acceptance depends on runnable behavior, change-specific
+  evidence already demonstrates the intended behavior on the reviewed
+  candidate; if the exercise is prevented, `not validated` records the gap but
+  does not satisfy readiness, and the item remains blocked or `Partial` unless
+  the human explicitly accepts that residual limitation for the scoped next
+  step;
+- for routine or documentation-only `impl`, a readable scenario or direct
+  inspection demonstrates the intended change;
 - unresolved questions are closed or explicitly tracked;
 - blocking review threads are resolved or explicitly escalated.
 
