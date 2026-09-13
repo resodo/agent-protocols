@@ -92,6 +92,8 @@ For plans, require explicit coverage of:
 - source database vs target database role boundary;
 - validation strategy, including tests or explicit deferral.
 
+For implementation reviews, verify that change-specific core-path evidence was produced before the review and is bound to the candidate being reviewed. CI and broad regression suites cannot substitute for the first faithful exercise of the changed provider, database, operator, or rendered user path. Use a readable scenario or artifact inspection for documentation-only changes, and do not demand a costly or production experiment when it cannot resolve a material uncertainty.
+
 For implementation reviews, check:
 - code follows the accepted lifecycle contract;
 - string statuses and categorical fields have named allowed values or explicit
