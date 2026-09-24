@@ -115,7 +115,8 @@ candidates. Retain the containing private directory to retain fallback chains.
 Pinned classifiers (maintained with sanitized tests by protocol maintainers):
 
 - Claude: an observed CLI `result` with `is_error=true` and a string beginning
-  `You've hit your weekly limit`, then the reset separator `· resets ...`.
+  `You've hit your weekly limit` or `You've hit your session limit` (observed
+  2026-09-24 with `subtype=success`), then the reset separator `· resets ...`.
 - Codex: `turn.failed/error.message` beginning `You've hit your usage limit.` or
   `You've hit your usage limit for `, or exactly `Quota exceeded. Check your plan
   and billing details.` Source: upstream `codex-rs/protocol/src/error.rs`,
@@ -132,6 +133,17 @@ No balance polling/cache exists. The driver can diagnose and try the next
 eligible backend without asking the human; availability escalation is only for
 all three unavailable/excluded. Mutation failures require repair before a new
 review. Timeout/stop should use same-session recovery where appropriate.
+
+A reviewer that cannot review at all (for example, a sandbox that blocks a
+repo guard script) returns a `REVIEW NOT PERFORMED:` line. The runner records
+`reason_category=environment_error`, `outcome=failed`, and writes no review
+pass. The prompt tells reviewers not to run repo bootstrap or guard scripts;
+an incomplete review written without the marker is still recorded as a pass,
+so the driver reads it before counting it. If files change while the reviewer
+runs, the runner warns and records `target_changed_during_review`; it cannot
+tell a driver edit from a reviewer write, so check the listed paths. Only a
+changed thread file or moved HEAD fails; the review commit includes only the
+thread file.
 
 Resume resolves recorded backend and coding identity before auto selection.
 An explicit conflicting backend or changed identity is rejected. It never
