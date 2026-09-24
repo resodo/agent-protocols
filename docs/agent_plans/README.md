@@ -18,6 +18,9 @@ responses, and closeout evidence for changes to this repo's protocols.
 
 ## Current Records
 
+- `2026-09-24_reviewer_model_refresh_plan.md` - active plan for the accepted
+  Claude Code, Codex, and Grok normal/hard model and effort profiles.
+
 - `2026-09-07_grok_reviewer_plan.md` - third reviewer backend, ordered credit
   fallback, no per-provider availability permission, rare-hard guidance, and
   real Grok dogfood/recovery evidence.
