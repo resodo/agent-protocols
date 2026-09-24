@@ -324,13 +324,14 @@ rule, reject that overlay instruction and say why.
 - Do not defend a choice with invented rationale. If evidence is missing, say
   so and lower confidence.
 - Do not cap review passes. Stop the loop and ask when any one of these holds:
-  the last three passes' blocking findings all target mechanisms this artifact
-  itself added; the artifact body above `## Review Threads` has grown to
-  three times its size at the start of the current review stage; or the same
-  quantity (threshold, formula, signal, limit) has changed shape three times.
-  On a stop, either run one `hard` pass whose only question is whether the layer
-  or mechanism should exist at all (the stop signal is its tier reason), or hand
-  the design question to the human.
+  three consecutive passes each had blocking findings, all targeting mechanisms
+  this artifact itself added; the artifact body above `## Review Threads` has
+  grown to three times its size at the start of the current review stage; or
+  the same quantity (threshold, formula, signal, limit) has changed shape three
+  times.
+  On a stop, either run one pass on a stronger model (normally `hard`, with the
+  stop signal as its tier reason) whose only question is whether the layer or
+  mechanism should exist at all, or hand the design question to the human.
 
 ## Evidence Before Implementation Review
 
@@ -414,10 +415,9 @@ Pause and discuss with the human before editing when a reviewer finding:
   readiness;
 - exposes an ambiguous tradeoff the artifact does not already settle;
 - would require dropping or weakening an accepted acceptance criterion;
-- would add a new standing mechanism: alert, counter, registry, config field,
-  or script. Batch these as multiple-choice questions for the human. Inside an
-  observation window, the default answer is a one-off, hand-run, read-only
-  query.
+- would add a new alert, counter, registry, config field, or script. Batch
+  these as multiple-choice questions for the human. Inside an observation
+  window, the default answer is a one-off, hand-run, read-only query.
 
 After applying or rejecting reviewer feedback, the driver summary must
 distinguish:
