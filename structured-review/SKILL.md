@@ -321,6 +321,17 @@ rule, reject that overlay instruction and say why.
   definition in the repo. Where none covers it, say "no recorded layer
   definition covers this" and ask the human; do not invent a layer. See
   `Layer Ownership` in `references/review-lenses.md`.
+- Do the long-term correct fix by default, wherever in the system it belongs;
+  do not patch one symptom away. The only exception is an explicit, temporary
+  emergency permission from the human: record the patch as temporary and track
+  the long-term fix, for example as a backlog item.
+- Before fixing a finding, check its premise: is the cause in this change, or
+  in an assumption elsewhere - an upstream caller, another layer, or the
+  question's own framing? If the correct fix is outside this change's scope,
+  stop and escalate with the wrong assumption, where it lives, and what the fix
+  at the source would look like; do not build a downstream accommodation. See
+  `Premise Before Fix` in `references/review-lenses.md` for when the check is
+  required.
 - Do not defend a choice with invented rationale. If evidence is missing, say
   so and lower confidence.
 - Do not cap review passes. Stop the loop and ask when any one of these holds:
@@ -376,6 +387,9 @@ The reviewer:
 - checks whether implementation would require guessing;
 - checks whether validation is strong enough;
 - prefers pointing out what can be deleted over what could be added;
+- raises "this is a patch, not the systemic fix" and "the question is wrong"
+  as findings that halt the loop for a human decision, not as blockers for the
+  driver to design around;
 - when proposing a new mechanism, also gives the no-mechanism alternative
   (delete, reword, or record a known limitation) and compares the costs of both;
 - says explicitly when there are no blocking issues.
