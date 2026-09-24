@@ -43,6 +43,16 @@ if name=='grok':
     assert prompt==''
     prompt=Path(sys.argv[sys.argv.index('--prompt-file')+1]).read_text()
     assert '--session-id' not in sys.argv and '--restore-code' not in sys.argv
+if behavior=='session_credit':
+    # Observed 2026-09-24 Claude CLI session-limit envelope (reset value synthetic).
+    emit({'type':'result','subtype':'success','is_error':True,'api_error_status':429,'stop_reason':'stop_sequence','result':"You've hit your session limit · resets SYNTHETIC"})
+    raise SystemExit(1)
+if behavior=='drift_other':
+    # Stands in for a driver edit; the runner cannot tell who wrote it.
+    Path('docs/evidence.md').write_text('edited by the driver mid-review')
+    import subprocess
+    subprocess.run(['git','add','docs/evidence.md'],check=True)
+if behavior=='drift_thread': Path('docs/plan.md').write_text(Path('docs/plan.md').read_text()+'driver edit\n')
 if behavior in ('credit','dirty_credit','moved_credit','malformed_credit'):
     if behavior=='dirty_credit': Path('docs/plan.md').write_text('dirty')
     if behavior=='moved_credit':
@@ -66,6 +76,8 @@ if behavior=='prose': text+=" You've hit your weekly limit · resets SYNTHETIC"
 if behavior=='tool_prose': emit({'type':'user','message':{'content':[{'type':'tool_result','content':"You've hit your weekly limit · resets SYNTHETIC"}]}})
 if behavior=='malformed': print('{broken',flush=True)
 if behavior=='empty': text=''
+if behavior=='not_performed': text="### Reviewer pass 1 (impl-plan, "+name+" reviewer)\n\n**REVIEW NOT PERFORMED:** protocol guard could not write FETCH_HEAD"
+if behavior=='quoted_marker': text+="\n\n- `REVIEW NOT PERFORMED:` is the runner's environment-failure marker."
 if name=='codex':
     emit({'type':'item.completed','item':{'type':'agent_message','text':text}})
     Path(sys.argv[sys.argv.index('--output-last-message')+1]).write_text(text)
@@ -104,6 +116,15 @@ class GrokSelectionTests(unittest.TestCase):
 
     def config(self, *extra):
         return csr.config_from_args(csr.parse_args(self.args + list(extra)), env={})
+
+    def mode_config(self, mode, logs):
+        args = list(self.args)
+        if mode == 'print-review':
+            for flag in ('--thread-file', '--topic'):
+                i = args.index(flag); del args[i:i+2]
+        args[args.index('--mode')+1] = mode
+        args[args.index('--run-log-dir')+1] = str(logs)
+        return csr.config_from_args(csr.parse_args(args), env={})
 
     def calls(self):
         path = self.root / 'calls.jsonl'
@@ -224,6 +245,54 @@ class GrokSelectionTests(unittest.TestCase):
             self.assertIsNone(csr.claude_failure(event))
         self.assertEqual(csr.codex_failure({'type':'turn.failed','error':{'message':'Quota exceeded. Check your plan and billing details.'}}), 'credit_exhausted')
         self.assertIsNone(csr.codex_failure({'type':'item.completed','error':{'message':"You've hit your usage limit."}}))
+
+    def test_claude_session_limit_is_exhausted_allowance_and_falls_back(self):
+        self.options(claude='session_credit')
+        csr.run(self.config())
+        self.assertEqual(self.calls(), ['claude','grok'])
+        self.assertEqual(csr.read_json(self.root/'logs'/'metadata.json')['reason_category'], 'credit_exhausted')
+        self.assertIn('grok reviewer', (self.repo/'docs/plan.md').read_text())
+
+    def test_review_not_performed_is_environment_failure_without_pass(self):
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        for mode in ('write-commit-to-plan', 'print-review'):
+            self.options(claude='not_performed')
+            logs = self.root / ('np-'+mode)
+            with self.subTest(mode=mode), self.assertRaisesRegex(csr.RunnerError, r'not a pass\): protocol guard could not write FETCH_HEAD$'):
+                csr.run(self.mode_config(mode, logs))
+            metadata = csr.read_json(logs/'metadata.json')
+            self.assertEqual((metadata['outcome'], metadata['reason_category']), ('failed', 'environment_error'))
+            self.assertEqual(git(self.repo,'rev-parse','HEAD'), head)
+        self.assertEqual(self.calls(), ['claude','claude'])
+        self.assertIsNone(csr.review_not_performed('> REVIEW NOT PERFORMED: quoted'))
+        self.options(claude='quoted_marker')
+        csr.run(self.config('--run-log-dir', str(self.root/'quoted')))
+        self.assertNotEqual(git(self.repo,'rev-parse','HEAD'), head)
+
+    def test_target_change_during_review_warns_and_records(self):
+        (self.repo/'docs/evidence.md').write_text('original evidence\n')
+        git(self.repo, 'add', 'docs/evidence.md'); git(self.repo, 'commit', '-m', 'evidence')
+        for mode in ('write-commit-to-plan', 'print-review'):
+            head = git(self.repo, 'rev-parse', 'HEAD')
+            self.options(claude='drift_other')
+            logs = self.root / ('drift-'+mode)
+            with self.subTest(mode=mode), mock.patch('sys.stderr', new_callable=io.StringIO) as stderr:
+                csr.run(self.mode_config(mode, logs))
+            metadata = csr.read_json(logs/'metadata.json')
+            self.assertEqual(metadata['outcome'], 'success')
+            self.assertEqual(metadata['target_changed_during_review'], ['docs/evidence.md'])
+            self.assertIn('review target changed while the reviewer ran', stderr.getvalue())
+            if mode == 'write-commit-to-plan':
+                self.assertEqual(git(self.repo,'diff-tree','--no-commit-id','--name-only','-r','HEAD'), 'docs/plan.md')
+            else:
+                self.assertEqual(git(self.repo,'rev-parse','HEAD'), head)
+            self.assertEqual(git(self.repo,'status','--porcelain'), 'M  docs/evidence.md')
+            git(self.repo, 'checkout', 'HEAD', '--', 'docs/evidence.md')
+        head = git(self.repo, 'rev-parse', 'HEAD')
+        self.options(claude='drift_thread')
+        with self.assertRaisesRegex(csr.RunnerError, 'thread file changed during the review'):
+            csr.run(self.config('--run-log-dir', str(self.root/'drift-thread')))
+        self.assertEqual(git(self.repo,'rev-parse','HEAD'), head)
 
     def test_grok_incomplete_error_and_malformed_results_never_write(self):
         head = git(self.repo, 'rev-parse', 'HEAD')

@@ -55,6 +55,8 @@ LEGACY_AUTO_TIER_REASON = "legacy --review-tier auto compatibility selected norm
 CLAUDE_DRIVER_MARKERS = ("CLAUDECODE",)
 CODEX_DRIVER_MARKERS = ("CODEX_THREAD_ID", "CODEX_SANDBOX")
 CODEX_LAST_MESSAGE_NAME = "last-message.txt"
+REVIEW_NOT_PERFORMED = "REVIEW NOT PERFORMED:"
+REVIEW_NOT_PERFORMED_RE = re.compile(r"^[*_`\s]*" + re.escape(REVIEW_NOT_PERFORMED) + r"(.*)$")
 
 REVIEW_MODEL_MATRIX = {
     BACKEND_CLAUDE: {
@@ -579,6 +581,8 @@ def build_prompt(config: RunConfig) -> str:
             "Instructions:",
             "- The structured-review protocol below is mandatory. Do not substitute a generic code review style.",
             "- Inspect the requested artifacts before judging readiness.",
+            "- The runner has already loaded the shared protocol below. Do not run repository bootstrap or protocol guard scripts; they fetch and write git metadata that a read-only review cannot rely on.",
+            f"- If the environment prevents you from reviewing at all, return only a line starting with `{REVIEW_NOT_PERFORMED}` and the reason. The runner records that as an environment failure, not a review pass.",
             f"- You are the {config.backend} reviewer backend. Name the backend in each reviewer pass heading, for example: ### Reviewer pass 1 ({config.review_type}, {config.backend} reviewer).",
         ]
     )
@@ -619,6 +623,26 @@ def git_snapshot(root: Path) -> GitSnapshot:
 def require_clean(snapshot: GitSnapshot) -> None:
     if snapshot.status.strip():
         raise RunnerError("worktree must be clean before running structured review")
+
+
+def changed_during_review(before: GitSnapshot, after: GitSnapshot) -> list[str]:
+    """Paths whose status changed while the reviewer ran (the run starts clean)."""
+    old = set(before.status.splitlines())
+    return sorted(line[3:] for line in after.status.splitlines() if line not in old)
+
+
+def require_thread_file_unchanged(config: RunConfig, changed: Sequence[str]) -> None:
+    if config.thread_file is not None and config.thread_file.rel in changed:
+        raise RunnerError("thread file changed during the review; write mode requires read-only reviewer output")
+
+
+def review_not_performed(review_text: str) -> str | None:
+    """Reason from a reviewer's not-performed marker on its first non-heading line."""
+    for line in review_text.splitlines():
+        if line.strip() and not line.lstrip().startswith("#"):
+            match = REVIEW_NOT_PERFORMED_RE.match(line.strip())
+            return (match.group(1).strip(" `*_") or "no reason given") if match else None
+    return None
 
 
 def changed_files(root: Path, commit: str) -> list[str]:
@@ -746,8 +770,6 @@ def verify_print_mode(config: RunConfig, before: GitSnapshot, after: GitSnapshot
         raise RunnerError("reviewer run failed")
     if before.head != after.head:
         raise RunnerError("print-review changed HEAD")
-    if before.status != after.status:
-        raise RunnerError("print-review changed worktree status")
     if not result.review_text.strip():
         raise RunnerError("print-review produced no review text")
     if contains_local_path(result.review_text, extra_paths=(config.worktree,)):
@@ -760,8 +782,7 @@ def verify_reviewer_output(config: RunConfig, before: GitSnapshot, after: GitSna
         raise RunnerError("reviewer run failed")
     if before.head != after.head:
         raise RunnerError("reviewer moved HEAD; write mode requires read-only reviewer output")
-    if before.status != after.status:
-        raise RunnerError("reviewer modified the worktree; write mode requires read-only reviewer output")
+    require_thread_file_unchanged(config, changed_during_review(before, after))
     text = result.review_text
     if not text.strip():
         raise RunnerError("reviewer produced no review text")
@@ -792,17 +813,19 @@ def append_and_commit_review(config: RunConfig, review_text: str) -> None:
     path.write_text(updated, encoding="utf-8")
     run_git(["add", config.thread_file.rel], root=config.worktree)
     run_git(
-        ["commit", "-m", f"structured-review: add reviewer comments for {config.topic}"],
+        ["commit", "-m", f"structured-review: add reviewer comments for {config.topic}", "--", config.thread_file.rel],
         root=config.worktree,
     )
 
 
-def verify_write_mode(config: RunConfig, before: GitSnapshot, after: GitSnapshot, result: ClaudeRunResult) -> None:
+def verify_write_mode(
+    config: RunConfig, before: GitSnapshot, after: GitSnapshot, result: ClaudeRunResult, *, reviewed_status: str = ""
+) -> None:
     if config.thread_file is None or config.topic is None:
         raise RunnerError("internal error: write mode missing thread file or topic")
     if result.returncode != 0:
         raise RunnerError("reviewer run failed")
-    if after.status.strip():
+    if after.status != reviewed_status:
         raise RunnerError("reviewer left uncommitted worktree changes")
     new_commits = commits_between(config.worktree, before.head, after.head)
     if len(new_commits) != 1:
@@ -972,7 +995,7 @@ def claude_failure(event: dict[str, Any]) -> str | None:
     # Observed Claude CLI error envelope; never scan assistant/tool content.
     text = event.get("result")
     if event.get("is_error") is True and isinstance(text, str) and re.match(
-        r"^You've hit your weekly limit\s*·\s*resets\s+\S", text
+        r"^You've hit your (?:weekly|session) limit\s*·\s*resets\s+\S", text
     ):
         return "credit_exhausted"
     return "provider_error"
@@ -1791,6 +1814,15 @@ def run_attempt(config: RunConfig) -> None:
                 patch_metadata(logs, phase=outcome)
                 print(f"Review incomplete. Attempt: {logs.root}. Resume with --resume-run and the same scope/profile arguments after checking metadata.json.", file=sys.stderr)
                 raise RunnerError(message, exit_code=2 if result.timed_out else (128 + result.stop_signal if result.stop_signal else 3))
+            not_performed = review_not_performed(result.review_text) if result.returncode == 0 else None
+            if not_performed is not None:
+                patch_metadata(logs, reason_category="environment_error")
+                raise RunnerError(f"reviewer could not perform the review (environment failure, not a pass): {not_performed}")
+            changed = changed_during_review(before, after)
+            if changed:
+                warning = "review target changed while the reviewer ran; the review may not match the current files"
+                print(f"warning: {warning}: {', '.join(changed)}", file=sys.stderr)
+                patch_metadata(logs, target_changed_during_review=changed, warnings=[warning])
             with captured_signals(signals) as late_signals:
                 if result.returncode != 0:
                     patch_metadata(logs, reason_category="provider_error")
@@ -1798,9 +1830,10 @@ def run_attempt(config: RunConfig) -> None:
                 patch_metadata(logs, phase="finalizing")
                 if config.mode == MODE_WRITE:
                     verify_reviewer_output(config, before, after, result)
+                    reviewed_status = after.status
                     append_and_commit_review(config, result.review_text)
                     after = git_snapshot(config.worktree)
-                    verify_write_mode(config, before, after, result)
+                    verify_write_mode(config, before, after, result, reviewed_status=reviewed_status)
                 else:
                     verify_print_mode(config, before, after, result)
                     print(redactor.redact(result.review_text).rstrip())
