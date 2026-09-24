@@ -19,6 +19,12 @@ requires a semantic reason. Backend order, same-agent exclusion, fallback,
 override behavior, readiness standard, and 1800/3600-second timeouts remain
 unchanged. The accepted change is the six model/effort values only.
 
+The `high` normal effort on Claude and Codex is intentional: routine reviews
+still need careful logic and edge-case checks, while this setting should use
+less time and allowance than the previous `xhigh`. The new normal models carry
+the capability refresh; whether the combined profiles preserve review quality
+must be judged from representative review use, not inferred from model names.
+
 ## Evidence and uncertainty
 
 Official model and effort documentation supports the chosen IDs and levels:
@@ -32,20 +38,28 @@ Official model and effort documentation supports the chosen IDs and levels:
 
 Local Grok Build 1.0.40 lists `grok-4.7` as its default and available model.
 The installed Codex CLI is 0.155.1; the official Codex changelog says 0.156.1
-added Sol to its model picker. This does not establish whether explicit `-m
-gpt-6-sol` works on 0.155.1. The implementation should not claim actual
-account access to a new model until a bounded call demonstrates it.
+added Sol to its model picker. This does not establish whether explicit
+`-m gpt-6-sol` works on 0.155.1. The installed Claude CLI accepts `high` effort
+but its acceptance of `claude-opus-5-5` through this account is also unproven.
+The implementation must not claim actual account access to a new model until a
+bounded call demonstrates it.
 
 ## Implementation
 
-1. Change only `REVIEW_MODEL_MATRIX` and its directly used defaults in
+1. Change `REVIEW_MODEL_MATRIX`, its directly used defaults, and the independent
+   `RunConfig.grok_model` default in
    `structured-review/scripts/claude_structured_review.py`.
 2. Update exact-profile, argv, override-guard, and metadata assertions in
-   structured-review tests. Retain tests that show selected tier, recommendation,
-   fallback, and provider override remain separate.
+   structured-review tests. Match exact SKILL matrix rows and reject retired
+   rows within that table. Change the Codex normal effort override test to use
+   a value different from the new `high` default, so it still proves the flag
+   takes effect. Retain tests that show selected tier, recommendation, fallback,
+   and provider override remain separate.
 3. Update the live profile matrix in `structured-review/SKILL.md`, the root
-   `README.md` runner summary, and `docs/CURRENT.md` in the same change. Add
-   this plan to `docs/agent_plans/README.md`. Historical plans stay untouched.
+   `README.md` runner summary, and `docs/CURRENT.md` in the same change. The
+   SKILL table must state effort by tier; the README's all-`xhigh` sentence must
+   change. The plan is already indexed in `docs/agent_plans/README.md`.
+   Historical plans stay untouched.
 
 ## Validation and review gates
 
@@ -54,13 +68,34 @@ account access to a new model until a bounded call demonstrates it.
 - Focused profile and argv tests must demonstrate all six selected values and
   the normal-tier hard-model guard. Run the full structured-review test suite,
   compile the runner, and check `git diff --check`.
-- Before Implementation Review, exercise the reviewable candidate through a
-  bounded real call for the new profile routing where possible. At minimum,
-  distinguish successful model invocation from local argument construction;
-  record any model whose access or CLI support is not validated.
+- Before Implementation Review, run bounded real CLI probes against each
+  changed profile: Claude normal with `claude -p --model claude-opus-5-5
+  --effort high --output-format stream-json --verbose`; Codex normal with
+  `codex exec - --json -m gpt-6-sol -c model_reasoning_effort=high`;
+  Grok normal and hard with `grok --model grok-4.7 --reasoning-effort medium`
+  and `xhigh`, using `--permission-mode plan --no-subagents
+  --output-format streaming-messages-json --prompt-file FILE`. Give each a
+  short reviewer-shaped prompt, a 120-second process timeout, and a private
+  output file outside the git worktree. Also exercise the candidate runner's
+  selected profile/argv path with focused tests. For Claude and Grok, inspect
+  the provider stream's init/result model field where present, plus successful
+  final output. For Codex, inspect the stream or local session metadata for a
+  served-model field; if the CLI exposes only the requested model, record that
+  limit explicitly and require a successful provider turn with the explicit
+  model and effort flags. Commit only a sanitized summary: CLI version, profile
+  requested, observed served-model evidence or its absence, outcome, and date.
+- If a new model is rejected, the driver owns diagnosis and must not silently
+  substitute another accepted matrix value. For a Sol catalog/version failure,
+  upgrade the local Codex CLI to 0.156.1 or newer and repeat the probe. For
+  account-access or other failures, leave the affected cell `not validated`
+  and return to the human for a matrix decision; Implementation Review readiness
+  remains blocked unless the human explicitly accepts that scoped limitation.
 - Implementation Review through this checkout's runner after the candidate
   passes its change-specific validation; resolve findings. Closeout checks
-  current docs, validation provenance, and git state. Merge remains human-owned.
+  current docs, validation provenance (including date), and git state. Inspect
+  `README.md` and `docs/CURRENT.md` directly because their exact text is not
+  covered by profile tests. Consumer submodule pin updates are a handoff item.
+  Merge remains human-owned.
 
 ## Review Threads
 
@@ -136,3 +171,22 @@ One blocking issue: B1. As written, the plan can reach Implementation Review wit
 - Consumer repos that pin this protocol as a submodule with committed skill mounts keep showing the old matrix until their pin and mount are refreshed. Out of scope here, but a closeout handoff item.
 - Any interrupted review attempt started before this change cannot resume after it: the resume fingerprint (`structured-review/scripts/claude_structured_review.py:1285-1298`) includes `runner_sha256` as well as model and effort, so any runner edit already invalidates resumption. Finish or abandon in-flight reviews around the merge. No extra plan work needed.
 - The pinned matrix is a durable mechanism that will drift again as providers rotate models. `structured-review/SKILL.md` already carries the one-reviewed-change rule, so no new lifecycle rule is needed here, but closeout should record the date the six values were validated so the next rotation knows how stale the evidence is.
+
+### Driver response 1 (Codex)
+
+- B1 accepted. Validation now names four bounded CLI probes, the requested
+  model and effort flags, served-model evidence where exposed, private logs,
+  sanitized repo evidence, and the decision rule if a profile fails. Codex CLI
+  upgrade is the first response to a Sol version failure; a changed model
+  requires a new human decision. Claude account access is explicitly open.
+- N1 accepted. The implementation list now names `RunConfig.grok_model` and
+  exact SKILL matrix-row assertions.
+- N2 accepted. The Codex normal effort override test will use a value distinct
+  from the new profile default.
+- N3 accepted. The plan names the SKILL table shape and the README sentence,
+  and requires direct inspection of the unguarded README/CURRENT summaries.
+- N4 accepted. The plan records the intended normal-effort tradeoff and treats
+  review quality as something to validate on representative use.
+
+Request plan re-review of the updated body and this response before executable
+changes.
