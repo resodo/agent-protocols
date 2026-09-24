@@ -25,7 +25,8 @@ Ask for missing role or artifact. Do not guess.
 
 Use the artifact type as the first review lens:
 - `other-plan`: check goal, scope, sequencing, non-goals, acceptance, and
-  reader clarity.
+  reader clarity; for a decision doc, the four checks in `Document Levels`
+  replace this list.
 - `impl-plan`: check concrete steps, data assumptions, validation commands,
   rollback/fallback behavior, file ownership, and whether implementation would
   require guessing.
@@ -33,6 +34,35 @@ Use the artifact type as the first review lens:
   verify evidence, and check docs/status consistency.
 - `closeout-review`: review closeout evidence or report accuracy when the
   closeout protocol explicitly requests an independent check.
+
+## Document Levels
+
+Every reviewed document states its level at the top:
+- Decision doc: answers "which way, and who owns what". Its reader is the human
+  who decides. It maps to no single PR and is later split into plans. It is done
+  when the human has decided; its output is the decisions plus a "left for the
+  implementation plans" list - an ADR with an options-for-the-human section in
+  front. Review it as `other-plan`.
+- Plan: answers "how is this PR done and verified". It maps to exactly one PR
+  and gets `impl-plan` review depth.
+- Implementation: the code, reviewed as `impl`.
+
+When unsure: if a PR can be opened directly from the document, it is a plan; if
+it must be decided and split first, it is a decision doc.
+
+For a decision doc, reviewers check only:
+1. Do the conclusions match the human's requirements and existing decisions?
+2. Are the ownership boundaries stated?
+3. Is a whole area missing?
+4. Are the questions for the human the right ones, framed fairly?
+
+The driver asks of each finding: would it change a conclusion, a boundary, or a
+question for the human? If yes, it blocks. If no, it goes into the "left for
+the implementation plans" list and is not expanded in the body. Readability
+blocks only when it would make the human misread. The review is done when a
+pass has no finding that changes a conclusion or boundary, not when feedback
+reaches zero. Use `normal` by default. The long-term-fix and premise-check
+rules in `Shared Review Rules` still apply.
 
 ## Required References
 
@@ -485,7 +515,8 @@ An artifact is ready for its next step only when:
 - unresolved questions are closed or explicitly tracked;
 - blocking review threads are resolved or explicitly escalated.
 
-Do not treat the artifact as ready when these are not true.
+Do not treat the artifact as ready when these are not true. A decision doc
+instead uses the completion rule in `Document Levels`.
 
 ## Skill Self-Evolution
 
