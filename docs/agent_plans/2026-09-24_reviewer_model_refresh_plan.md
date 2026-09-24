@@ -1,6 +1,6 @@
 # Reviewer model profile refresh
 
-Status: active implementation plan
+Status: historical implementation and review record
 Branch: `feature/reviewer-model-refresh`, based on `origin/main` at `119b52a`
 
 ## Goal and accepted decision
