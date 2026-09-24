@@ -32,7 +32,7 @@ Overlays are loaded only when this protocol is loaded. Unknown overlay files are
 ## Workflow
 
 1. Confirm the current worktree, branch, and task context before editing files.
-2. Read the repo entrypoint docs and active plan/backlog required by the local overlay.
+2. Read the repo entrypoint docs and active plan/backlog required by the local overlay. Name the layer that owns the work only by citing a written layer or ownership definition in the repo; if none covers it, write "no recorded layer definition covers this" and ask the human instead of inventing a layer.
 3. Scan recent decisions before asking the human to decide something again.
 4. State the current phase of work: brainstorming, discussion, plan writing, review, implementation, hotfix, or closeout.
 5. If the phase is brainstorming or discussion, do not write an executable plan yet. Build shared understanding first: list the open questions, explain the current mechanism or source-of-truth evidence, and converge one decision at a time until the human explicitly asks to write the plan.

@@ -55,14 +55,36 @@ evidence. Require a test that executes the transition and observes the result. A
 finding of this class can be judged resolved by several independent review passes
 and still be false; that has happened.
 
+Hold this blocking standard for the core protection the change claims. Record
+an unverified guard outside that as a named residual risk, not a blocker, and
+do not answer it with another guard.
+
 Related: a validator that constrains form is not a validator of meaning. Passing
 a character set, length, or shape constraint says nothing about whether the value
 is safe to act on.
 
+## Layer Ownership
+
+A plan or review names the layer that owns an item only by citing a written
+layer or ownership definition in the repo, such as a row of an ownership table
+in a standard doc. When no written definition covers the item, the artifact says
+"no recorded layer definition covers this" and the question goes to the human;
+it does not invent a layer.
+
+When reviewing a lower layer's discussion or plan, do not design a consumer's
+integration details. When reviewing an upper layer, do not work around a
+lower-layer gap there; name the gap for the owning layer. Where the recorded
+definitions are silent, a finding about which layer owns something is an
+escalation, not a blocker.
+
 ## Mechanism Lifecycle
 
-When an artifact introduces or materially changes a durable mechanism, review
-its maintenance lifecycle, not only whether it works today.
+When an artifact introduces or materially changes a durable mechanism, first
+ask whether it needs to exist: can deleting something, changing a sentence, or
+recording a known limitation do the job instead? A finding that asks for a new
+mechanism must give that no-mechanism alternative and compare the costs. New
+standing mechanisms are human decisions, not driver defaults. Then review the
+maintenance lifecycle, not only whether it works today.
 
 Durable mechanisms include hard-coded lists, allowlists, denylists, path globs,
 status/config tables, required-check lists, CI jobs, hooks, scripts, generated

@@ -37,6 +37,12 @@ avoid treating historical plans as current instructions.
   requires candidate-bound evidence that the intended changed behavior works;
   routine or documentation-only changes use readable scenarios or direct
   inspection, with explicit handling when access or cost prevents proof.
+  Review responses are deletion-first: drivers ask whether deleting, rewording,
+  or a known limitation resolves a finding before adding a mechanism, new
+  standing mechanisms go to the human, reviewers give the no-mechanism
+  alternative, and passes are uncapped but stop on named stop-and-ask signals.
+  Layer ownership is named only from a written repo definition; otherwise it is
+  an escalation to the human.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work, including verification
   that change-specific core-path evidence preceded review and merge.
