@@ -253,6 +253,8 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         argv = csr.claude_argv(config)
 
         self.assertEqual(argv[0], "custom-claude")
+        self.assertEqual(argv[argv.index("--model") + 1], "claude-opus-5-5")
+        self.assertEqual(argv[argv.index("--effort") + 1], "high")
         self.assertIn("--permission-mode", argv)
         self.assertIn("auto", argv)
         self.assertNotIn("--disallowedTools", argv)
@@ -283,20 +285,22 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
             csr.legacy_review_tier_reasons(config),
             ("legacy --review-tier auto compatibility selected normal",),
         )
-        self.assertEqual(config.model, "claude-opus-5")
-        self.assertEqual(config.effort, "xhigh")
+        self.assertEqual(config.model, "claude-opus-5-5")
+        self.assertEqual(config.effort, "high")
         self.assertEqual(config.model_source, "profile")
         self.assertEqual(config.effort_source, "profile")
         self.assertIn("deprecated", stderr.getvalue())
 
-    def test_review_model_matrix_is_exact_for_both_backends_and_tiers(self) -> None:
+    def test_review_model_matrix_is_exact_for_all_backends_and_tiers(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
         expected = {
-            ("claude", "normal"): ("claude-opus-5", "xhigh"),
+            ("claude", "normal"): ("claude-opus-5-5", "high"),
             ("claude", "hard"): ("claude-fable-5-1", "xhigh"),
-            ("codex", "normal"): ("gpt-5.6-terra", "xhigh"),
+            ("codex", "normal"): ("gpt-6-sol", "high"),
             ("codex", "hard"): ("gpt-6-astra", "xhigh"),
+            ("grok", "normal"): ("grok-4.7", "medium"),
+            ("grok", "hard"): ("grok-4.7", "xhigh"),
         }
 
         for (backend, tier), profile in expected.items():
@@ -331,7 +335,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.selected_tier, "normal")
         self.assertEqual(config.recommended_tier, "hard")
         self.assertIn("review type closeout-review", config.recommendation_reasons)
-        self.assertEqual(config.model, "claude-opus-5")
+        self.assertEqual(config.model, "claude-opus-5-5")
 
     def test_legacy_auto_closeout_recommendation_never_changes_selected_model(self) -> None:
         repo = self.init_target_repo()
@@ -347,7 +351,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.selected_tier, "normal")
         self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
         self.assertEqual(config.recommended_tier, "hard")
-        self.assertEqual(csr.active_model(config), "claude-opus-5")
+        self.assertEqual(csr.active_model(config), "claude-opus-5-5")
         self.assertIn("deprecated", stderr.getvalue())
         self.assertIn("selected tier and model remain normal", stderr.getvalue())
 
@@ -373,7 +377,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
         self.assertEqual(config.recommended_tier, "hard")
         self.assertIn("artifact body lines 1001 > 1000", config.recommendation_reasons)
-        self.assertEqual(config.model, "claude-opus-5")
+        self.assertEqual(config.model, "claude-opus-5-5")
 
     def test_review_threads_are_excluded_from_size_and_complexity_signals(self) -> None:
         repo = self.init_target_repo()
@@ -413,7 +417,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertEqual(config.tier_selection_source, "legacy-auto-compatibility")
         self.assertEqual(config.recommended_tier, "hard")
         self.assertIn("multi-artifact impl review (2 artifacts)", config.recommendation_reasons)
-        self.assertEqual(config.model, "claude-opus-5")
+        self.assertEqual(config.model, "claude-opus-5-5")
 
     def test_each_complexity_phrase_only_recommends_hard(self) -> None:
         repo = self.init_target_repo()
@@ -460,7 +464,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
                     config.tier_selection_source, "legacy-auto-compatibility"
                 )
                 self.assertEqual(config.recommended_tier, "hard")
-                self.assertEqual(csr.active_model(config), "claude-opus-5")
+                self.assertEqual(csr.active_model(config), "claude-opus-5-5")
 
     def test_complexity_phrase_matching_uses_word_boundaries_and_flexible_whitespace(self) -> None:
         repo = self.init_target_repo()
@@ -676,13 +680,21 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         for value in (
             "--review-tier auto",
             "--tier-reason",
-            "claude-opus-5",
-            "claude-fable-5-1",
-            "gpt-5.6-terra",
-            "gpt-6-astra",
             "or unrecognized coding agent",
         ):
             self.assertIn(value, skill)
+        matrix = skill.split("The resolved profile matrix is:", 1)[1].split(
+            "\n\nThe prompt", 1
+        )[0]
+        rows = [line for line in matrix.splitlines() if line.startswith("| `")]
+        self.assertEqual(
+            rows,
+            [
+                "| `claude` | `claude-opus-5-5` / `high` | `claude-fable-5-1` / `xhigh` |",
+                "| `codex` | `gpt-6-sol` / `high` | `gpt-6-astra` / `xhigh` |",
+                "| `grok` | `grok-4.7` / `medium` | `grok-4.7` / `xhigh` |",
+            ],
+        )
         self.assertIn("driver owns tier selection", closeout)
         self.assertIn("merely because its type is `closeout-review`", closeout)
         self.assertNotIn("routes every `closeout-review` to the `hard` tier", closeout)
@@ -1250,8 +1262,8 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
             self.assertEqual(argv[:4], ["codex", "exec", "-", "--json"])
             self.assertIn("workspace-write", argv)
             self.assertNotIn("--add-dir", argv)
-            self.assertIn("gpt-5.6-terra", argv)
-            self.assertIn("model_reasoning_effort=xhigh", argv)
+            self.assertIn("gpt-6-sol", argv)
+            self.assertIn("model_reasoning_effort=high", argv)
             self.assertEqual(argv[argv.index("--output-last-message") + 1], str(logs.root / "last-message.txt"))
 
     def test_append_preserves_review_text_byte_for_byte(self) -> None:
@@ -1274,15 +1286,15 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         config = self.config_for(
             repo,
             protocol,
-            extra=["--reviewer-backend", "codex", "--codex-model", "gpt-9", "--codex-effort", "high"],
+            extra=["--reviewer-backend", "codex", "--codex-model", "gpt-9", "--codex-effort", "medium"],
         )
         logs = self.logs_for(self.root / "codex-logs")
 
         argv = csr.codex_argv(config, logs)
 
         self.assertIn("gpt-9", argv)
-        self.assertIn("model_reasoning_effort=high", argv)
-        self.assertNotIn("gpt-5.6-terra", argv)
+        self.assertIn("model_reasoning_effort=medium", argv)
+        self.assertNotIn("gpt-6-sol", argv)
 
     def test_codex_stream_line_extracts_agent_message_and_usage(self) -> None:
         message = csr.process_codex_stream_line(
@@ -1397,8 +1409,8 @@ print('{"type":"content_block_delta","delta":{"type":"text_delta","text":"Quiet 
         self.assertEqual(result.reviewer_version, "codex-cli 0.137.0")
         metadata = json.loads(logs.metadata.read_text(encoding="utf-8"))
         self.assertEqual(metadata["backend"], "codex")
-        self.assertEqual(metadata["model"], "gpt-5.6-terra")
-        self.assertEqual(metadata["effort"], "xhigh")
+        self.assertEqual(metadata["model"], "gpt-6-sol")
+        self.assertEqual(metadata["effort"], "high")
         self.assertEqual(metadata["selected_tier"], "normal")
         self.assertEqual(metadata["tier_selection_source"], "legacy-auto-compatibility")
         self.assertIsNone(metadata["driver_tier_reason"])

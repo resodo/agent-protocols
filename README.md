@@ -129,9 +129,9 @@ semantic rationale. Normal is the default; hard is for roughly the hardest 20%
 of the agent's tasks, such as major design/architecture or unusually difficult
 bugs. This is judgment, not a numerical quota. Routine protocol edits and
 mechanical complexity hints alone do not qualify; use normal when in doubt.
-Claude Opus 5 / Fable 5.1 and Codex GPT-5.6 Terra / GPT-6 Astra are the normal /
-hard profiles, all at `xhigh`. Grok uses `grok-4.6` for both, with `medium` /
-`xhigh` effort respectively.
+Claude Opus 5.5 `high` / Fable 5.1 `xhigh` and Codex GPT-6 Sol `high` /
+GPT-6 Astra `xhigh` are the normal / hard profiles. Grok uses `grok-4.7`
+for both, with `medium` / `xhigh` effort respectively.
 
 For legacy callers, omitted tier or `--review-tier auto` emits a deprecation
 warning and always selects normal. The runner may recommend hard from review
