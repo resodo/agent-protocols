@@ -60,8 +60,7 @@ The driver asks of each finding: would it change a conclusion, a boundary, or a
 question for the human? If yes, it blocks. If no, it goes into the "left for
 the implementation plans" list and is not expanded in the body. Readability
 blocks only when it would make the human misread. The review is done when a
-pass has no finding that changes a conclusion or boundary, not when feedback
-reaches zero. Use `normal` by default. The long-term-fix and premise-check
+pass has no blocking finding by that test, not when feedback reaches zero. Use `normal` by default. The long-term-fix and premise-check
 rules in `Shared Review Rules` still apply.
 
 ## Required References
