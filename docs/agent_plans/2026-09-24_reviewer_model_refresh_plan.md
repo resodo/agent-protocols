@@ -190,3 +190,64 @@ One blocking issue: B1. As written, the plan can reach Implementation Review wit
 
 Request plan re-review of the updated body and this response before executable
 changes.
+
+### Reviewer pass 2 (impl-plan, claude reviewer)
+
+Human concern, restated: the human accepted a refreshed six-cell reviewer profile matrix on 2026-09-24, and this re-review asks only whether Driver response 1 and the updated plan body close pass 1's B1 and N1-N4 well enough to start executable work.
+
+Scope of this pass: re-review of B1 and N1-N4 against the driver's edits only. I did not rerun a full baseline review of the plan.
+
+What I inspected for this pass:
+
+- `git diff d4ae8d9 52f7acd -- docs/agent_plans/2026-09-24_reviewer_model_refresh_plan.md`, i.e. exactly what the driver changed, plus the new Driver response 1 block.
+- The touchpoints each thread turns on: `structured-review/scripts/claude_structured_review.py:30-35` (profile constants), `:57-69` (`REVIEW_MODEL_MATRIX`), `:222-223` (`RunConfig` grok defaults), `:452-460` (hard-only model guard), `:895-950` (per-backend argv); `structured-review/tests/test_claude_structured_review.py:286-298`, `:664-682`, `:1245-1254`, `:1271-1286`, `:1400`; `structured-review/tests/test_grok_selection.py:40`, `:113-125`; `structured-review/SKILL.md:124-128`; `README.md:132-134`; `docs/CURRENT.md:29-31`; `docs/agent_plans/README.md:21`.
+- Baseline is still green immediately before implementation: `python3 -m pytest structured-review/tests -q` -> 119 passed. Worktree is clean at `52f7acd`.
+
+#### Thread resolutions
+
+Thread B1 - Resolved.
+
+The updated plan now carries all three things the thread asked for, and I checked each against the code rather than accepting the driver's summary:
+
+- Proof commands. The four probes are `claude -p --model claude-opus-5-5 --effort high`, `codex exec - --json -m gpt-6-sol -c model_reasoning_effort=high`, and `grok --model grok-4.7 --reasoning-effort medium` / `xhigh`. Each carries both the new model and the profile effort in one call, and the flag shapes match what the runner actually sends (`claude_argv` uses `--model`/`--effort`, `codex_argv` uses `-m` plus `-c model_reasoning_effort=`, `grok_argv` uses `--model`/`--reasoning-effort` with `--permission-mode plan --no-subagents --output-format streaming-messages-json --prompt-file`). So a probe failure will be about model or effort acceptance, not about a flag the runner never uses.
+- Probe set completeness. Comparing the accepted matrix against `:30-35` and `:57-69`, exactly four cells change model or effort in a way the provider must accept: claude normal (`claude-opus-5` -> `claude-opus-5-5`, `xhigh` -> `high`), codex normal (`gpt-5.6-terra` -> `gpt-6-sol`, `xhigh` -> `high`), grok normal model, grok hard model. Claude hard (`claude-fable-5-1`/`xhigh`) and codex hard (`gpt-6-astra`/`xhigh`) are unchanged and already have prior live evidence. The four listed probes therefore cover every newly unproven cell; the plan does not silently skip one.
+- Served-model evidence and where it lands. The premise of the thread holds: nothing in the runner reads a served-model field from any provider stream, so metadata and the resume fingerprint record only the request. The plan now says to inspect the provider stream's init/result model field for Claude and Grok, to look for a served-model field in Codex's stream or local session metadata, and to record the absence explicitly if Codex exposes only the requested model, backed by a successful provider turn with the explicit flags. Private output goes outside the worktree; only a sanitized summary (CLI version, profile requested, served-model evidence or its absence, outcome, date) is committed. That satisfies the negative-evidence rule: an unobservable served model is recorded as a named limit rather than treated as confirmation.
+- Failure decision and owner. Driver owns diagnosis, no silent substitution of another accepted matrix value, Codex CLI upgrade to >= 0.156.1 is the first response to a Sol catalog/version failure, and anything else leaves the cell `not validated`, returns to the human for a matrix decision, and keeps Implementation Review blocked absent explicit human acceptance. That matches the readiness standard.
+- The Claude-side gap pass 1 flagged is now closed in the body: `claude-opus-5-5` acceptance through this account is stated as unproven, and the plan says the implementation must not claim account access before a bounded call demonstrates it.
+
+Thread N1 - Resolved. Step 1 now names `RunConfig.grok_model` explicitly. The narrower phrasing is correct, not an oversight: `:222-223` also hardcodes `grok_effort = "medium"`, but grok normal effort stays `medium`, so that default does not go stale. Step 2 now requires matching exact SKILL matrix rows and rejecting retired rows within that table, which is what the `assertIn("claude-opus-5", skill)` guard at `:664-682` needs, since that substring survives `claude-opus-5-5`. Scoping the negatives to the matrix table is the right call: `grok-4.6` remains a legitimate override value and is still used as one at `test_grok_selection.py:124`.
+
+Thread N2 - Resolved. Step 2 requires the Codex normal effort override test to use a value distinct from the new `high` default, which restores the meaning of `:1271-1286`.
+
+Thread N3 - Resolved. Step 3 now names the two shape-level changes (SKILL table must state effort by tier; the README all-`xhigh` sentence must change), and validation now requires direct inspection of `README.md` and `docs/CURRENT.md` because no test pins them. I re-grepped the repo outside `docs/agent_plans/`: the only live model references are `structured-review/SKILL.md:126-128`, `README.md:132-134`, `docs/CURRENT.md:30`, the runner constants, and the tests. No fourth doc is missing from step 3, and `closeout/SKILL.md` carries no model IDs. The already-indexed claim at `docs/agent_plans/README.md:21` is accurate.
+
+Thread N4 - Resolved. The rationale paragraph records the intended tradeoff (routine reviews still need careful logic, at less time and allowance than `xhigh`) and, better than asked, refuses to infer preserved review quality from model names, leaving that to representative use.
+
+#### Blocking issues
+
+None. There are no blocking issues in this pass.
+
+#### Non-blocking issues
+
+Thread N5 - a probe timeout would be routed to human escalation as if it were a rejection
+
+The probes get a 120-second process timeout, and the decision rule sends "account-access or other failures" to `not validated` plus a human matrix decision. A probe that exceeds 120 seconds is neither: it is a local budget artifact, most plausible on the Grok `xhigh` probe and on any reviewer-shaped prompt at `high`. Suggest one clause separating "the CLI or provider rejected the model or effort" (a real matrix problem, escalate as written) from "the probe exceeded the local time budget" (retry with a longer limit or a shorter prompt before escalating). Optional, and the driver can handle it at implementation time without a plan edit; I mention it because mis-binning a timeout is the one way this otherwise-good decision rule pulls the human in for nothing.
+
+Thread N6 - the sanitized evidence summary has content but no named destination
+
+The plan says exactly what the committed summary must contain but not which file receives it. Closeout is told to check validation provenance including date, so the gap is small, but naming the destination (this plan's body, or the closeout report) removes a guess.
+
+Both of these are minor. Nothing here should hold the gate, and I would not open a further round over them: the plan is already specific enough that an implementer will not have to guess what to write or what counts as proof.
+
+#### Overall judgment
+
+B1 is resolved and N1 through N4 are resolved. The driver's response is accurate about its own edits; I verified each claim against the runner, the tests, and the docs rather than taking the summary at face value, and found no overstatement. The plan now states, in advance, what proves each changed cell, what evidence identifies the served model where the CLI exposes it, what to record when it does not, and who decides what if a value is rejected.
+
+This plan is ready for implementation. The next agent can execute step 1 through step 3 and the validation sequence without guessing.
+
+#### Residual risks and validation gaps
+
+- Codex `gpt-6-sol` on CLI 0.155.1 and `claude-opus-5-5` through this account remain unproven until the bounded probes run. Until then, four of the twelve matrix cells are documentation-backed only. A successful exit alone is not evidence; the served-model check or its explicitly recorded absence is.
+- Three test sites will need edits that step 2 covers generically but does not enumerate, and each is a place where a naive edit leaves a vacuous assertion: `test_claude_structured_review.py:1253` (`model_reasoning_effort=xhigh` becomes the wrong default), `:1285` (`assertNotIn("gpt-5.6-terra")` becomes vacuous once the default is `gpt-6-sol`), and `test_grok_selection.py:40`/`:117` (fake-CLI init payload and the both-tiers profile assertion). The green suite after editing does not by itself show these still test what they claim.
+- `DEFAULT_EFFORT` and `DEFAULT_CODEX_EFFORT` are each shared across both tiers in `REVIEW_MODEL_MATRIX` today, so the split into per-tier effort is a structural edit, not a value swap. I confirmed both constants are referenced nowhere but the matrix, so the change stays contained and cannot leak into argparse defaults or help text.
+- Unchanged from pass 1: consumer submodule pins and committed skill mounts keep showing the old matrix until refreshed (closeout handoff item); in-flight review attempts cannot resume across any runner edit because the fingerprint includes `runner_sha256`; and closeout should record the validation date so the next provider rotation knows how stale this evidence is.
