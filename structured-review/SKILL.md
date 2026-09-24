@@ -311,15 +311,26 @@ rule, reject that overlay instruction and say why.
   database fields, check the correct source-of-truth layer.
 - Treat a mechanism described with enforcing verbs - enforces, prevents,
   guarantees, blocks, makes impossible - as unverified until a sample it must
-  catch has been observed making it fail. Record an unverified guard as a
-  blocking issue or as a named residual risk.
+  catch has been observed making it fail. An unverified guard is blocking only
+  when it is the core protection this change claims; record any other
+  unverified guard as a named residual risk.
 - Before treating an absence as a fact - no output, no match, no change, no
   error, no alert - require the positive control that shows the presence case is
   observable.
+- Name the layer that owns an item only by citing a written layer or ownership
+  definition in the repo. Where none covers it, say "no recorded layer
+  definition covers this" and ask the human; do not invent a layer. See
+  `Layer Ownership` in `references/review-lenses.md`.
 - Do not defend a choice with invented rationale. If evidence is missing, say
   so and lower confidence.
-- If review rounds keep adding low-value issues, raise the possibility that the
-  artifact is already good enough for the next step.
+- Do not cap review passes. Stop the loop and ask when any one of these holds:
+  the last three passes' blocking findings all target mechanisms this artifact
+  itself added; the artifact body above `## Review Threads` has grown to
+  three times its size at the start of the current review stage; or the same
+  quantity (threshold, formula, signal, limit) has changed shape three times.
+  On a stop, either run one `hard` pass whose only question is whether the layer
+  or mechanism should exist at all (the stop signal is its tier reason), or hand
+  the design question to the human.
 
 ## Evidence Before Implementation Review
 
@@ -363,6 +374,9 @@ The reviewer:
 - identifies blocking and non-blocking issues;
 - checks whether implementation would require guessing;
 - checks whether validation is strong enough;
+- prefers pointing out what can be deleted over what could be added;
+- when proposing a new mechanism, also gives the no-mechanism alternative
+  (delete, reword, or record a known limitation) and compares the costs of both;
 - says explicitly when there are no blocking issues.
 
 Default output order:
@@ -388,13 +402,22 @@ must classify reviewer findings as:
   follow-up location;
 - `escalation-needed`: requires human discussion before editing.
 
+Deletion first: before accepting a blocking finding, write one line answering
+"can this be solved by deleting something, changing a sentence, or marking it a
+known limitation?" If yes, resolve it that way. Only if no may the response add
+a mechanism, and it states the lines added and who will watch it.
+
 Pause and discuss with the human before editing when a reviewer finding:
 - changes accepted scope;
 - contradicts explicit human direction;
 - changes risk tolerance, rollout posture, production behavior, or merge
   readiness;
 - exposes an ambiguous tradeoff the artifact does not already settle;
-- would require dropping or weakening an accepted acceptance criterion.
+- would require dropping or weakening an accepted acceptance criterion;
+- would add a new standing mechanism: alert, counter, registry, config field,
+  or script. Batch these as multiple-choice questions for the human. Inside an
+  observation window, the default answer is a one-off, hand-run, read-only
+  query.
 
 After applying or rejecting reviewer feedback, the driver summary must
 distinguish:
