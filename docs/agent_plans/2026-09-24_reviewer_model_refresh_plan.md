@@ -282,3 +282,65 @@ This plan is ready for implementation. The next agent can execute step 1 through
 - Three test sites will need edits that step 2 covers generically but does not enumerate, and each is a place where a naive edit leaves a vacuous assertion: `test_claude_structured_review.py:1253` (`model_reasoning_effort=xhigh` becomes the wrong default), `:1285` (`assertNotIn("gpt-5.6-terra")` becomes vacuous once the default is `gpt-6-sol`), and `test_grok_selection.py:40`/`:117` (fake-CLI init payload and the both-tiers profile assertion). The green suite after editing does not by itself show these still test what they claim.
 - `DEFAULT_EFFORT` and `DEFAULT_CODEX_EFFORT` are each shared across both tiers in `REVIEW_MODEL_MATRIX` today, so the split into per-tier effort is a structural edit, not a value swap. I confirmed both constants are referenced nowhere but the matrix, so the change stays contained and cannot leak into argparse defaults or help text.
 - Unchanged from pass 1: consumer submodule pins and committed skill mounts keep showing the old matrix until refreshed (closeout handoff item); in-flight review attempts cannot resume across any runner edit because the fingerprint includes `runner_sha256`; and closeout should record the validation date so the next provider rotation knows how stale this evidence is.
+
+### Reviewer pass 3 (impl, claude reviewer)
+
+Human concern, restated: the human accepted a new six-cell reviewer profile matrix on 2026-09-24. This review checks whether the branch changes only those values, keeps the tests meaningful, proves the new profiles actually run, and keeps the docs consistent, with no other change to how reviewers are selected.
+
+What I inspected, and what I verified independently:
+
+- The full `git diff origin/main...HEAD`: `README.md`, `docs/CURRENT.md`, `docs/agent_plans/README.md`, `structured-review/SKILL.md`, `structured-review/scripts/claude_structured_review.py`, and three test files. This plan's implementation record and its pass 1 and pass 2 threads.
+- Runner: `structured-review/scripts/claude_structured_review.py:30-37` (constants), `:59-72` (`REVIEW_MODEL_MATRIX`), `:224-225` (`RunConfig` Grok defaults), `:425-461` (profile resolution and the hard-only model guard), `:1649-1657` (argparse override flags, which have no model defaults in their help text).
+- My own rerun at `65bd839`: `python3 -m pytest structured-review/tests -q` gave 119 passed. `py_compile` succeeded. `git diff --check origin/main...HEAD` was clean.
+- Stale-value sweep with `git grep` for `claude-opus-5` (not followed by `-5`), `gpt-5.6`, `terra`, `grok-4.6`, and `Opus 5`, excluding historical dated plans. The only remaining hits are `structured-review/tests/test_grok_selection.py:125-126`, which use `grok-4.6` on purpose as an override value that differs from the default. No live doc or constant still carries a retired value.
+
+#### Plan-to-implementation traceability
+
+| Plan item | Status | Evidence |
+| --- | --- | --- |
+| Step 1: six matrix values, the defaults they use, and `RunConfig.grok_model` | Done | The diff at `:30-37`, `:59-72`, and `:224` matches the accepted matrix cell for cell. The new `HARD_CLAUDE_EFFORT` and `HARD_CODEX_EFFORT` constants split effort by tier. Both hard values stay `xhigh`, so the hard cells don't change. `grok_effort = "medium"` is correctly left alone. |
+| Step 2: exact-profile, argv, override-guard, and metadata assertions | Done | `test_review_model_matrix_is_exact_for_all_backends_and_tiers` now covers all six cells, including Grok. `claude_argv` now asserts the exact `--model` and `--effort` values. The codex argv and metadata assertions use `gpt-6-sol` and `high`. Grok argv asserts `--model grok-4.7`. |
+| Step 2: SKILL matrix rows must match exactly, and retired rows must be rejected | Done | `test_claude_structured_review.py:686-697` extracts the table and asserts the full row list. Any retired or extra row fails that equality check. It doesn't depend on substrings, so it closes the `claude-opus-5` prefix hole from pass 1. |
+| Step 2: the Codex normal effort override test must use a value different from the default | Done | `:1289` now uses `medium`, and the new default is `high`, so the test still shows that the override takes effect. The hard-tier override test at `:579-601` uses `high` against a hard default of `xhigh`, so it also still discriminates. |
+| Step 2: keep tests showing that tier, recommendation, fallback, and override stay separate | Done | The recommendation-only tests now assert `claude-opus-5-5` while recommended tier is hard, so recommendation still doesn't change the model. The hard-model guard test at `:541-555` still rejects `claude-fable-5-1` and `gpt-6-astra` on normal. |
+| Step 3: SKILL table uses per-tier effort, the README's all-`xhigh` sentence changes, and CURRENT is updated | Done | `SKILL.md:124-128` now uses the per-tier shape. `README.md:132-134` no longer says "all at `xhigh`". `docs/CURRENT.md:29-33` names all six values and has a new `Last updated` date. All three agree with the runner constants. |
+| Bounded CLI probes for the four changed cells, with a sanitized summary | Done (driver-reported) | The implementation record's table gives CLI version, the requested profile, served-model evidence where the CLI exposes it, and the outcome. The Codex limit is stated explicitly: the public stream has no served-model field, and local `turn_context.model` shows the request, not an independent echo from the provider. This matches the pre-agreed rule in the plan. |
+| Unchanged behavior: backend order, exclusion, fallback, override policy, timeouts | Done | The runner diff touches only constants and one dataclass default. `resolve_profile`, the guard, argv builders, and timeout selection are untouched. |
+
+Independent corroboration of one cell: this review pass was launched by the candidate runner with `Model: claude-opus-5-5`, `Effort: high`, and `Model source: profile`. The Claude normal profile has therefore run end to end through the candidate runner's real argv path, not only through a separate CLI probe. The Codex and Grok probes are private driver evidence that I didn't rerun, so their provenance is driver-reported.
+
+#### Blocking issues
+
+None. There are no blocking issues in this pass.
+
+#### Non-blocking issues
+
+Thread N7 - no test covers the Grok shared-model exception to the hard-only guard
+
+`require_hard_profile_model_has_hard_tier` (`:452-461`) skips the guard when a backend's hard and normal models are the same. That is what lets `--grok-model grok-4.7` run on normal, and `SKILL.md:208` promises it. No test runs `--reviewer-backend grok --grok-model grok-4.7` on normal and asserts that it is accepted. The only Grok override test uses `grok-4.6`, which never reaches the guard's model comparison. This gap existed before this branch (it was already untested with `grok-4.6`), and this change doesn't alter the guard, so it is not a regression. If someone later gives Grok two different tier models, this path becomes load-bearing. A one-line positive test would pin it down. This is optional and could go in the backlog instead.
+
+Thread N8 - a stray blank line in the plan index
+
+`docs/agent_plans/README.md:21-23` adds the new entry followed by a blank line. The list below it already separates entries with blank lines, so this matches the existing style and nothing needs to change. I mention it only to record that I checked it.
+
+#### Overall judgment
+
+The implementation matches the accepted six-cell matrix exactly and changes nothing else about reviewer selection. The three places where a naive edit would have left an empty assertion (the SKILL doc pin, the Codex normal effort override, and the recovery test that checks an effort change is detected) were each fixed so they still tell the default and the override apart:
+
+- The SKILL pin now requires an exact row list.
+- The Codex override uses `medium`, which differs from the new `high` default.
+- The recovery test now changes effort to `xhigh`, which differs from the new Claude normal `high`, so the resume check still has to reject it.
+
+The docs agree with each other and with the runner constants. The probe evidence follows the decision rule agreed at plan review, including an honest statement of the Codex served-model limit.
+
+This is ready for closeout.
+
+#### Residual risks and validation gaps
+
+- The Codex `gpt-6-sol` probe on CLI 0.155.1 shows that the CLI accepted the flags and that a provider turn succeeded. It doesn't independently show which model served the request, because the Codex public stream doesn't expose that. This limit is recorded, not hidden. Upgrading the Codex CLI would not change it.
+- Validation provenance: the full suite, compile, and whitespace checks were rerun by this reviewer. The Codex and Grok probe results are driver-reported from private logs. The Claude normal profile is further corroborated because this reviewer run used it.
+- The probes prove that the profiles are accepted, not that review quality holds at `high` normal effort. As the plan says, quality has to be judged from representative use after merge.
+- Carried forward from pass 1 and pass 2:
+  - Consumer submodule pins and committed skill mounts will show the old matrix until they are refreshed. This is a closeout handoff item.
+  - Review attempts already in progress can't resume across this runner edit, because the resume fingerprint includes `runner_sha256`.
+- For closeout: the plan header still says `Status: active implementation plan`, and the `docs/agent_plans/README.md` entry calls it "active". Closeout should update both once the work is delivered.
