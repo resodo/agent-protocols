@@ -77,13 +77,26 @@ lower-layer gap there; name the gap for the owning layer. Where the recorded
 definitions are silent, a finding about which layer owns something is an
 escalation, not a blocker.
 
+## Premise Before Fix
+
+Apply the premise check in `SKILL.md` whenever:
+- the proposed fix mainly makes this component tolerate or support a caller's
+  behavior or assumption;
+- the same finding or topic comes back in two or more consecutive passes;
+- blockers mostly land on content added in the previous pass.
+
+"This is a patch, not the systemic fix" and "the question is wrong" are
+findings of their own. They halt the loop for a human decision; they are not
+blockers for the driver to design around.
+
 ## Mechanism Lifecycle
 
 When an artifact introduces or materially changes a durable mechanism, first
 ask whether it needs to exist: can deleting something, changing a sentence, or
 recording a known limitation do the job instead? A finding that asks for a new
-mechanism must give that no-mechanism alternative and compare the costs. New
-standing mechanisms are human decisions, not driver defaults. Then review the
+mechanism must give that no-mechanism alternative and compare the costs. A new
+alert, counter, registry, config field, or script is a human decision (see
+`Driver Role` in `SKILL.md`). Then review the
 maintenance lifecycle, not only whether it works today.
 
 Durable mechanisms include hard-coded lists, allowlists, denylists, path globs,
