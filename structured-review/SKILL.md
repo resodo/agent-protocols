@@ -121,11 +121,11 @@ force a recommendation.
 
 The resolved profile matrix is:
 
-| Reviewer backend | `normal` | `hard` | Effort |
-| --- | --- | --- | --- |
-| `claude` | `claude-opus-5` | `claude-fable-5-1` | `xhigh` |
-| `codex` | `gpt-5.6-terra` | `gpt-6-astra` | `xhigh` |
-| `grok` | `grok-4.6` | `grok-4.6` | normal `medium`; hard `xhigh` |
+| Reviewer backend | `normal` model / effort | `hard` model / effort |
+| --- | --- | --- |
+| `claude` | `claude-opus-5-5` / `high` | `claude-fable-5-1` / `xhigh` |
+| `codex` | `gpt-6-sol` / `high` | `gpt-6-astra` / `xhigh` |
+| `grok` | `grok-4.7` / `medium` | `grok-4.7` / `xhigh` |
 
 The prompt, start log, and run metadata separately record selected tier,
 selection source, driver reason, recommended tier, recommendation reasons,

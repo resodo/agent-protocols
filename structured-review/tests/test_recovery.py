@@ -171,7 +171,7 @@ class RecoveryTests(unittest.TestCase):
 
     def test_target_and_reviewer_fingerprint_changes_rejected(self):
         config=self.timeout()
-        for changed in (replace(config,focus='Different scope'),replace(config,model='other-model'),replace(config,effort='high')):
+        for changed in (replace(config,focus='Different scope'),replace(config,model='other-model'),replace(config,effort='xhigh')):
             with self.assertRaisesRegex(csr.RunnerError,'target or reviewer constraints changed'):
                 csr.run(self.resumed(changed))
         (self.protocol/'SKILL.md').write_text('Changed protocol')

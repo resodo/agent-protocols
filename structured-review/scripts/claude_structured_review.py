@@ -27,12 +27,14 @@ from typing import Any, TextIO, cast
 MODE_WRITE = "write-commit-to-plan"
 MODE_PRINT = "print-review"
 REVIEW_TYPES = ("other-plan", "impl-plan", "impl", "closeout-review")
-DEFAULT_MODEL = "claude-opus-5"
+DEFAULT_MODEL = "claude-opus-5-5"
 HARD_CLAUDE_MODEL = "claude-fable-5-1"
-DEFAULT_EFFORT = "xhigh"
-DEFAULT_CODEX_MODEL = "gpt-5.6-terra"
+DEFAULT_EFFORT = "high"
+HARD_CLAUDE_EFFORT = "xhigh"
+DEFAULT_CODEX_MODEL = "gpt-6-sol"
 HARD_CODEX_MODEL = "gpt-6-astra"
-DEFAULT_CODEX_EFFORT = "xhigh"
+DEFAULT_CODEX_EFFORT = "high"
+HARD_CODEX_EFFORT = "xhigh"
 DEFAULT_TIMEOUT_SEC = 1800
 HARD_TIMEOUT_SEC = 3600
 STOP_GRACE_SEC = 5.0
@@ -57,15 +59,15 @@ CODEX_LAST_MESSAGE_NAME = "last-message.txt"
 REVIEW_MODEL_MATRIX = {
     BACKEND_CLAUDE: {
         REVIEW_TIER_NORMAL: (DEFAULT_MODEL, DEFAULT_EFFORT),
-        REVIEW_TIER_HARD: (HARD_CLAUDE_MODEL, DEFAULT_EFFORT),
+        REVIEW_TIER_HARD: (HARD_CLAUDE_MODEL, HARD_CLAUDE_EFFORT),
     },
     BACKEND_CODEX: {
         REVIEW_TIER_NORMAL: (DEFAULT_CODEX_MODEL, DEFAULT_CODEX_EFFORT),
-        REVIEW_TIER_HARD: (HARD_CODEX_MODEL, DEFAULT_CODEX_EFFORT),
+        REVIEW_TIER_HARD: (HARD_CODEX_MODEL, HARD_CODEX_EFFORT),
     },
     BACKEND_GROK: {
-        REVIEW_TIER_NORMAL: ("grok-4.6", "medium"),
-        REVIEW_TIER_HARD: ("grok-4.6", "xhigh"),
+        REVIEW_TIER_NORMAL: ("grok-4.7", "medium"),
+        REVIEW_TIER_HARD: ("grok-4.7", "xhigh"),
     },
 }
 
@@ -219,7 +221,7 @@ class RunConfig:
     resume_run: Path | None = None
     resume_session_id: str | None = None
     grok_bin: str = "grok"
-    grok_model: str = "grok-4.6"
+    grok_model: str = "grok-4.7"
     grok_effort: str = "medium"
     requested_backend: str = BACKEND_CLAUDE
     coding_agent: str = "unknown"

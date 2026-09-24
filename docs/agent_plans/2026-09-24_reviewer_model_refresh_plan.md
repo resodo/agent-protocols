@@ -97,6 +97,37 @@ bounded call demonstrates it.
   covered by profile tests. Consumer submodule pin updates are a handoff item.
   Merge remains human-owned.
 
+## Implementation record (2026-09-24)
+
+The candidate changes only the six accepted profile values, the independent
+Grok `RunConfig` model default, exact profile/argv assertions, and the live
+SKILL/README/CURRENT summaries. The selected-tier algorithm, backend ordering,
+fallback, override policy, and timeouts are unchanged.
+
+Change-specific evidence on this candidate:
+
+| Profile | CLI version and private probe observation | Outcome |
+| --- | --- | --- |
+| Claude normal: `claude-opus-5-5` / `high` | Claude Code 2.1.281; `system/init.model` reported `claude-opus-5-5`; final result was successful and returned the exact short reply. | Validated |
+| Codex normal: `gpt-6-sol` / `high` | Codex CLI 0.155.1; explicit `-m` and effort flags completed a provider turn and returned the exact short reply. The public JSON stream has no served-model field; the local `turn_context.model` recorded `gpt-6-sol`, which confirms the active request configuration but is not an independent provider echo. | CLI acceptance validated; served model is not independently exposed |
+| Grok normal: `grok-4.7` / `medium` | Grok Build 1.0.40; `system/init.model` reported `grok-4.7`; final `end_turn` result was successful and returned the exact short reply. | Validated |
+| Grok hard: `grok-4.7` / `xhigh` | Grok Build 1.0.40; `system/init.model` reported `grok-4.7`; final `end_turn` result was successful and returned the exact short reply. | Validated |
+
+Each probe used a 120-second process limit and private temporary output outside
+the worktree. All finished in under ten seconds. A timeout would have prompted
+a shorter prompt or longer bounded retry; none occurred. These calls prove
+profile acceptance and the reported model where exposed, not review quality.
+Claude Fable 5.1 / `xhigh` and Codex Astra / `xhigh` are unchanged hard cells;
+their current profile resolution is covered by the exact matrix test.
+
+Validation: focused profile/argv tests passed (9 selected tests), the full
+structured-review suite passed (119 tests), and a further three affected argv
+and matrix tests passed after the final assertion-only edit. The initial full
+run exposed a stale recovery test whose supposed effort change had become the
+new default; changing that input to `xhigh` restored the fingerprint check.
+`py_compile` and `git diff --check` passed. The README and `docs/CURRENT.md`
+were inspected directly against the SKILL table and runner constants.
+
 ## Review Threads
 
 ### Reviewer pass 1 (impl-plan, claude reviewer)

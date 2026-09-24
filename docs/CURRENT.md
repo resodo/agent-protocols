@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-09-13
+Last updated: 2026-09-24
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -26,9 +26,11 @@ avoid treating historical plans as current instructions.
   driver-owned normal/hard tier selection, rationale-required hard profiles,
   and recommendation-only mechanical complexity signals. Legacy auto safely
   selects normal with deprecation provenance. Normal/hard time limits are
-  1800/3600 seconds; hard profiles use Fable 5.1 / GPT-6 Astra. Grok uses 4.6
-  at medium/xhigh. Normal is default; hard is reserved by agent judgment for
-  roughly the hardest 20% (major design/architecture or difficult bugs).
+  1800/3600 seconds. Claude uses Opus 5.5 at high for normal and Fable 5.1 at
+  xhigh for hard; Codex uses GPT-6 Sol at high and GPT-6 Astra at xhigh. Grok
+  uses 4.7 at medium/xhigh. Normal is default; hard is reserved by agent
+  judgment for roughly the hardest 20% (major design/architecture or difficult
+  bugs).
   Driver stop
   requests and guarded same-session recovery retain private per-attempt evidence.
   When acceptance depends on runnable behavior, Implementation Review readiness

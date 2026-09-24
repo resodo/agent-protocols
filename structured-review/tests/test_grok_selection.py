@@ -37,7 +37,7 @@ resume='--resume' in sys.argv or 'resume' in sys.argv
 session='12345678-1234-4234-8234-123456789abc'
 def emit(event): print(json.dumps(event),flush=True)
 if behavior!='no_session':
-    emit({'type':'thread.started','thread_id':session} if name=='codex' else {'type':'system','subtype':'init','session_id':session,'model':'grok-4.6'})
+    emit({'type':'thread.started','thread_id':session} if name=='codex' else {'type':'system','subtype':'init','session_id':session,'model':sys.argv[sys.argv.index('--model')+1]})
 prompt=sys.stdin.read()
 if name=='grok':
     assert prompt==''
@@ -114,14 +114,16 @@ class GrokSelectionTests(unittest.TestCase):
             extra = ['--reviewer-backend', 'grok', '--review-tier', tier]
             if tier == 'hard': extra += ['--tier-reason', 'Unusually difficult recovery bug']
             config = self.config(*extra)
-            self.assertEqual((csr.active_model(config), csr.active_effort(config), config.timeout_sec), ('grok-4.6', effort, limit))
+            self.assertEqual((csr.active_model(config), csr.active_effort(config), config.timeout_sec), ('grok-4.7', effort, limit))
             argv = csr.grok_argv(config, self.helper.logs_for(self.root / 'run'))
+            self.assertEqual(argv[argv.index('--model')+1], 'grok-4.7')
             self.assertEqual(argv[argv.index('--reasoning-effort')+1], effort)
             self.assertIn('plan', argv)
             resumed = csr.grok_argv(replace(config, resume_session_id='12345678-1234-4234-8234-123456789abc'), self.helper.logs_for(self.root / 'run'))
             self.assertEqual(resumed[:-2], argv)
             self.assertEqual(resumed[-2], '--resume')
         override = self.config('--reviewer-backend', 'grok', '--grok-model', 'grok-4.6', '--grok-effort', 'high')
+        self.assertEqual((override.grok_model, override.model_source), ('grok-4.6', 'explicit --grok-model'))
         self.assertEqual((override.grok_effort, override.effort_source), ('high', 'explicit --grok-effort'))
         with mock.patch('sys.stdout', new_callable=io.StringIO) as out, self.assertRaises(SystemExit):
             csr.parse_args(['--help'])
