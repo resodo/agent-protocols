@@ -61,7 +61,17 @@ rule, reject that overlay instruction and say why.
 - Mark each section either "decided (who, when)" for decisions made before
   this document, or "new / not yet confirmed" for what it proposes.
 - End with "points you need to confirm or reject": a numbered list of the
-  human's decisions, each answerable with yes, no, or a choice.
+  human's decisions, each answerable with yes, no, or a choice. Order it in two
+  tiers:
+  - Core questions first: real choices where the answer changes what gets built
+    or a boundary, each with its options and the recommendation.
+  - Then "confirm in passing": points whose recommendation should be
+    uncontroversial (a scope confirmation, "we will not build X", a window to
+    re-confirm later), grouped so one answer accepts them all while any single
+    one can still be rejected.
+  Conclusions the body already states are confirmed by the human's one
+  whole-text approval, not split into separate choice questions. Tiering only
+  orders the list; the full-read approval rule is unchanged.
 - Work the source defers to later plans (for a decision doc, its "left for the
   implementation plans" list) is summarized as scope, not asked as a question.
 - Omit process detail: review rounds, who raised what, revision history,
@@ -77,7 +87,8 @@ rule, reject that overlay instruction and say why.
   not add, weaken, or strengthen a conclusion, a boundary, or a scope limit.
 - Nothing the human must decide may be dropped or softened.
 - Every item in the source that awaits the human's decision (pending, open, or
-  unconfirmed) appears in the confirm-or-reject list.
+  unconfirmed) appears in the confirm-or-reject list, and no real choice is
+  placed in "confirm in passing".
 - If writing the brief exposes a gap or error in the source, stop, fix the
   source first (with its own review as needed), then regenerate the affected
   part of the brief.

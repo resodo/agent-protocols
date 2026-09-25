@@ -311,8 +311,9 @@ Check only:
 - Fidelity: every conclusion, boundary, and scope limit in the source is in the
   brief and unchanged; nothing is added, weakened, or strengthened.
 - Open items: every item in the source that awaits the human's decision is in
-  the brief's confirm-or-reject list, framed fairly; work deferred to later
-  plans is summarized as scope, not asked as a question.
+  the brief's confirm-or-reject list, framed fairly, and no real choice is
+  demoted into "confirm in passing"; work deferred to later plans is summarized
+  as scope, not asked as a question.
 - Readability: conclusion first; short sentences; every term defined on first
   use, including in diagrams and tables; arrows labeled; each section marked
   decided or not yet confirmed; no process detail; the overlay's banned words
