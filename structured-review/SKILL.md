@@ -63,14 +63,22 @@ blocks only when it would make the human misread. The review is done when a
 pass has no blocking finding by that test, not when feedback reaches zero. Use `normal` by default. The long-term-fix and premise-check
 rules in `Shared Review Rules` still apply.
 
-A decision doc is approved only when the human has read the full document and
+A decision doc has two files. The source is the full, agent-facing document,
+written in the repo's agent-facing language (the consumer's overlay may name
+it) and reviewed to the stop rule above. The brief is made from the final source
+with `readable-brief/SKILL.md` and reviewed with that protocol's narrow lens.
+The decision doc is ready for the human only when both are in the same PR.
+
+A decision doc is approved only when the human has read the full brief and
 explicitly approved it. Answers to questions the driver pulled into chat are not
 approval: they hide everything outside those questions (conclusions, ownership
 boundaries, the deferred list). When the review is done, the driver hands the
-human a readable version of the full document plus the questions, not the
+human the brief, which ends with the points to confirm or reject, not the
 questions alone. Answers given before the full read are recorded, but the doc
-stays unapproved. Until approval, do not merge the doc and do not start plans or
-implementation that depend on it.
+stays unapproved. Record the approval in the PR and in the doc's
+human-acceptance record, then merge. Until approval, do not merge the doc and do
+not start plans or implementation that depend on it; they start only after the
+merge.
 
 ## Required References
 

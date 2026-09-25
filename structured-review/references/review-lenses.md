@@ -286,3 +286,23 @@ Always check:
 
 If an artifact derives consumption from periodic snapshots, it must define reset
 handling.
+
+## Readable Brief: Fidelity And Readability
+
+Use this lens only for a brief made with `readable-brief/SKILL.md`. It replaces
+the other lenses in this file for that pass. The reviewer receives the brief
+and its source; the source has already been reviewed and is not reopened here.
+
+Check only:
+- Fidelity: every conclusion, boundary, and scope limit in the source is in the
+  brief and unchanged; nothing is added, weakened, or strengthened.
+- Open items: every pending or unconfirmed item in the source is in the brief's
+  confirm-or-reject list, framed fairly.
+- Readability: conclusion first; short sentences; every term defined on first
+  use, including in diagrams and tables; arrows labeled; each section marked
+  decided or not yet confirmed; no process detail; the overlay's banned words
+  and forbidden glyphs absent.
+
+A finding that would change a conclusion, a boundary, or a question for the
+human says so; the driver fixes the source first. Other findings are
+sentence-level fixes to the brief.
