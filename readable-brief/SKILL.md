@@ -60,9 +60,9 @@ rule, reject that overlay instruction and say why.
 - In diagrams, label what every arrow means.
 - Mark each section either "decided (who, when)" for decisions made before
   this document, or "new / not yet confirmed" for what it proposes.
-- End with "points you need to confirm or reject": a numbered list of the
-  human's decisions, each answerable with yes, no, or a choice. Order it in two
-  tiers:
+- End the body with "points you need to confirm or reject": a numbered list of
+  the human's decisions, each answerable with yes, no, or a choice. Order it in
+  two tiers:
   - Core questions first: real choices where the answer changes what gets built
     or a boundary. Each opens with 2-3 lines of background (the current state
     and why it is being asked, readable without earlier documents), then its
@@ -86,8 +86,8 @@ rule, reject that overlay instruction and say why.
   as a parenthetical source after that sentence.
 - Every remaining reference is a clickable link: repository file links pinned
   to the default branch with line anchors, or PR and issue links. Gather them
-  in a short "sources" appendix at the end so the body stays clean. Check that
-  each anchor points at the intended text.
+  in a short "sources" appendix after the confirm list so the body stays
+  clean. Check that each anchor points at the intended text.
 - Use code identifiers only when necessary, and gloss each in plain language at
   first use.
 - Reading time is a target, not a limit. Completeness of conclusions,

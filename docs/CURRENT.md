@@ -62,9 +62,9 @@ avoid treating historical plans as current instructions.
   This repo dogfoods it through `docs/backlog.yml`.
 - `readable-brief/SKILL.md` - turns a final, reviewed technical document into a
   brief for the human decision-maker: conclusion first, every term defined,
-  earlier decisions stated in plain words with references linked in a sources
-  appendix, process detail omitted, nothing to decide dropped or softened, ending with the
-  points to confirm or reject. Required for decision docs, optional for other
+  earlier decisions stated in plain words, process detail omitted, nothing to
+  decide dropped or softened, ending with the points to confirm or reject, then
+  a sources appendix of links. Required for decision docs, optional for other
   human-read documents. Reviewed once with the narrow fidelity-plus-readability
   lens; the consumer overlay supplies language, banned words, and delivery.
 - `scout/SKILL.md` - judgment-heavy repository discovery workflow for
