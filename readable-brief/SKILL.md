@@ -86,9 +86,10 @@ rule, reject that overlay instruction and say why.
 - Fidelity: no conclusion may change. The brief may shorten and reorder; it may
   not add, weaken, or strengthen a conclusion, a boundary, or a scope limit.
 - Nothing the human must decide may be dropped or softened.
-- Every item in the source that awaits the human's decision (pending, open, or
-  unconfirmed) appears in the confirm-or-reject list, and no real choice is
-  placed in "confirm in passing".
+- Every question the source leaves for the human (pending or open) appears in
+  the confirm-or-reject list, and no real choice is placed in "confirm in
+  passing". Proposed conclusions the body states are covered by the whole-text
+  approval, not listed as separate questions.
 - If writing the brief exposes a gap or error in the source, stop, fix the
   source first (with its own review as needed), then regenerate the affected
   part of the brief.
