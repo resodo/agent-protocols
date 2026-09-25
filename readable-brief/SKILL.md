@@ -64,7 +64,9 @@ rule, reject that overlay instruction and say why.
   human's decisions, each answerable with yes, no, or a choice. Order it in two
   tiers:
   - Core questions first: real choices where the answer changes what gets built
-    or a boundary, each with its options and the recommendation.
+    or a boundary. Each opens with 2-3 lines of background (the current state
+    and why it is being asked, readable without earlier documents), then its
+    options, then the recommendation.
   - Then "confirm in passing": points whose recommendation should be
     uncontroversial (a scope confirmation, "we will not build X", a window to
     re-confirm later), grouped so one answer accepts them all while any single
@@ -78,6 +80,16 @@ rule, reject that overlay instruction and say why.
   reviewer names. The human cares about the result.
 - Keep only what the human needs to decide. For field-level detail, point to
   the section of the source.
+- No bare reference IDs as explanation. When the brief refers to an earlier
+  decision, section, question, or item, state its content in one plain sentence
+  (what was decided, and when and by whom if relevant); an ID may appear only
+  as a parenthetical source after that sentence.
+- Every remaining reference is a clickable link: repository file links pinned
+  to the default branch with line anchors, or PR and issue links. Gather them
+  in a short "sources" appendix at the end so the body stays clean. Check that
+  each anchor points at the intended text.
+- Use code identifiers only when necessary, and gloss each in plain language at
+  first use.
 - Reading time is a target, not a limit. Completeness of conclusions,
   boundaries, and points to confirm wins over length.
 
@@ -104,6 +116,8 @@ Check each item and fix before review:
    time near the overlay's target.
 3. The overlay's banned words and forbidden glyphs do not appear.
 4. No undefined term, including in diagrams, tables, and the confirm list.
+5. No bare-ID explanation; every reference is a working link with the intended
+   anchor; each core question opens with its background.
 
 ## Review
 
