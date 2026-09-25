@@ -121,7 +121,8 @@ in the doc's human-acceptance record. Only the session that received the
 approval directly records it (see `SAFETY Rules` in `structured-review`).
 
 The human may annotate the brief file directly. Commit the annotations verbatim
-first, as the record. Then revise the source and the brief (the source under its
+first, as the record (commit authorization as in `structured-review`'s
+`references/collaboration.md`). Then revise the source and the brief (the source under its
 own review rules, the brief under `Review` above) and hand the brief back.
 Answers given before a full read, in annotations or in chat, are recorded but
 are not approval (see `Document Levels` in `structured-review`).
