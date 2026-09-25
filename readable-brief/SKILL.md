@@ -100,10 +100,12 @@ Run one `structured-review` pass on the brief with the narrow
 lens in the focus. The lens replaces the usual `other-plan` checks for this
 pass.
 
-- Fix sentence-level findings in the brief. These do not need another pass.
-- If a finding would change a conclusion, a boundary, or a question for the
-  human, stop and fix the source first (reviewed under its own rules); then
-  update the brief and run the brief pass again on the final source and brief.
+- If the brief misstates or is hard to read but the source is right, fix the
+  brief. These fixes do not need another pass.
+- If a finding shows the source itself must change (a conclusion, boundary, or
+  question for the human is wrong or missing there), stop and fix the source
+  first, reviewed under its own rules; then update the brief and run the brief
+  pass again on the final source and brief.
 - Do not reopen the source's design through the brief review.
 
 ## Delivery

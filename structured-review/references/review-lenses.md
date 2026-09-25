@@ -305,6 +305,6 @@ Check only:
   decided or not yet confirmed; no process detail; the overlay's banned words
   and forbidden glyphs absent.
 
-A finding that would change a conclusion, a boundary, or a question for the
-human says so; the driver fixes the source first. Other findings are
-sentence-level fixes to the brief.
+A finding that shows the source itself must change says so; the driver fixes
+and re-reviews the source first. A brief that misstates a correct source, or
+reads poorly, is fixed in the brief.
