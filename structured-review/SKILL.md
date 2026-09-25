@@ -87,7 +87,8 @@ boundaries, the deferred list). When the review is done, the driver hands the
 human the brief, which ends with the points to confirm or reject, not the
 questions alone. Answers given before the full read are recorded, but the doc
 stays unapproved. The human may annotate the brief file directly. The driver
-first commits those annotations verbatim as the record, then revises the source
+first commits those annotations verbatim as the record (commit authorization as
+in `references/collaboration.md`), then revises the source
 and the brief under their own review rules and hands the brief back; annotations
 are answers and count as approval only under the rule above. Record the approval
 in the PR and in the doc's human-acceptance record (see the approval-recording
@@ -365,9 +366,10 @@ rule, reject that overlay instruction and say why.
 - Preserve human final authority for scope, write-back, commit, push, merge,
   and done-enough decisions.
 - A human approval or acceptance is recorded in files only by the session that
-  received it directly from the human. A subagent never writes "the human
-  approved X" from a relayed message; it writes "per main session relay,
-  pending record by main session", and the main session records it.
+  received it directly from the human. A session that only has it relayed,
+  such as a subagent, never writes "the human approved X"; it writes "per
+  <recipient> relay, pending record by <recipient>", and the direct recipient
+  records it.
 - Report dirty worktree, draft artifact, and unpushed-review-target state
   honestly.
 - Use the declared source-of-truth layer for external facts, provider/account
@@ -416,7 +418,9 @@ rule, reject that overlay instruction and say why.
   times.
   On a stop, either run one pass on a stronger model (normally `hard`, with the
   stop signal as its tier reason) whose only question is whether the layer or
-  mechanism should exist at all, or hand the design question to the human.
+  mechanism should exist at all, or hand the design question to the human. On
+  a status-wording stop, ask the human which items are decided and which are
+  deferred.
 
 ## Evidence Before Implementation Review
 
