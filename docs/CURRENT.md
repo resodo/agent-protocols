@@ -47,8 +47,10 @@ avoid treating historical plans as current instructions.
   wrong premise or a cause outside the change halts the loop for the human.
   Documents state their level: decision doc (an agent-facing source plus a
   readable brief in the same PR; approved only after the human reads the brief
-  in full, then merged and split into plans; four-check review), plan (one PR),
-  or implementation.
+  in full, then merged and split into plans; four-check review; written scope
+  first, deferred items worded as candidates, human annotations on the brief
+  committed verbatim first), plan (one PR), or implementation. Only the session
+  that received a human approval records it.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work, including verification
   that change-specific core-path evidence preceded review and merge.

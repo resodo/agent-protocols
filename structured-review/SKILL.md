@@ -51,6 +51,13 @@ Every reviewed document states its level at the top:
 When unsure: if a PR can be opened directly from the document, it is a plan; if
 it must be decided and split first, it is a decision doc.
 
+Write a decision doc scope first: for each layer or component, state what it
+is, what it offers, what it runs itself, what is out of scope, and its future
+hooks; only then list changes to existing plans. Items deferred to later docs
+are worded as candidates, never as decided. A table that depends on pending
+answers states the recommended state once, under a single preface such as
+"effective per the answers in section N", not a condition in every cell.
+
 For a decision doc, reviewers check only:
 1. Do the conclusions match the human's requirements and existing decisions?
 2. Are the ownership boundaries stated?
@@ -62,7 +69,10 @@ question for the human? If yes, it blocks. If no, it goes into the "left for
 the implementation plans" list and is not expanded in the body. Readability
 blocks only when it would make the human misread. The review is done when a
 pass has no blocking finding by that test, not when feedback reaches zero. Use `normal` by default. The long-term-fix and premise-check
-rules in `Shared Review Rules` still apply.
+rules in `Shared Review Rules` still apply. Before replying to a pass, the
+driver sweeps the whole doc once for wording that states a deferred item as
+decided and fixes every instance, not only the ones cited. The reviewer-side
+details are in `Decision Doc` in `references/review-lenses.md`.
 
 A decision doc has two files. The source is the full, agent-facing document,
 written in the repo's agent-facing language (the consumer's overlay may name
@@ -76,8 +86,12 @@ approval: they hide everything outside those questions (conclusions, ownership
 boundaries, the deferred list). When the review is done, the driver hands the
 human the brief, which ends with the points to confirm or reject, not the
 questions alone. Answers given before the full read are recorded, but the doc
-stays unapproved. Record the approval in the PR and in the doc's
-human-acceptance record, then merge. Until approval, do not merge the doc and do
+stays unapproved. The human may annotate the brief file directly. The driver
+first commits those annotations verbatim as the record, then revises the source
+and the brief under their own review rules and hands the brief back; annotations
+are answers and count as approval only under the rule above. Record the approval
+in the PR and in the doc's human-acceptance record (see the approval-recording
+rule in `SAFETY Rules`), then merge. Until approval, do not merge the doc and do
 not start plans or implementation that depend on it; they start only after the
 merge.
 
@@ -161,6 +175,10 @@ present; otherwise it recommends `normal`:
   broad protocol-change, or explicit high-complexity scope recognized by the
   runner's pinned signal table.
 
+The keyword signals cannot tell a decision doc from a plan, so a docs-only
+decision doc that names architecture or migration still gets a `hard`
+recommendation; keep `normal` for decision docs, as `Document Levels` says.
+
 The recommendation and its reasons are observational. They are shown in the
 prompt, start log, and metadata but never alter selected tier, model, timeout,
 scope, or readiness. Use clear, concrete focus text; do not add keywords to
@@ -231,6 +249,10 @@ In both modes the reviewer runs read-only and returns the review text. In
 `write-commit-to-plan` the runner itself appends that text verbatim under the
 thread file's `Review Threads` section and creates the `structured-review:`
 commit, so the append-only thread contract holds by construction.
+
+`--artifact`, `--thread-file`, and `--focus-file` accept only paths inside
+`--worktree`; any other path fails with `path escapes worktree`. Write a long
+focus to a file inside the worktree, or pass it inline with `--focus`.
 
 Use `print-review` when appending review threads would pollute a durable
 reference artifact, such as a published doc, skill, protocol overlay, or other
@@ -342,6 +364,10 @@ rule, reject that overlay instruction and say why.
   checking PR metadata and the commit graph.
 - Preserve human final authority for scope, write-back, commit, push, merge,
   and done-enough decisions.
+- A human approval or acceptance is recorded in files only by the session that
+  received it directly from the human. A subagent never writes "the human
+  approved X" from a relayed message; it writes "per main session relay,
+  pending record by main session", and the main session records it.
 - Report dirty worktree, draft artifact, and unpushed-review-target state
   honestly.
 - Use the declared source-of-truth layer for external facts, provider/account
@@ -383,7 +409,8 @@ rule, reject that overlay instruction and say why.
   so and lower confidence.
 - Do not cap review passes. Stop the loop and ask when any one of these holds:
   three consecutive passes each had blocking findings, all targeting mechanisms
-  this artifact itself added; the artifact body above `## Review Threads` has
+  this artifact itself added or only the decided-versus-candidate status
+  wording of deferred items; the artifact body above `## Review Threads` has
   grown to three times its size at the start of the current review stage; or
   the same quantity (threshold, formula, signal, limit) has changed shape three
   times.
