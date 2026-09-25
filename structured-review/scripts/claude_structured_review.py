@@ -1645,7 +1645,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--artifact", action="append", required=True)
     focus = parser.add_mutually_exclusive_group(required=True)
     focus.add_argument("--focus")
-    focus.add_argument("--focus-file")
+    focus.add_argument("--focus-file", help="file holding the focus text; must be inside --worktree (else: path escapes worktree)")
     parser.add_argument("--thread-file")
     parser.add_argument("--topic")
     parser.add_argument(

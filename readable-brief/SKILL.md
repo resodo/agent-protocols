@@ -31,7 +31,7 @@ The overlay supplies:
 - banned words and forbidden glyphs;
 - the glossary's "future code name" column title, if localized;
 - how the brief is delivered to the human;
-- any reader preferences, such as target reading time.
+- any reader preferences, such as an approximate target reading time.
 
 Without an overlay, write in the language of the source and ask the human how
 to deliver the brief. Overlays are loaded only when this protocol is loaded.
@@ -68,6 +68,8 @@ rule, reject that overlay instruction and say why.
   reviewer names. The human cares about the result.
 - Keep only what the human needs to decide. For field-level detail, point to
   the section of the source.
+- Reading time is a target, not a limit. Completeness of conclusions,
+  boundaries, and points to confirm wins over length.
 
 ## SAFETY Rules
 
@@ -86,8 +88,8 @@ Check each item and fix before review:
 
 1. Fidelity: walk the source's conclusions, boundaries, and items awaiting the
    human one by one; each is present and unchanged in the brief.
-2. Readability: conclusion first, short sentences, no process detail, a reader
-   can finish in the overlay's target time.
+2. Readability: conclusion first, short sentences, no process detail, reading
+   time near the overlay's target.
 3. The overlay's banned words and forbidden glyphs do not appear.
 4. No undefined term, including in diagrams, tables, and the confirm list.
 
@@ -101,7 +103,9 @@ lens in the focus. The lens replaces the usual `other-plan` checks for this
 pass.
 
 - If the brief misstates or is hard to read but the source is right, fix the
-  brief. These fixes do not need another pass.
+  brief. These fixes do not need another pass; record them in the review record
+  (for example the output MANIFEST's review table) as a "brief-only fix, no
+  re-review" row.
 - If a finding shows the source itself must change (a conclusion, boundary, or
   question for the human is wrong or missing there), stop and fix the source
   first, reviewed under its own rules; then update the brief and run the brief
@@ -113,4 +117,11 @@ pass.
 Deliver the brief the way the overlay says. The human reads the brief, not the
 source. For a decision doc, the human's full read and explicit approval of the
 brief is the approval required by `structured-review`; record it in the PR and
-in the doc's human-acceptance record.
+in the doc's human-acceptance record. Only the session that received the
+approval directly records it (see `SAFETY Rules` in `structured-review`).
+
+The human may annotate the brief file directly. Commit the annotations verbatim
+first, as the record. Then revise the source and the brief (the source under its
+own review rules, the brief under `Review` above) and hand the brief back.
+Answers given before a full read, in annotations or in chat, are recorded but
+are not approval (see `Document Levels` in `structured-review`).

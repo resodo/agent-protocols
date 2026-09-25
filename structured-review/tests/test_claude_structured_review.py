@@ -212,6 +212,23 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertIn("pass normal or hard explicitly", help_text)
         self.assertIn("Legacy auto compatibility always selects normal", help_text)
         self.assertIn("required non-empty driver rationale", help_text)
+        self.assertIn("must be inside --worktree", help_text)
+
+    def test_focus_file_outside_worktree_is_rejected(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        outside = self.root / "focus.md"
+        outside.write_text("Review.", encoding="utf-8")
+        args = csr.parse_args(
+            [
+                "--protocol-dir", str(protocol), "--worktree", str(repo),
+                "--mode", csr.MODE_PRINT, "--type", "impl-plan",
+                "--artifact", "docs/plan.md", "--review-tier", "normal",
+                "--focus-file", str(outside),
+            ]
+        )
+        with self.assertRaisesRegex(csr.RunnerError, "path escapes worktree"):
+            csr.config_from_args(args, env={})
 
     def test_multiple_artifacts_are_preserved_in_prompt(self) -> None:
         repo = self.init_target_repo()

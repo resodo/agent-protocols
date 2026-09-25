@@ -287,6 +287,19 @@ Always check:
 If an artifact derives consumption from periodic snapshots, it must define reset
 handling.
 
+## Decision Doc
+
+Use this with the four decision-doc checks in `Document Levels` in `SKILL.md`.
+
+- Scope before deltas: each layer or component states its scope and
+  abstractions before any list of changes to existing plans. A doc that opens
+  with a list of changes is a readability finding.
+- Decided versus candidate: list every place the doc states an item deferred to
+  later docs as decided, all in one pass, not one per round.
+- Conditional tables: a table that states the recommended state once, under a
+  single preface tying it to the pending answers, is acceptable; do not ask for
+  a condition in every cell.
+
 ## Readable Brief: Fidelity And Readability
 
 Use this lens only for a brief made with `readable-brief/SKILL.md`. It replaces
@@ -303,7 +316,9 @@ Check only:
 - Readability: conclusion first; short sentences; every term defined on first
   use, including in diagrams and tables; arrows labeled; each section marked
   decided or not yet confirmed; no process detail; the overlay's banned words
-  and forbidden glyphs absent.
+  and forbidden glyphs absent. Reading time near the overlay's target is enough;
+  the target is not a limit, and completeness of conclusions, boundaries, and
+  points to confirm wins over length.
 
 A finding that shows the source itself must change says so; the driver fixes
 and re-reviews the source first. A brief that misstates a correct source, or
