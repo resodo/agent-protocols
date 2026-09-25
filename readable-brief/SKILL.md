@@ -58,9 +58,12 @@ rule, reject that overlay instruction and say why.
 - Include a glossary table: term, plain meaning, future code name (the name the
   code or later docs will use). Leave the last cell empty when there is none.
 - In diagrams, label what every arrow means.
-- Mark each section either "decided (who, when)" or "new / not yet confirmed".
-- End with "points you need to confirm or reject": a numbered list, each item
-  answerable with yes, no, or a choice.
+- Mark each section either "decided (who, when)" for decisions made before
+  this document, or "new / not yet confirmed" for what it proposes.
+- End with "points you need to confirm or reject": a numbered list of the
+  human's decisions, each answerable with yes, no, or a choice.
+- Work the source defers to later plans (for a decision doc, its "left for the
+  implementation plans" list) is summarized as scope, not asked as a question.
 - Omit process detail: review rounds, who raised what, revision history,
   reviewer names. The human cares about the result.
 - Keep only what the human needs to decide. For field-level detail, point to
@@ -71,8 +74,8 @@ rule, reject that overlay instruction and say why.
 - Fidelity: no conclusion may change. The brief may shorten and reorder; it may
   not add, weaken, or strengthen a conclusion, a boundary, or a scope limit.
 - Nothing the human must decide may be dropped or softened.
-- Every pending, open, or unconfirmed item in the source appears in the
-  confirm-or-reject list.
+- Every item in the source that awaits the human's decision (pending, open, or
+  unconfirmed) appears in the confirm-or-reject list.
 - If writing the brief exposes a gap or error in the source, stop, fix the
   source first (with its own review as needed), then regenerate the affected
   part of the brief.
@@ -81,8 +84,8 @@ rule, reject that overlay instruction and say why.
 
 Check each item and fix before review:
 
-1. Fidelity: walk the source's conclusions, boundaries, and pending items one
-   by one; each is present and unchanged in the brief.
+1. Fidelity: walk the source's conclusions, boundaries, and items awaiting the
+   human one by one; each is present and unchanged in the brief.
 2. Readability: conclusion first, short sentences, no process detail, a reader
    can finish in the overlay's target time.
 3. The overlay's banned words and forbidden glyphs do not appear.
@@ -92,9 +95,10 @@ Check each item and fix before review:
 
 Run one `structured-review` pass on the brief with the narrow
 `Readable Brief: Fidelity And Readability` lens in
-`structured-review/references/review-lenses.md`. Use type `other-plan`, pass
-the brief as the artifact, name the source and this lens in the focus, and use
-the `normal` tier.
+`structured-review/references/review-lenses.md`. Use type `other-plan` and the
+`normal` tier, pass both the brief and the source as artifacts, and name this
+lens in the focus. The lens replaces the usual `other-plan` checks for this
+pass.
 
 - Fix sentence-level findings in the brief.
 - If a finding would change a conclusion, a boundary, or a question for the

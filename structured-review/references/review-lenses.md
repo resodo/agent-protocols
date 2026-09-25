@@ -290,14 +290,16 @@ handling.
 ## Readable Brief: Fidelity And Readability
 
 Use this lens only for a brief made with `readable-brief/SKILL.md`. It replaces
-the other lenses in this file for that pass. The reviewer receives the brief
-and its source; the source has already been reviewed and is not reopened here.
+the other lenses in this file and the usual `other-plan` checks for that pass.
+The reviewer receives the brief and its source as artifacts; the source has
+already been reviewed and is not reopened here.
 
 Check only:
 - Fidelity: every conclusion, boundary, and scope limit in the source is in the
   brief and unchanged; nothing is added, weakened, or strengthened.
-- Open items: every pending or unconfirmed item in the source is in the brief's
-  confirm-or-reject list, framed fairly.
+- Open items: every item in the source that awaits the human's decision is in
+  the brief's confirm-or-reject list, framed fairly; work deferred to later
+  plans is summarized as scope, not asked as a question.
 - Readability: conclusion first; short sentences; every term defined on first
   use, including in diagrams and tables; arrows labeled; each section marked
   decided or not yet confirmed; no process detail; the overlay's banned words

@@ -26,7 +26,8 @@ Ask for missing role or artifact. Do not guess.
 Use the artifact type as the first review lens:
 - `other-plan`: check goal, scope, sequencing, non-goals, acceptance, and
   reader clarity; for a decision doc, the four checks in `Document Levels`
-  replace this list.
+  replace this list; for a readable brief, the brief-only lens in
+  `references/review-lenses.md` replaces it.
 - `impl-plan`: check concrete steps, data assumptions, validation commands,
   rollback/fallback behavior, file ownership, and whether implementation would
   require guessing.
