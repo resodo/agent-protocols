@@ -320,6 +320,13 @@ Check only:
   and forbidden glyphs absent. Reading time near the overlay's target is enough;
   the target is not a limit, and completeness of conclusions, boundaries, and
   points to confirm wins over length.
+- References: no bare reference ID used as explanation (its content is stated
+  in a plain sentence, the ID only as a parenthetical source); every reference
+  is a link in the "sources" appendix whose anchor points at the intended text;
+  each core question opens with 2-3 lines of background before its options and
+  recommendation; code identifiers appear only when necessary and are glossed
+  at first use. A bare-ID explanation or an unresolvable reference is a
+  blocking readability finding.
 
 A finding that shows the source itself must change says so; the driver fixes
 and re-reviews the source first. A brief that misstates a correct source, or
