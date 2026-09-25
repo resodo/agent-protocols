@@ -84,7 +84,8 @@ A decision doc is approved only when the human has read the full brief and
 explicitly approved it. Answers to questions the driver pulled into chat are not
 approval: they hide everything outside those questions (conclusions, ownership
 boundaries, the deferred list). When the review is done, the driver hands the
-human the brief, which ends with the points to confirm or reject, not the
+human the brief, which ends with the points to confirm or reject (core
+questions, then "confirm in passing", as in `readable-brief/SKILL.md`), not the
 questions alone. Answers given before the full read are recorded, but the doc
 stays unapproved. The human may annotate the brief file directly. The driver
 first commits those annotations verbatim as the record (commit authorization as
@@ -262,6 +263,10 @@ reference file.
 For Closeout Review, default to `print-review` for durable closeout reports or
 reference artifacts. Use `write-commit-to-plan` only when the driver explicitly
 provides a thread file that already has a `## Review Threads` section.
+
+Do not commit or edit files in the worktree while a review run is in flight:
+`print-review` aborts with `print-review changed HEAD`, and the runner warns
+that the review target changed.
 
 The explicit runner `--mode` is the write-back authorization for that run. The
 driver still owns the decision after receiving reviewer output.
