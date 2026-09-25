@@ -40,9 +40,9 @@ Use the artifact type as the first review lens:
 Every reviewed document states its level at the top:
 - Decision doc: answers "which way, and who owns what". Its reader is the human
   who decides. It maps to no single PR and is later split into plans. It is done
-  when the human has decided; its output is the decisions plus a "left for the
-  implementation plans" list - an ADR with an options-for-the-human section in
-  front. Review it as `other-plan`.
+  when the human has approved it (see below); its output is the decisions plus a
+  "left for the implementation plans" list - an ADR with an options-for-the-human
+  section in front. Review it as `other-plan`.
 - Plan: answers "how is this PR done and verified". It maps to exactly one PR
   and gets `impl-plan` review depth.
 - Implementation: the code, reviewed as `impl`.
@@ -62,6 +62,15 @@ the implementation plans" list and is not expanded in the body. Readability
 blocks only when it would make the human misread. The review is done when a
 pass has no blocking finding by that test, not when feedback reaches zero. Use `normal` by default. The long-term-fix and premise-check
 rules in `Shared Review Rules` still apply.
+
+A decision doc is approved only when the human has read the full document and
+explicitly approved it. Answers to questions the driver pulled into chat are not
+approval: they hide everything outside those questions (conclusions, ownership
+boundaries, the deferred list). When the review is done, the driver hands the
+human a readable version of the full document plus the questions, not the
+questions alone. Answers given before the full read are recorded, but the doc
+stays unapproved. Until approval, do not merge the doc and do not start plans or
+implementation that depend on it.
 
 ## Required References
 
@@ -515,7 +524,7 @@ An artifact is ready for its next step only when:
 - blocking review threads are resolved or explicitly escalated.
 
 Do not treat the artifact as ready when these are not true. A decision doc
-instead uses the completion rule in `Document Levels`.
+instead uses the completion and approval rules in `Document Levels`.
 
 ## Skill Self-Evolution
 
