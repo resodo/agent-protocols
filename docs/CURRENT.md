@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -45,9 +45,10 @@ avoid treating historical plans as current instructions.
   Layer ownership is named only from a written repo definition; otherwise it is
   an escalation to the human. Fixes default to the long-term systemic fix; a
   wrong premise or a cause outside the change halts the loop for the human.
-  Documents state their level: decision doc (approved only after the human reads
-  it in full, split into plans, four-check review), plan (one PR), or
-  implementation.
+  Documents state their level: decision doc (an agent-facing source plus a
+  readable brief in the same PR; approved only after the human reads the brief
+  in full, then merged and split into plans; four-check review), plan (one PR),
+  or implementation.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work, including verification
   that change-specific core-path evidence preceded review and merge.
@@ -57,6 +58,12 @@ avoid treating historical plans as current instructions.
   learning workflow.
 - `backlog-maintenance/SKILL.md` - YAML backlog registry maintenance protocol.
   This repo dogfoods it through `docs/backlog.yml`.
+- `readable-brief/SKILL.md` - turns a final, reviewed technical document into a
+  brief for the human decision-maker: conclusion first, every term defined,
+  process detail omitted, nothing to decide dropped or softened, ending with the
+  points to confirm or reject. Required for decision docs, optional for other
+  human-read documents. Reviewed once with the narrow fidelity-plus-readability
+  lens; the consumer overlay supplies language, banned words, and delivery.
 - `scout/SKILL.md` - judgment-heavy repository discovery workflow for
   lifecycle, reachability, coverage, documentation, process, and
   maintainability findings that should become human-reviewed backlog
@@ -70,7 +77,8 @@ avoid treating historical plans as current instructions.
   `structured-review/scripts/claude_structured_review.py`
 - Runner-loaded structured-review references:
   `structured-review/references/review-lenses.md` and
-  `structured-review/references/collaboration.md`
+  `structured-review/references/collaboration.md`. `review-lenses.md` also
+  holds the brief-only `Readable Brief: Fidelity And Readability` lens.
 - Driver recovery operations: `structured-review/references/recovery.md`
   (not a runner-loaded review lens).
 - Conditional UI review reference:
