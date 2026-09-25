@@ -45,8 +45,9 @@ avoid treating historical plans as current instructions.
   Layer ownership is named only from a written repo definition; otherwise it is
   an escalation to the human. Fixes default to the long-term systemic fix; a
   wrong premise or a cause outside the change halts the loop for the human.
-  Documents state their level: decision doc (decided by the human, split into
-  plans, four-check review), plan (one PR), or implementation.
+  Documents state their level: decision doc (approved only after the human reads
+  it in full, split into plans, four-check review), plan (one PR), or
+  implementation.
 - `closeout/SKILL.md` - final hygiene checklist and delivery handoff after
   implementation, documentation, review, or phase work, including verification
   that change-specific core-path evidence preceded review and merge.
