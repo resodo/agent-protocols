@@ -103,8 +103,9 @@ instruction and say why.
   human's words and its scope. It is used by the session acting as master,
   or by an agent the master dispatched whose brief names this exact action for
   this PR and cites the entry (see `decision-boundary`, Delegated Execution).
-  For a delegated action, the agent re-reads the cited entry right before
-  acting (status and scope) and stops if it no longer covers the action; the
+  For a delegated action, the agent looks up only the cited entry right before
+  acting (a line-level search for its id in the ledger file, never the whole
+  file; status and scope) and stops if it no longer covers the action; the
   master also withdraws the delegation the moment the entry is revoked. Before
   acting on it,
   check that it has not been revoked and that its scope covers this exact
