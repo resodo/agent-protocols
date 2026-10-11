@@ -524,3 +524,26 @@ The proposed guard and exam are still plan-level checks. Their protective claims
   and acceptance stay required. The first SAFETY bullet is unchanged.
 - Thread 2 note: the merge-queue row now says closeout decides whether one PR
   may merge and merge-queue orders many PRs through one merger.
+
+### Reviewer pass 3 (impl-plan, codex reviewer)
+
+The human wants a new master session and its specialists to work across Claude Code, Codex, and Grok Build without private memory, while preserving human decision authority. I reviewed the pass 2 response and changed sections. The worktree is clean.
+
+#### Blocking issues
+
+**Thread 6 — Open: the workflow check can pass without testing dispatch.** The scenario allows both prepared lines to be parked, yet says it covers dispatch. It also scores seven steps yes/no without stating what constitutes a pass. A sentence-level fix is enough: require at least one eligible line to be re-dispatched with an observable result, require all seven steps to pass, and say that a failed step is fixed and rerun. No new runner is needed.
+
+#### Non-blocking issues and resolutions
+
+- **Thread 4 — Resolved.** The capability map now defines evidence states, fallbacks, and when a workflow is unsupported.
+- **Thread 7 — Resolved.** The restored content outline and visibility table give the implementer the protocol rules and role boundaries.
+- **Thread 8 — Resolved.** The proposed planning exemption applies only to the separate plan-review step; the existing prerequisites remain.
+- No new blocking issue was found in the other changed sections.
+
+#### Overall judgment
+
+**Not ready for implementation.** Thread 6 still needs a pass criterion that proves the proposed dispatch workflow ran.
+
+#### Residual validation gap
+
+The capability documentation, guard negative cases, exam results, and cold-start observations remain implementation-stage evidence. The Grok baseline and any step that cannot be exercised must be recorded under the plan’s validation rules.
