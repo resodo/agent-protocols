@@ -747,3 +747,13 @@ The guard also rejects an `AGENTS.override.md` above the project root without th
 - Non-blocking, accepted: the override check now looks only next to the
   embedding `AGENTS.md`, matching Codex's load path from the project root
   downward.
+
+### Human decision on thread 1 (per master relay, 2026-10-11)
+
+The human chose (b), per master relay, pending record by the master session:
+"接受啊，他说的这个是个很极端的 case，生产中几乎不存在也危害不大，大不了 revert".
+`decision-boundary` now says the execution-time re-read narrows but does not
+remove the window, and a project that delegates ledger-based actions records
+the human's acceptance of that window in its ledger; without that record the
+master performs those actions itself. skynet-intern records it in its ledger
+("Accepted Risk", 2026-10-11). Thread 1 is closed by human decision.
