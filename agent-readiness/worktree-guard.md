@@ -153,7 +153,9 @@ Build read `AGENTS.md`; Claude Code reads it only when no `CLAUDE.md`,
 `.claude/CLAUDE.md` or `CLAUDE.local.md` exists, so a consumer with any of
 those files imports `AGENTS.md` from one of them (a line `@AGENTS.md`). The
 check script fails otherwise; an untracked personal `CLAUDE.local.md` is
-caught when the guard runs locally. The block starts and ends with
+caught when the guard runs locally. Codex reads `AGENTS.override.md` instead of
+`AGENTS.md` in the same directory, so any such override in the repo or above
+it must carry the full core; the script checks that too. The block starts and ends with
 the marker lines in `CORE.md`.
 
 The consumer guard checks it:

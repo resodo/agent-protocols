@@ -19,7 +19,9 @@ description: "[release agent] Preloaded by the agent that ships a release; the m
    pre-authorization from `away-mode`), checked by the master (Delegated
    Execution). Irreversible steps (for example a migration without a
    downgrade) are named separately with their own approval. Anything the
-   brief does not name stops the release agent.
+   brief does not name stops the release agent. When the approval is a ledger
+   entry, re-read that entry right before the switch and stop if it is no
+   longer `active` or no longer covers the release.
 2. Observation windows: use the windows the human approved for this kind of
    release. A new window, or changed criteria, is gate G10: ask.
 3. Preconditions written in the plan are checked one by one and recorded.

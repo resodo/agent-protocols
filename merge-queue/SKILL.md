@@ -27,7 +27,10 @@ merges collide. So exactly one merger merges, one PR at a time.
   human, or an active standing authorization in the project ledger (see
   `decision-boundary`). The master checks it and writes it into the queue line
   when it queues a PR (Delegated Execution); the merge agent merges only PRs
-  whose line names that permission, and never reads the ledger itself.
+  whose line names that permission. When the line cites a ledger entry, the
+  merge agent re-reads that entry right before merging and stops if it is no
+  longer `active` or no longer covers the PR; it never uses the ledger to find
+  permission.
 
 ## Queue File
 

@@ -103,9 +103,10 @@ instruction and say why.
   human's words and its scope. It is used by the session acting as master,
   or by an agent the master dispatched whose brief names this exact action for
   this PR and cites the entry (see `decision-boundary`, Delegated Execution).
-  For a delegated action, the master's check when it issued the delegation is
-  the revocation and scope check, and the master withdraws the delegation the
-  moment the entry is revoked. Before acting on it,
+  For a delegated action, the agent re-reads the cited entry right before
+  acting (status and scope) and stops if it no longer covers the action; the
+  master also withdraws the delegation the moment the entry is revoked. Before
+  acting on it,
   check that it has not been revoked and that its scope covers this exact
   action for this PR (for example "PRs whose required gates all passed and
   that change no gated surface"), run the same final rechecks as for (a), and
