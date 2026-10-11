@@ -79,3 +79,21 @@ The consumer checks will occur in the follow-up PRs. No tests were run during th
   the consumer: grep that the shared file has no ledger content; a traced
   worker session that must not read the ledger file; a traced delegated
   merge-agent session that re-reads only the cited entry. No script added.
+
+### Reviewer pass 2 (impl-plan, codex reviewer)
+
+**Blocking issues**
+
+**Thread 1 remains open — the validation does not yet prove the role boundary.** The original concern is that a work-line agent saw the whole authority ledger. A tool-call trace showing no read of `authority-ledger.md` cannot rule out ledger content supplied through `AGENTS.md`, context, or a preload. Inspect those startup materials as well as the trace, and show that the trace captures at least one known file read. For the delegated agent, an answer quoting only L1 does not show that it read only L1; verify the content returned by the file-read call. These checks need no new script.
+
+**Non-blocking issues**
+
+None.
+
+**Overall judgment**
+
+The revised plan improves validation, but Thread 1 remains blocking. It is not yet ready for implementation.
+
+**Residual risks or validation gaps**
+
+The consumer checks remain planned for the follow-up PR. No tests were run during this read-only plan review.
