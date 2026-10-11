@@ -85,7 +85,7 @@ named:
 | `master-board` | master | state change; progress / stuck / what-can-move questions; scheduled sweep; before a report | board, queue (open items), sweep findings | — |
 | `dispatch` | master | spawning, agent notifications, stalls, denials, resuming old work | dispatch brief, watchdog, line record | — |
 | `line-worker` | dispatched worker | preloaded at start | STATUS.md, hand-back report | — |
-| `merge-queue` | merge agent | PRs ready; merge agent starts | merge-queue file, merge records | closeout stops at "ready"; nothing covers serial merging |
+| `merge-queue` | merge agent | PRs ready; merge agent starts | merge-queue file, merge records | closeout decides whether one PR may merge; nothing covers ordering many PRs through one merger |
 | `release` | release agent | release, switch, staged check due | release record, check results | — |
 | `visual-qa` | QA agent | visible change about to be shown | finding list | structured-review `ui-review.md` reviews a design or PR; this audits rendered screenshots before the human sees them |
 | `away-mode` | master | human leaving / returning | pre-authorization table, per-change ledger | master-board keeps state; it never collects pre-authorizations or produces the change ledger |
@@ -121,9 +121,12 @@ Other new files:
 Changed files:
 
 - `closeout/SKILL.md` (thread 2 below).
-- `planning/SKILL.md`: SAFETY first bullet and the scope line "emergency
-  hotfix" gain "or an exemption recorded in the project's authority ledger
-  that covers this change"; nothing else.
+- `planning/SKILL.md`: one new SAFETY bullet: "A project may record in its
+  authority ledger that a named class of change (for example iteration fixes)
+  skips the separate plan-review step before implementation. That exemption
+  covers only that review step: scope, worktree, review path (the remaining
+  gates) and acceptance must still be explicit before the work starts." The
+  existing first SAFETY bullet is not changed.
 - `structured-review/SKILL.md`: SAFETY "Preserve human final authority" bullet
   gains "a standing authorization recorded in the project ledger counts as the
   human's decision within its recorded scope (see `decision-boundary`)".
@@ -132,6 +135,146 @@ Changed files:
   "if the human named you master, load `session-handoff`".
 - `README.md`, `docs/CURRENT.md`, `AGENTS.md` (rollout rule: after a merge
   here, merge every consumer's bump PR, close stale ones, reload sessions).
+
+## Content outline (the implementation contract)
+
+### decision-boundary/CORE.md (resident, at most 40 lines)
+
+Between its two marker lines, in this order:
+
+1. Roles: master (named by the human in this session), direct session (tasked
+   by the human without the name), dispatched agent (started by another
+   agent). Act within your role.
+2. The rule: gates decide whether a step needs the human; the project's
+   authority ledger says which gated steps are handed to the master; only the
+   master reads the ledger.
+3. Gates, one line each: G1 cannot be undone losslessly within minutes; G2
+   money beyond an approved budget or a new paid channel; G3 speaking for the
+   human or team to an outside party (approving the action is not approving
+   the wording); G4 contract shape (API endpoint or field, schema/DDL,
+   cross-repo interface, shared infrastructure); G5 moving a layer's
+   responsibility; G6 what users see or what the product means; G7 a new
+   standing mechanism (alert, counter, registry, config field, guard,
+   approval step); G8 permissions, credentials, security, or working around a
+   denial; G9 contradicting a settled human decision; G10 observation window,
+   criteria, rollback condition or rollout pace.
+4. Master: a gated step the ledger does not cover -> ask the human, one
+   question at a time with a recommendation; otherwise decide, keep a receipt
+   and an undo, report afterwards.
+5. Direct session: a gated step -> ask the human; never use the ledger.
+6. Dispatched agent: any gate, scope growth, a cause outside scope, a conflict
+   with an earlier decision, or anything needing the human -> stop and report
+   to whoever dispatched you; never contact the human, never consult the
+   ledger, never record a human approval.
+7. Never ask, when no gate is hit: read-only investigation, questions already
+   answered (search the record and cite it), hypothetical contingencies,
+   implementation detail.
+8. Permission denied: stop and report; never another route to the same thing.
+9. Pointer: details in the `decision-boundary` protocol.
+
+The test checks the markers, the line limit and G1-G10; the reviewers check
+the content against this list.
+
+### Protocol bodies
+
+- `decision-boundary`: four-quadrant table; each gate with a test question and
+  a neutral example; grey zone (reversible within minutes and
+  engineering-internal -> decide; G1 or G4 -> ask); what the master decides by
+  default (investigation, implementation detail, review triage, reviewing
+  others' fix candidates, confirmed errors with a known fix, process text,
+  dead processes, one flaky rerun), each with record search, evidence, receipt,
+  undo and a report line; ledger rules (entry fields date / verbatim words /
+  scope / exclusions / where said; recorded the same turn by the session that
+  heard it; the master may propose a delegation after a run without
+  substantive errors, threshold in the ledger; only the human grants; one
+  sentence revokes; no extension by analogy; a ledger entry is the permission
+  closeout and structured-review accept within its scope); never-ask list;
+  escalation format (one question, define terms, now / proposal / why / cost /
+  what moves, one worked example, recommendation, what the human is waiting
+  on, plain text); dispatched agents (report in the master's language; relayed
+  human decisions are true, elaboration can be challenged; never record
+  approvals); SAFETY.
+- `master-board`: board and queue templates; update in the same turn; queue
+  holds only open items, answered items move to the board's settled list with
+  date and words, grants go to the ledger; one current table, old tables
+  archived; size rule (queue one screen, board current section two screens);
+  record rejections like approvals; every reply says what waits on the human
+  or that nothing does; checks before claiming done; sweep reference: every
+  line moving or blocked with a trigger, silent agents nudged, PR states,
+  failed runs, self-imposed waits, undrafted promises and verbal delegations,
+  queue completeness, due commitments, parked items whose trigger fired,
+  project daily actions; a quiet sweep says nothing.
+- `dispatch`: record search and premise check before dispatching; parallel only
+  for disjoint surfaces or read-only work; brief template (objective, output,
+  sources, boundaries, decisions with sources split into human decisions and
+  elaboration, reporting, the denial rule); tier by the hardest judgement,
+  rule and cost facts passed down; watchdog in the same turn (output growth,
+  about 15 minutes, nudge wording, events on state flips only, stop when done);
+  verbal delegation becomes a tracked task; design follow-ups written into the
+  design now; on reports: check before relaying, denials relayed to the human,
+  returned work to the author, tail work to a cheap tier; every approval's next
+  step dispatched the same turn; relay text between separators.
+- `line-worker`: list prior decisions with sources first, memory notes are
+  leads; resume half-done work from git state; premise check when resuming;
+  gates per project overlay; no production, no CI trigger, no merge, no
+  contract change, no paid calls except reviews, no new standing mechanism;
+  cause outside scope -> stop; denial -> stop; verify before claiming;
+  STATUS.md one screen; hand-back in three to ten lines; read-only research
+  reference (no files on hosts, scripts over stdin, only own service,
+  understand before reporting, numbers explained, quotes checked against
+  originals, platforms tested or documented, absence needs a positive
+  control).
+- `merge-queue`: one merger; the master may delegate to one merge agent; other
+  sessions' PRs enter the queue; permission per entry (current turn or ledger
+  entry) recorded in the queue line; per PR: title/body stop words, rebase,
+  gated surfaces diffed mechanically (contract paths from the overlay, any
+  change stops), migrations, submodule pointer not moved backwards, related
+  checks locally with full results, expensive CI once before merge, one flaky
+  rerun, otherwise return to the author, the merger never edits business code,
+  citations `<sha> (PR #N)`.
+- `release`: permission (current turn, ledger, or pre-authorization), separate
+  approval for irreversible steps; approved windows only, new windows are G10;
+  preconditions checked and recorded; pinned commit and rollback target;
+  baseline (stop if already unhealthy for outside reasons); official commands
+  with receipts only; staged checks reading content; short check gates
+  dependents; failure policy (roll back, small clear bug via PR+review+CI then
+  re-release with all checks, unclear -> stop); report.
+- `visual-qa`: a non-author reviews screenshots and caption, not the author's
+  self-assessment; guideline from the overlay; element-by-element list
+  (alignment, chip sizes and colors, weight, number/date formats, spacing,
+  every claimed state visible, caption matches, behavior tried, widest and
+  narrowest viewport); findings list; the author fixes, QA rechecks; QA never
+  fixes code, never sends to the human, never opens anything on the human's
+  machine.
+- `away-mode`: pre-authorizations (trigger, action, failure handling, budget,
+  expiry) sent as one list before the human leaves; recorded as dated
+  temporary ledger entries and copied into the handoff; while away only
+  standing grants and those entries, everything else queued; per-change ledger
+  kept as changes happen (why, how, undo, self-review, category); on return,
+  the ledger first and kept in the queue until read.
+- `session-handoff`: what dies with the session (running lines with worktree,
+  STATUS, stop point, next step, tier; unkept promises; active
+  pre-authorizations; timers and windows; production actions in flight;
+  unwritten lessons); one page, overwritten; written when the context gets
+  full; cold start in seven steps (identity, load protocols, read handoff /
+  board / queue, verify live state and re-dispatch or park every line, premise
+  check for old plans, schedule the sweep, first report).
+- `fix-triage`: is it wrong by the layer's responsibility; attribute from full
+  input, output and reasoning into program / context / model capability /
+  not wrong; accept capability limits without a systemic fix; no asymmetric
+  mechanism for one case; one definition across layers; cost asymmetry;
+  efficiency as a hard constraint; review others' candidates; do not flip
+  under challenge; cite structured-review for deletion first and premise
+  before fix.
+
+## Visibility
+
+| Role | Resident | On demand | Must not load |
+|---|---|---|---|
+| master | user-level file, CORE block, protocol descriptions, open queue items | all protocols, ledger, overlays | other projects' business memory |
+| direct session | user-level file, CORE block, protocol descriptions | protocols for its task | ledger |
+| worker / researcher | CORE block, `line-worker` (preloaded) | planning, structured-review, closeout, `fix-triage` | ledger, queue, board, master protocol bodies |
+| merge / release / visual-qa | CORE block, own protocol (preloaded) | own overlay | ledger, queue, board |
 
 ## Closeout change in detail (resolves review thread 2)
 
@@ -198,8 +341,23 @@ agent's handoff state when neither (a) nor (b) applies.
 - Every protocol that uses a capability says "see the capability map" and
   never names a vendor tool. A grep in the PR lists every capability name used
   in protocol text and shows each exists in the map.
-- The portability claim is: the protocols work for any agent that can read
-  `AGENTS.md` and files; vendor features only make it smoother.
+- Portability claim, narrowed: the protocols are supported for Claude Code,
+  Codex and Grok Build as far as the map marks `documented`. OpenCode is not
+  supported. The essential capabilities and their fallbacks:
+  - project instructions and reading files: required; no fallback (an agent
+    without them is not supported);
+  - spawn subagent: documented for all three; fallback is a separate CLI
+    session started by the master with the dispatch brief as its prompt,
+    exchanging results through files;
+  - message a running agent: documented for all three; fallback is an
+    `INBOX.md` the worker reads after each step;
+  - scheduled sweep: documented for Claude Code and Grok Build, unverified for
+    Codex; fallback is an OS timer that sends the sweep prompt, else a sweep on
+    every agent notification (the protocol says the sweep then may run late);
+  - session-start and subagent-start injection: optional; fallback is the
+    resident core in `AGENTS.md` plus the brief template.
+  Where an essential capability is missing and its fallback cannot run, the
+  workflow is unsupported for that agent and the map says so.
 
 ## Validation (resolves review thread 6)
 
@@ -213,7 +371,7 @@ Behavioral level (candidate-bound, before merge): the decision-boundary exam.
   `run_exam.py`, README). Items are real incidents; the key never enters the
   prompt; every item uses one fixed action set (do / ask the human / stop and
   report to the master / decline without asking).
-- Invocation: `run_exam.py run --backend {claude,codex,claude-no-project}
+- Invocation: `run_exam.py run --backend {claude,codex,grok,claude-no-project}
   --cwd <consumer worktree> --label <name> --out <file>`; the worker role is
   run by dispatching a subagent with `run_exam.py prompt --context-file
   <worker brief>`, then `run_exam.py grade`.
@@ -231,6 +389,16 @@ Behavioral level (candidate-bound, before merge): the decision-boundary exam.
   score not below that configuration's baseline.
 - Results: `docs/agent_plans/outputs/2026-10-11_decision_boundary_exam/` in
   skynet-intern, one JSON per run plus raw output, and a summary table.
+- Workflow check (manual scenario, candidate-bound, no new runner): in the
+  candidate worktree, start a fresh session as master with a prepared handoff
+  file (two running lines, one promise, one pre-authorization) and score the
+  seven cold-start steps of `session-handoff` yes/no from its first turn:
+  identity check, protocols loaded, handoff/board/queue read, live state
+  verified, each line re-dispatched or parked, sweep scheduled, first report
+  with what waits on the human. Run it with Claude Code and with Codex; Grok
+  Build once if its headless mode can dispatch. The exam covers decisions; this
+  scenario covers dispatch and handoff. Any agent or step that cannot be
+  exercised is recorded and brought to the human before the goal is claimed.
 - This PR is not closed out until the candidate run passes. If it cannot run,
   that is recorded as `not validated` and closeout stops at `Partial`; the
   human decides whether to accept the gap.
@@ -339,3 +507,20 @@ The human wants the master and specialist workflow to work across agents without
 #### Residual validation gap
 
 The proposed guard and exam are still plan-level checks. Their protective claims need the stated negative cases and candidate-bound run during implementation.
+
+### Driver response to pass 2
+
+- Thread 4, accepted (narrowed claim plus fallbacks). The capability contract
+  now lists the essential capabilities with a fallback for each, says where a
+  workflow becomes unsupported, and drops OpenCode from the claim.
+- Thread 6, accepted. Grok added as an exam backend; a manual, candidate-bound
+  cold-start scenario (seven yes/no steps, Claude and Codex, Grok once if
+  possible) covers dispatch and handoff; anything not exercisable goes to the
+  human before the goal is claimed. No new runner.
+- Thread 7, accepted. "Content outline" restored and updated for the direct
+  session role; "Visibility" restored with the direct session row.
+- Thread 8, accepted (rewording). The planning change is a separate SAFETY
+  bullet that exempts only the plan-review step; scope, worktree, review path
+  and acceptance stay required. The first SAFETY bullet is unchanged.
+- Thread 2 note: the merge-queue row now says closeout decides whether one PR
+  may merge and merge-queue orders many PRs through one merger.
