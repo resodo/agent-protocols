@@ -559,3 +559,23 @@ The capability documentation, guard negative cases, exam results, and cold-start
   seven steps "yes", and the eligible line must be re-dispatched with its
   subagent's result returned in the same session; a failed step is fixed and
   the scenario rerun. No runner added.
+
+### Reviewer pass 4 (impl-plan, codex reviewer)
+
+The human wants a new master session and its specialists to work across Claude Code, Codex, and Grok Build without private memory, while preserving human decision authority. I inspected the committed response to pass 3 and the revised validation section. The worktree is clean.
+
+#### Blocking issues
+
+None.
+
+#### Resolution
+
+**Thread 6 — Resolved.** The workflow scenario now requires an eligible line to be re-dispatched, its subagent result to return to the master in the same session, all seven cold-start steps to pass, and any failed step to be fixed and rerun. This gives the implementation a concrete pass criterion.
+
+#### Overall judgment
+
+**Ready for implementation.**
+
+#### Residual validation gap
+
+The candidate-bound exam and workflow scenario remain implementation-stage evidence. Any agent or step that cannot be exercised must be recorded and brought to the human before the goal is claimed.
