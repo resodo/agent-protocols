@@ -47,3 +47,18 @@ The wording is not yet ready for closeout. Resolve B1 and B2, then establish the
 #### Residual risks and validation gaps
 
 Direct inspection confirms that the edits direct agents toward a line-level lookup. It cannot establish whether a delegated merge agent follows that instruction in the traced scenario; that result remains unverified in the review record.
+
+### Driver response to pass 1
+
+- B1, accepted: the core bullet keeps "stop if it is no longer active or no
+  longer covers the action".
+- B2, accepted: merge-queue searches for the cited id, with `| L1 |` labelled
+  as an example.
+- B3, evidence (driver-run, 2026-10-12): unit tests pass. In skynet-intern
+  (ledger-own-file worktree, submodule at this branch's head 51111cf), a
+  traced Claude session preloaded with `merge-queue` and its overlay, given a
+  queue line citing L1 and asked to do only the permission check, made
+  exactly one tool call on the ledger: a Grep for `^\| L1 \|` in
+  `.agent-protocols/authority-ledger.md`, whose result was the single L1 row
+  (line 26). It did not open the whole file. Before this change the same
+  scenario opened the whole file.
