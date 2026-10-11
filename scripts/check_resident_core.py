@@ -14,6 +14,10 @@ user-level ~/.claude/CLAUDE.md does not count). If any such file exists, at
 least one of them must carry the full core block or import AGENTS.md with a
 line "@AGENTS.md"; otherwise exit 1. Files above the repository can only be
 seen on the machine where the check runs.
+
+Codex reads AGENTS.override.md instead of AGENTS.md in the same directory. If
+an AGENTS.override.md exists next to AGENTS.md or in any ancestor, it must
+carry the full core block; otherwise exit 1.
 """
 from __future__ import annotations
 
@@ -70,6 +74,20 @@ def claude_shadow_problem(consumer: Path, expected: str) -> str | None:
             f"add a line '@AGENTS.md' next to it or embed the full core")
 
 
+def codex_override_problem(consumer: Path, expected: str) -> str | None:
+    for directory in [consumer.resolve().parent, *consumer.resolve().parent.parents]:
+        override = directory / "AGENTS.override.md"
+        if not override.is_file():
+            continue
+        try:
+            if extract(override.read_text(encoding="utf-8")).strip() == expected:
+                continue
+        except ValueError:
+            pass
+        return f"{override} replaces AGENTS.md for Codex but does not carry the full resident core"
+    return None
+
+
 def check(consumer: Path, core: Path) -> str | None:
     expected = core.read_text(encoding="utf-8").strip()
     try:
@@ -78,7 +96,7 @@ def check(consumer: Path, core: Path) -> str | None:
         return f"{consumer}: {exc}"
     if found.strip() != expected:
         return f"{consumer}: resident core differs from {core}; copy it verbatim"
-    return claude_shadow_problem(consumer, expected)
+    return claude_shadow_problem(consumer, expected) or codex_override_problem(consumer, expected)
 
 
 def main(argv: list[str]) -> int:

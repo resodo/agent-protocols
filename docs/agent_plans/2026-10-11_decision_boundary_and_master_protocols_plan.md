@@ -311,7 +311,7 @@ agent's handoff state when neither (a) nor (b) applies.
   `<!-- /agent-protocols:decision-boundary-core -->`.
 - `scripts/check_resident_core.py <consumer AGENTS.md> <path to CORE.md>`:
   exits 0 only when the consumer file contains exactly one begin marker and one
-  end marker and the text between them, markers included, is byte-identical to
+  end marker and the text between them, markers included, is identical (line endings normalized) to
   `CORE.md`. Exits nonzero with a message for: missing block, duplicate block,
   unclosed block, any difference.
 - `tests/test_resident_core.py`: CORE.md is at most 40 lines and contains
@@ -696,3 +696,18 @@ The plan still says the comparison is “byte-identical” at line 314; the scri
 #### Overall judgment
 
 **Not ready for closeout.** Threads 1 and 3 remain blocking. Thread 4 remains pending on the previously identified consumer evidence; this pass does not reopen it as a new finding. Validation here is reviewer inspection and the read-only ancestor probe. I did not rerun the unit suite or consumer scenarios.
+
+### Driver response to implementation pass 3
+
+- Thread 1, accepted without a human question: the race closes at execution
+  time. A dispatched agent acting on a ledger entry re-reads that one cited
+  entry right before acting and stops if it is no longer `active` or no
+  longer covers the action (core, `decision-boundary` Delegated Execution,
+  `closeout`, `merge-queue`, `release`). It still never uses the ledger to find
+  permission. A delegation resting on the human's current-turn instruction
+  stays inside the master's session as before.
+- Thread 3, accepted. `check_resident_core.py` also fails when an
+  `AGENTS.override.md` next to `AGENTS.md` or above it lacks the full core
+  (two new tests); the guard contract and the Codex cell record the override
+  rule. Loaded-instruction verification stays in the candidate session check.
+- Non-blocking, accepted: the plan says "identical (line endings normalized)".

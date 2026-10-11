@@ -11,12 +11,14 @@ CORE = REPO_ROOT / "decision-boundary" / "CORE.md"
 SCRIPT = REPO_ROOT / "scripts" / "check_resident_core.py"
 
 
-def run(consumer_text: str, claude_md: str | None = None) -> subprocess.CompletedProcess:
+def run(consumer_text: str, claude_md: str | None = None, override: str | None = None) -> subprocess.CompletedProcess:
     with tempfile.TemporaryDirectory() as tmp:
         consumer = Path(tmp) / "AGENTS.md"
         consumer.write_text(consumer_text, encoding="utf-8")
         if claude_md is not None:
             (Path(tmp) / "CLAUDE.md").write_text(claude_md, encoding="utf-8")
+        if override is not None:
+            (Path(tmp) / "AGENTS.override.md").write_text(override, encoding="utf-8")
         return subprocess.run([sys.executable, str(SCRIPT), str(consumer), str(CORE)],
                               capture_output=True, text=True)
 
@@ -76,6 +78,20 @@ class ClaudeShadowTest(unittest.TestCase):
 
     def test_claude_md_importing_agents_passes(self) -> None:
         result = run(self.core, claude_md="@AGENTS.md\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class CodexOverrideTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.core = CORE.read_text(encoding="utf-8")
+
+    def test_override_without_core_fails(self) -> None:
+        result = run(self.core, override="# local override\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("AGENTS.override.md", result.stderr)
+
+    def test_override_with_core_passes(self) -> None:
+        result = run(self.core, override=self.core)
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
