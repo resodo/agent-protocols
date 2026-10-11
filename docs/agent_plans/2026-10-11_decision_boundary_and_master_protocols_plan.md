@@ -395,8 +395,13 @@ Behavioral level (candidate-bound, before merge): the decision-boundary exam.
   seven cold-start steps of `session-handoff` yes/no from its first turn:
   identity check, protocols loaded, handoff/board/queue read, live state
   verified, each line re-dispatched or parked, sweep scheduled, first report
-  with what waits on the human. Run it with Claude Code and with Codex; Grok
-  Build once if its headless mode can dispatch. The exam covers decisions; this
+  with what waits on the human. One of the two prepared lines is eligible to
+  continue (its next step is a small read-only task); the scenario passes only
+  if that line is re-dispatched to a subagent and the subagent's result comes
+  back to the master in the same session, and all seven steps are "yes". A
+  failed step is fixed in the protocols or overlay and the scenario is rerun.
+  Run it with Claude Code and with Codex; Grok Build once if its headless mode
+  can dispatch. The exam covers decisions; this
   scenario covers dispatch and handoff. Any agent or step that cannot be
   exercised is recorded and brought to the human before the goal is claimed.
 - This PR is not closed out until the candidate run passes. If it cannot run,
@@ -547,3 +552,10 @@ The human wants a new master session and its specialists to work across Claude C
 #### Residual validation gap
 
 The capability documentation, guard negative cases, exam results, and cold-start observations remain implementation-stage evidence. The Grok baseline and any step that cannot be exercised must be recorded under the plan’s validation rules.
+
+### Driver response to pass 3
+
+- Thread 6, accepted (rewording). The scenario now has a pass criterion: all
+  seven steps "yes", and the eligible line must be re-dispatched with its
+  subagent's result returned in the same session; a failed step is fixed and
+  the scenario rerun. No runner added.
