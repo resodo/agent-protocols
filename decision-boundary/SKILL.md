@@ -17,8 +17,10 @@ takes back an authorization.
 2. Read `.agent-protocols/decision-boundary.md` if present. It holds the
    project's **authority ledger** and its concrete gate checks (which paths
    count as contract shape, the archive location before deletes, budgets).
-   Only the master reads the ledger. A direct session asks the human; a
-   dispatched agent stops at the gate and reports to whoever dispatched it.
+   Only the master reads the ledger, with one narrow exception: an agent
+   acting under Delegated Execution re-reads the single entry its brief cites,
+   right before acting. A direct session asks the human; any other dispatched
+   agent stops at the gate and reports to whoever dispatched it.
 
 An overlay may add gates or narrow grants; it must not remove a gate.
 
