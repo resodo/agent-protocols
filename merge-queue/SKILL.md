@@ -29,7 +29,7 @@ merges collide. So exactly one merger merges, one PR at a time.
   when it queues a PR (Delegated Execution); the merge agent merges only PRs
   whose line names that permission. When the line cites a ledger entry, the
   merge agent looks up only that entry right before merging: a line-level
-  search for its id (the row starting with `| L1 |`) in
+  search for the cited id (for example the row starting with `| L1 |`) in
   `.agent-protocols/authority-ledger.md`, never opening the whole file. It
   stops if the entry is no longer `active` or no longer covers the PR, and it
   never uses the ledger to find permission.
