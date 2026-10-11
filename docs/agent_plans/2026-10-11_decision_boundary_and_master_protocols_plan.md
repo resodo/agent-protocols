@@ -757,3 +757,15 @@ remove the window, and a project that delegates ledger-based actions records
 the human's acceptance of that window in its ledger; without that record the
 master performs those actions itself. skynet-intern records it in its ledger
 ("Accepted Risk", 2026-10-11). Thread 1 is closed by human decision.
+
+### Consumer evidence (thread 4)
+
+Recorded in skynet-intern #1523 (PR description, "Validation summary"). Per the
+master's 2026-10-11 decision the exam became a one-off local check with no
+current-state baseline: roles that load only their normal material passed
+with zero hard-gate errors and no out-of-bounds reads (Claude master 30/30
+after overlay text fixes, Claude worker 4/4, Codex 29/30, Grok 27/30). The
+cold-start drill passed all seven steps for Claude after two protocol text
+fixes (sweep at cold start, `dispatch` loaded at cold start), and for Codex
+with one environment limit (GitHub unreachable from its sandbox). Thread 4 is
+answered by this evidence.
