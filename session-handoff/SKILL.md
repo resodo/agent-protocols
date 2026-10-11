@@ -42,6 +42,10 @@ Write it whenever the context is getting full, not only at the very end.
    line that was "running" has no agent now: re-dispatch it or park it with a
    trigger.
 5. Before resuming any old plan, write "premise then vs state now".
-6. Start the scheduled sweep (see the capability map) and the daily actions.
+6. Start the scheduled sweep now, in this turn, with the "scheduled sweep"
+   capability (see the capability map; for example a 30-minute timer that runs
+   the `master-board` sweep). This step is not optional: if the capability is
+   missing in this session, say so in the first report and use the fallback.
+   Then run the daily actions.
 7. First report: the human's report format, what is waiting on him, and what
    happened to each line (re-dispatched, parked with trigger, done).

@@ -46,8 +46,9 @@ section, CI in full, the actual state), and list what was not verified.
 
 ## Sweep
 
-Run `references/sweep.md` when the scheduled sweep fires (see the "scheduled
-sweep" capability), when the human asks what is stuck or what can move, and
+A master session keeps a scheduled sweep running from its first turn (see the
+"scheduled sweep" capability; timers that expire are restarted). Run
+`references/sweep.md` when the scheduled sweep fires, when the human asks what is stuck or what can move, and
 before the first report of a session. Answer from the sweep, never from the
 queue file alone.
 
