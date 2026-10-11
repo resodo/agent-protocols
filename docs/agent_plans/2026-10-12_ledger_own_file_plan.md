@@ -39,6 +39,19 @@ the core block, whose text changes).
 - Consumer (skynet-intern) follow-up: move the ledger sections into
   `.agent-protocols/authority-ledger.md`, update references in its overlays
   and `AGENTS.md`, copy the new core; guard passes.
+- Read-only role-boundary inspection in the consumer (no new script):
+  1. the shared `decision-boundary.md` contains only gate checks and settled
+     decisions (grep for ledger entry ids `L1`..`L13` and "Authority Ledger"
+     finds nothing);
+  2. trace what a work line loads: start a dispatched-worker session in the
+     consumer (Claude, with its normal settings and the `line-worker`
+     preload) on a small read-only task that touches a gate, and check its
+     tool-call trace: it may read `decision-boundary.md`, it must not read
+     `authority-ledger.md`;
+  3. trace a delegated merge-agent session given a queue line that cites
+     `L1`: its trace shows a read of `authority-ledger.md` right before the
+     (dry, no-push) merge step, and its answer quotes only L1.
+  Results are recorded in the consumer PR.
 
 ## Review Threads
 
@@ -59,3 +72,10 @@ The file split and protocol edits are concrete and preserve Delegated Executionâ
 **Residual risks or validation gaps**
 
 The consumer checks will occur in the follow-up PRs. No tests were run during this read-only plan review.
+
+### Driver response to pass 1
+
+- Thread 1, accepted. Validation adds a read-only role-boundary inspection in
+  the consumer: grep that the shared file has no ledger content; a traced
+  worker session that must not read the ledger file; a traced delegated
+  merge-agent session that re-reads only the cited entry. No script added.
