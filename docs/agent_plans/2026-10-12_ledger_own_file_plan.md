@@ -41,3 +41,21 @@ the core block, whose text changes).
   and `AGENTS.md`, copy the new core; guard passes.
 
 ## Review Threads
+
+### Reviewer pass 1 (impl-plan, codex reviewer)
+
+**Blocking issues**
+
+**Thread 1 — Validation does not yet prove the role boundary.** The reported problem is that a work-line agent read the whole authority ledger while following `decision-boundary`. The plan covers every explicit old ledger-path reference I found in the active protocols, but its proposed tests, grep, and core guard would not show whether a non-master role still loads ledger content through a consumer’s `AGENTS.md`, context, or overlays. Add a read-only inspection scenario for each affected consumer: confirm the shared `decision-boundary.md` contains only gate checks and settled decisions; trace what a work-line agent loads; and confirm a delegated agent re-reads only its cited entry immediately before acting. This needs no new script.
+
+**Non-blocking issues**
+
+None.
+
+**Overall judgment**
+
+The file split and protocol edits are concrete and preserve Delegated Execution’s single-entry rule. The plan is ready for implementation once validation covers the behavior it is meant to fix.
+
+**Residual risks or validation gaps**
+
+The consumer checks will occur in the follow-up PRs. No tests were run during this read-only plan review.
