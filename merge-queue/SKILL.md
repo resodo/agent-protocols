@@ -42,7 +42,10 @@ line after checking the gated surfaces. Archive merged lines daily.
 
 1. Read the PR title and body: anything saying "do not merge", "draft",
    "candidate", or unmet acceptance items stops here.
-2. Rebase onto the current default branch (after the previous merge).
+2. Rebase onto the current default branch (after the previous merge). Record
+   the PR head before you start; push the rebased branch only with a lease on
+   that recorded head (`--force-with-lease=<branch>:<recorded sha>`), and if the
+   remote head moved, stop and start again: the author may have added commits.
 3. Gated surfaces, checked mechanically against the diff, not from the PR
    description: contract paths from the overlay (any change -> stop and
    report to the master, even nullable or additive); migrations; a vendored
