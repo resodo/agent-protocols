@@ -99,8 +99,8 @@ instruction and say why.
   replace the destructive-git-operations rule above.
 - A standing authorization counts only when the project's authority ledger
   (`.agent-protocols/decision-boundary.md`, see
-  `decision-boundary/SKILL.md`) records its date, the human's words and its
-  scope, and only for the session acting as master. Before acting on it,
+  `decision-boundary/SKILL.md`) records it as `active` with its date, the
+  human's words and its scope, and only for the session acting as master. Before acting on it,
   check that it has not been revoked and that its scope covers this exact
   action for this PR (for example "PRs whose required gates all passed and
   that change no gated surface"), run the same final rechecks as for (a), and
