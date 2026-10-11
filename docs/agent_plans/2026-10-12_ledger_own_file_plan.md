@@ -110,3 +110,21 @@ The consumer checks remain planned for the follow-up PR. No tests were run durin
   trace must show at least one known read; the delegated re-read becomes a
   line-level lookup of the cited entry (protocol text changes accordingly),
   and the check verifies the tool result contained only that row.
+
+### Reviewer pass 3 (impl-plan, codex reviewer)
+
+**Blocking issues**
+
+None. Thread 1 is resolved. The revised plan checks startup materials for ledger content, confirms the worker trace captures file reads, and verifies that the delegated lookup returns only the cited row.
+
+**Non-blocking issues**
+
+None.
+
+**Overall judgment**
+
+The plan is ready for implementation.
+
+**Residual risks or validation gaps**
+
+The role-boundary checks remain planned for the consumer PR. No tests were run during this read-only plan review.
