@@ -38,15 +38,16 @@ Evidence keys: CC-skills = code.claude.com/docs/en/skills; CC-sub =
 code.claude.com/docs/en/sub-agents; CC-hooks = code.claude.com/docs/en/hooks;
 CC-mem = code.claude.com/docs/en/memory; CX-skills =
 developers.openai.com/codex/skills; CX-hooks = learn.chatgpt.com/docs/hooks;
-CX-sub = learn.chatgpt.com/docs/agent-configuration/subagents; GK-nn = Grok
+CX-sub = learn.chatgpt.com/docs/agent-configuration/subagents; CX-agents =
+learn.chatgpt.com/docs/agent-configuration/agents-md; GK-nn = Grok
 Build user guide chapter nn (`~/.grok/docs/user-guide/`). A cell without a
 key is `observed` or `unverified` and does not count as support.
 
 | Capability | Meaning in protocols | Claude Code | Codex | Grok Build | Fallback when missing |
 |---|---|---|---|---|---|
 | on-demand protocol | description always listed, body loaded when used | skills in `.claude/skills/` (documented, CC-skills) | skills in `.agents/skills/`; name, description, path listed, `SKILL.md` read when used (documented, CX-skills) | skills; also scans `.claude/skills/` and `.agents/skills/` (documented, GK-08) | the repo `AGENTS.md` routes "before X, read `external/agent-protocols/X/SKILL.md`" |
-| project instructions | always-loaded project text | `AGENTS.md` only when no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists; otherwise import it with `@AGENTS.md` (documented, CC-mem) | `AGENTS.md` (observed) | `AGENTS.md`, also `CLAUDE.md` files (documented, GK-12) | none: required |
-| user-level instructions | the human's personal preferences | `~/.claude/CLAUDE.md` (documented, CC-mem) | `~/.codex/AGENTS.md` (observed) | reads `~/.claude/CLAUDE.md` with Claude compatibility on (documented, GK-12) | keep one source and generate the other copy |
+| project instructions | always-loaded project text | `AGENTS.md` only when no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists; otherwise import it with `@AGENTS.md` (documented, CC-mem) | `AGENTS.md` from the project root down to the working directory (documented, CX-agents) | `AGENTS.md`, also `CLAUDE.md` files (documented, GK-12) | none: required |
+| user-level instructions | the human's personal preferences | `~/.claude/CLAUDE.md` (documented, CC-mem) | `~/.codex/AGENTS.md` (or `AGENTS.override.md` there; documented, CX-agents) | reads `~/.claude/CLAUDE.md` with Claude compatibility on (documented, GK-12) | keep one source and generate the other copy |
 | spawn subagent | start a worker with its own context | Agent tool (documented, CC-sub) | sub-agent threads (documented, CX-sub) | built-in agent types and custom roles (documented, GK-16) | a separate CLI session started with the brief as its prompt; results exchanged through files |
 | role definition | a specialist with preloaded protocols and tool limits | `.claude/agents/<name>.md`, `skills:` preloads full bodies (documented, CC-sub) | `.codex/agents/<name>.toml`, `developer_instructions`, `skills.config` (documented, CX-sub) | `.grok/roles/<name>.toml` with `description`, `default_capability_mode`, `prompt_file` (documented, GK-16) | paste the neutral role text from `agents/<name>.md` into the brief |
 | message a running agent | nudge or add instructions to a live worker | SendMessage (documented, CC-sub) | the parent routes follow-up instructions to sub-agent threads (documented, CX-sub) | `send_subagent_message`, steer or queue (documented, GK-16) | the worker reads `lines/<line>/INBOX.md` after each step |

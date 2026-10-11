@@ -165,6 +165,13 @@ current-turn instruction, quoted, or the ledger entry id). The agent checks
 that the named action matches what it is about to do, and stops at anything
 else. It never reads the ledger to find permission for itself.
 
+The master keeps the delegation current: a delegation lives only inside the
+master's session; when the human revokes or narrows the cited permission, the
+master withdraws every queue line and brief that cites it and messages the
+running agents before anything else (see the "message a running agent"
+capability). A new master session re-checks the ledger before re-issuing any
+delegation.
+
 ## Dispatched Agents
 
 - Report to the master in the master's working language.

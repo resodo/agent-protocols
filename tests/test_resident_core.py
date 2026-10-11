@@ -65,6 +65,15 @@ class ClaudeShadowTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("does not read", result.stderr)
 
+    def test_claude_md_with_marker_only_fails(self) -> None:
+        marker = self.core.splitlines()[0]
+        result = run(self.core, claude_md=marker + "\n")
+        self.assertEqual(result.returncode, 1)
+
+    def test_claude_md_with_full_core_passes(self) -> None:
+        result = run(self.core, claude_md=self.core)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_claude_md_importing_agents_passes(self) -> None:
         result = run(self.core, claude_md="@AGENTS.md\n")
         self.assertEqual(result.returncode, 0, result.stderr)

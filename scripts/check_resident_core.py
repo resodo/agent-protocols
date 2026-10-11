@@ -9,9 +9,11 @@ identical to CORE.md (line endings normalized). Any other state exits 1 with a
 message.
 
 Claude Code reads AGENTS.md only when no CLAUDE.md, .claude/CLAUDE.md or
-CLAUDE.local.md exists next to it. If any of those exists, at least one of them
-must carry the core itself or import AGENTS.md with a line "@AGENTS.md";
-otherwise exit 1.
+CLAUDE.local.md exists in its directory or any directory above it (the
+user-level ~/.claude/CLAUDE.md does not count). If any such file exists, at
+least one of them must carry the full core block or import AGENTS.md with a
+line "@AGENTS.md"; otherwise exit 1. Files above the repository can only be
+seen on the machine where the check runs.
 """
 from __future__ import annotations
 
@@ -39,17 +41,33 @@ def extract(text: str) -> str:
 CLAUDE_FILES = ("CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md")
 
 
-def claude_shadow_problem(consumer: Path) -> str | None:
-    present = [consumer.parent / name for name in CLAUDE_FILES if (consumer.parent / name).is_file()]
+def claude_shadow_files(consumer: Path) -> list[Path]:
+    user_level = (Path.home() / ".claude" / "CLAUDE.md").resolve()
+    found = []
+    for directory in [consumer.resolve().parent, *consumer.resolve().parent.parents]:
+        for name in CLAUDE_FILES:
+            path = directory / name
+            if path.is_file() and path.resolve() != user_level:
+                found.append(path)
+    return found
+
+
+def claude_shadow_problem(consumer: Path, expected: str) -> str | None:
+    present = claude_shadow_files(consumer)
     if not present:
         return None
     for path in present:
         text = path.read_text(encoding="utf-8")
-        if BEGIN in text or any(line.strip() == "@AGENTS.md" for line in text.splitlines()):
+        if any(line.strip() == "@AGENTS.md" for line in text.splitlines()) and path.parent == consumer.resolve().parent:
             return None
-    names = ", ".join(str(p.relative_to(consumer.parent)) for p in present)
+        try:
+            if extract(text).strip() == expected:
+                return None
+        except ValueError:
+            continue
+    names = ", ".join(str(p) for p in present)
     return (f"{names} exists, so Claude Code does not read {consumer.name}; "
-            f"add a line '@AGENTS.md' to one of them")
+            f"add a line '@AGENTS.md' next to it or embed the full core")
 
 
 def check(consumer: Path, core: Path) -> str | None:
@@ -60,7 +78,7 @@ def check(consumer: Path, core: Path) -> str | None:
         return f"{consumer}: {exc}"
     if found.strip() != expected:
         return f"{consumer}: resident core differs from {core}; copy it verbatim"
-    return claude_shadow_problem(consumer)
+    return claude_shadow_problem(consumer, expected)
 
 
 def main(argv: list[str]) -> int:
