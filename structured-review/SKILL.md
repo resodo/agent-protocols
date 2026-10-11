@@ -370,6 +370,9 @@ rule, reject that overlay instruction and say why.
   checking PR metadata and the commit graph.
 - Preserve human final authority for scope, write-back, commit, push, merge,
   and done-enough decisions.
+  A standing authorization recorded in the project's authority ledger
+  (`.agent-protocols/decision-boundary.md`) counts as the human's decision
+  within its recorded scope; see `decision-boundary/SKILL.md`.
 - A human approval or acceptance is recorded in files only by the session that
   received it directly from the human. A session that only has it relayed,
   such as a subagent, never writes "the human approved X"; it writes "per

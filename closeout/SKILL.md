@@ -90,15 +90,26 @@ instruction and say why.
   explaining why branch commits are or are not ancestors of the target branch.
 - Do not perform destructive git operations without explicit human approval.
 - Do not merge PRs, close PRs, or delete remote branches during closeout unless
-  the human gives an explicit current-turn command to perform that exact action
-  for the named PR or branch. Closeout normally stops at reporting
+  (a) the human gives an explicit current-turn command to perform that exact
+  action for the named PR or branch, or (b) a standing authorization in the
+  project's authority ledger covers that action for that PR (see the next
+  rule). Without (a) or (b), closeout stops at reporting
   `ready for human merge`. `Current-turn` means the user's most recent message,
   not earlier messages in the same conversation. This rule narrows but does not
   replace the destructive-git-operations rule above.
+- A standing authorization counts only when the project's authority ledger
+  (`.agent-protocols/decision-boundary.md`, see
+  `decision-boundary/SKILL.md`) records its date, the human's words and its
+  scope, and only for the session acting as master. Before acting on it,
+  check that it has not been revoked and that its scope covers this exact
+  action for this PR (for example "PRs whose required gates all passed and
+  that change no gated surface"), run the same final rechecks as for (a), and
+  name the ledger entry relied on in the handoff.
 - Treat a human statement such as `ready to merge`, `looks ready`, or `ready`
   as a request to run the final closeout/recheck pass, not as permission to
-  merge. Merge permission must name the PR/branch and the merge action in the
-  current turn.
+  merge. Merge permission is either (a) a current-turn instruction naming the
+  PR/branch and the merge action, or (b) a ledger authorization as defined
+  above.
 - These phrases are deliberately different: `ready to merge` is human input
   shorthand for closeout/recheck, while `ready for human merge` is the agent's
   verified handoff state after closeout/recheck.
@@ -327,7 +338,8 @@ Do not create a separate lessons-learned document unless explicitly requested. P
   closeout evidence, status/doc lifecycle claims, or stale-wording decisions are
   accurate.
 - Treat merge strategy preference as reporting guidance only. It does not
-  authorize the agent to merge. Without explicit current-turn human approval,
+  authorize the agent to merge. Without (a) explicit current-turn human
+  approval or (b) a ledger authorization covering this PR (see SAFETY Rules),
   final handoff must say whether the PR is ready for human merge and confirm no
   merge was executed.
 - Say `ready for human merge` only after final rechecks are complete, pushed CI

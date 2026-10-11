@@ -41,13 +41,19 @@ given a concrete task:
    posture.
 6. If production/access posture is not declared, say it is unknown and do not
    infer private connection details.
-7. Read the current-status anchor named by this file, if any.
+7. Read the current-status anchor named by this file, if any. If the human
+   named you master in this session, load the `session-handoff` protocol and
+   follow its cold start instead of stopping after the receipt.
 8. Output a short project receipt.
 9. Stop and wait for the concrete task.
 
 Do not infer a feature task, open a plan, start implementation, load every
 backlog or historical document, or expose private access details in chat.
 ```
+
+The repo `AGENTS.md` also embeds the decision-boundary resident core between
+its markers (copied verbatim from `decision-boundary/CORE.md`; see
+`worktree-guard.md`, "Resident Core").
 
 ## Receipt Shape
 
