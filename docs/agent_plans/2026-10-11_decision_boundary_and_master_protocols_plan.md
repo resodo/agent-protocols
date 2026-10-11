@@ -1,231 +1,245 @@
 # Plan: decision boundary and master-session protocols
 
-Document level: plan (one PR in agent-protocols). The decision behind it was
-taken by the human on 2026-10-11 from a proposal discussed in the consumer
-session (three questions, all answered "per recommendation", then "开吧").
-This plan only implements that decision.
+Document level: plan (one PR in agent-protocols).
+
+Decision source: the human answered three proposal questions "per
+recommendation" and then said "开吧" on 2026-10-11. This plan's author did not
+receive that approval directly; it is **per master relay (2026-10-11), pending
+record by the master session**. The proposal is kept outside the repo
+(consumer session scratchpad); its decisions are restated below.
 
 ## Goal
 
 A new session that is told "you are the master" must work the way the current
 master + subagents team works, with any coding agent (Claude Code, Codex, Grok
-Build, OpenCode), without depending on a private memory store. Today the
-collaboration rules live in one Claude memory directory. A baseline exam (see
-Validation) shows the current team still decides correctly, but only because
-every session happens to reach that directory: Claude subagents see its index
-and read its files, and a Codex master reached the same answers. Nothing in a
-shared, versioned place holds these rules, so slimming the memory, a new
-machine, or a different agent would lose them silently.
+Build), without depending on a private memory store.
 
-Concretely this PR adds to agent-protocols:
+Today the collaboration rules live in one Claude memory directory. A baseline
+exam (see Validation) shows the current team still decides correctly, but only
+because every session happens to reach that directory: Claude subagents see its
+index and read its files, and a Codex master reached the same answers by
+reading files. Nothing shared and versioned holds these rules, so slimming the
+memory, a new machine, or a different agent would lose them silently.
+
+This PR adds to agent-protocols:
 
 1. a short **resident core** for the decision boundary that every role keeps in
-   context (who may decide what, and when to stop and ask);
-2. ten **fine-grained protocols** whose descriptions are always listed and
-   whose bodies load on demand;
+   context;
+2. **fine-grained protocols** whose descriptions are always listed and whose
+   bodies load on demand;
 3. a **capability map** so protocol text names capabilities, not one vendor's
    tools;
-4. **neutral role definitions** for the specialist subagents;
-5. a change to the **closeout SAFETY rule** so a recorded standing
-   authorization counts as merge permission;
-6. a **guard contract** addition so consumers keep the resident core in sync.
+4. **neutral role definitions** for specialist subagents;
+5. changes to **closeout** (and one line each in planning and
+   structured-review) so a standing authorization recorded in the project
+   ledger counts as permission within its recorded scope;
+6. a **resident-core check script** consumers call from their guard.
 
 ## Non-goals
 
-- No project-specific content: paths, scripts, budgets, business rules and the
+- No project content: paths, scripts, budgets, business rules and the
   project's authority ledger live in consumer overlays
   (`.agent-protocols/<protocol>.md`), per README "Local Overlays".
-- No new runner or script beyond what the guard contract needs. Templates are
-  plain markdown.
-- No change to structured-review mechanics.
-- No access control. "Must never see" is enforced by not loading, plus a
-  resident instruction; see Visibility.
+- No change to structured-review mechanics or the runner.
+- No access control. "Must not load" is enforced by not loading and by a
+  resident instruction.
+- OpenCode support is not claimed; its cells stay unverified.
 
-## Decisions carried in from the human (2026-10-11)
+## Decisions carried in (per master relay, 2026-10-11)
 
 - Three-way split: generic -> agent-protocols; project -> consumer overlay;
-  personal preference -> user-level instruction files. Unclear items: standing
-  merge and pre-review exemption for iteration fixes are project
-  authorizations; reading-language and banned words of readable briefs are
-  personal; model tiers and concurrency limits are personal; the visual
-  acceptance viewport is project.
+  personal preference -> user-level instruction files. Standing merge and the
+  pre-implementation plan-review exemption for iteration fixes are project
+  authorizations; reading language and banned words of briefs are personal;
+  model tiers and concurrency caps are personal; the visual acceptance
+  viewport is project.
 - Resident set: every role keeps "role identification + decision-boundary
-  core"; the master additionally keeps personal preferences, the protocol list
-  (descriptions) and the open items waiting on the human. The authority
-  ledger, the human's queue and the board are master-only.
-- Closeout SAFETY: "an explicit current-turn command, or a standing
-  authorization recorded in the project's authority ledger with date, the
-  human's words and scope"; the same applies to the pre-implementation plan
-  review exemption for iteration fixes.
+  core". The authority ledger, the human's queue and the board are
+  master-only.
+- Closeout: "an explicit current-turn command, or a standing authorization
+  recorded in the project's authority ledger with date, the human's words and
+  scope"; the same for the plan-review exemption.
+
+## Roles (resolves review thread 1)
+
+- **Master**: the session the human named master in this session.
+- **Direct session**: a session the human tasks directly without naming it
+  master. It talks to the human, so gated steps are asked of the human; it
+  does not use the ledger (grants are to the master).
+- **Dispatched agent**: started by the master or another agent. Gated steps go
+  to whoever dispatched it; it never contacts the human.
+
+The never-ask list applies only when no gate is hit: implementation detail
+that changes a contract or what users see is gated.
+
+## Protocols and why each exists (resolves review thread 3)
+
+Split rule: a separate protocol only when its trigger or reader differs and it
+owns its own output; a branch that shares trigger and reader is a subfile
+(`references/`), following scout's subskill precedent. Each overlap the review
+named:
+
+| Protocol | Reader | Trigger | Owns (output) | Not covered elsewhere because |
+|---|---|---|---|---|
+| `decision-boundary` | all | before deciding a gated step, before asking the human, on a grant or revocation | gate tests, ledger rules, escalation format; `CORE.md` | no existing protocol defines who decides what |
+| `master-board` | master | state change; progress / stuck / what-can-move questions; scheduled sweep; before a report | board, queue (open items), sweep findings | — |
+| `dispatch` | master | spawning, agent notifications, stalls, denials, resuming old work | dispatch brief, watchdog, line record | — |
+| `line-worker` | dispatched worker | preloaded at start | STATUS.md, hand-back report | — |
+| `merge-queue` | merge agent | PRs ready; merge agent starts | merge-queue file, merge records | closeout stops at "ready"; nothing covers serial merging |
+| `release` | release agent | release, switch, staged check due | release record, check results | — |
+| `visual-qa` | QA agent | visible change about to be shown | finding list | structured-review `ui-review.md` reviews a design or PR; this audits rendered screenshots before the human sees them |
+| `away-mode` | master | human leaving / returning | pre-authorization table, per-change ledger | master-board keeps state; it never collects pre-authorizations or produces the change ledger |
+| `session-handoff` | master | session ending; new master session | handoff page, cold-start receipt | the bootstrap template is a repo receipt for any session with no task; it does not load live state or re-dispatch lines. The template gains one line pointing a named master here |
+| `fix-triage` | master, worker | before fixing a QA finding or model error, adopting someone's fix, adding a rule | per-finding class and fix/no-fix | structured-review covers review findings on an artifact (deletion first, premise before fix) and is referenced, not repeated; fix-triage covers whether an output is wrong at all and attribution of model behavior |
+
+Merged away after review: none needed beyond removing from `fix-triage` the
+items already in structured-review (deletion first, premise before fix), which
+it now cites.
 
 ## Files
 
-New protocol directories, each with `SKILL.md` (frontmatter `name` equals the
-directory, `description` starts with the reader tag) and optional
-`references/` and `templates/`:
-
-| Protocol | Reader | Trigger (description) | Subfiles |
-|---|---|---|---|
-| `decision-boundary` | all | about to decide something that hits a gate; about to ask the human; receiving or revoking an authorization | `CORE.md` (resident block source; examples stay inline in SKILL.md) |
-| `master-board` | master | state changed and must be recorded; human asks for progress / what is stuck / what can move; scheduled sweep fires; before a status report | `references/sweep.md`, `templates/BOARD.md`, `templates/QUEUE.md` |
-| `dispatch` | master | about to spawn a subagent; an agent notification arrives; an agent stalls or reports a denial | `references/watchdog.md`, `templates/brief.md` |
-| `line-worker` | worker | preloaded when a worker starts | `references/read-only-research.md`, `templates/STATUS.md` |
-| `merge-queue` | merge agent | PRs are ready to merge; merge agent starts | `templates/MERGE_QUEUE.md` |
-| `release` | release agent | a release, switch or scheduled post-release check is due | — |
-| `visual-qa` | QA agent | a user-visible change is about to be shown to the human | — |
-| `away-mode` | master | human says they are leaving / going to sleep; human returns | `templates/preauthorization.md` |
-| `session-handoff` | master | session ending or context nearly full; new session named master (cold start) | `templates/SESSION_HANDOFF.md` |
-| `fix-triage` | master, worker | about to fix a QA finding, adopt someone else's fix candidate, or add a rule or mechanism | `references/principles.md` |
+New protocol directories as in the table, each `SKILL.md` with frontmatter
+`name` equal to the directory and a `description` that starts with its reader
+tag (`[master]`, `[dispatched worker]`, ...). Subfiles:
+`decision-boundary/CORE.md`; `master-board/references/sweep.md`,
+`templates/BOARD.md`, `templates/QUEUE.md`; `dispatch/references/watchdog.md`,
+`templates/brief.md`; `line-worker/references/read-only-research.md`,
+`templates/STATUS.md`; `merge-queue/templates/MERGE_QUEUE.md`;
+`away-mode/templates/preauthorization.md`;
+`session-handoff/templates/SESSION_HANDOFF.md`;
+`fix-triage/references/principles.md`.
 
 Other new files:
 
-- `agent-readiness/capabilities.md`: the capability map. Capability names are
-  used by several protocols, so the map lives in the existing cross-protocol
-  guidance directory, which is not a skill.
-- `agents/` with one neutral role file per specialist: `line-worker.md`,
-  `merge-queue.md`, `visual-qa.md`, `release.md`, `researcher.md`. Each says
-  which protocols to preload, tool limits, and suggested tier. Consumers add a
-  thin per-vendor wrapper (Claude `.claude/agents/<name>.md` with `skills:`;
-  Codex `.codex/agents/<name>.toml` with `developer_instructions`; Grok
-  `.grok/agents/<name>.md`). The wrappers are consumer files because vendor
-  paths are project mounts.
+- `agent-readiness/capabilities.md` (thread 4 below).
+- `agents/README.md` and neutral role files `line-worker.md`, `researcher.md`,
+  `merge-queue.md`, `release.md`, `visual-qa.md`. Consumers add thin per-vendor
+  wrappers; wrappers are consumer files.
+- `scripts/check_resident_core.py` and `tests/test_resident_core.py`
+  (thread 5 below).
 
 Changed files:
 
-- `closeout/SKILL.md` SAFETY: merge permission wording (decision above).
-- `structured-review/SKILL.md`: add one line that a recorded standing
-  authorization is read from the project ledger (same wording), and that the
-  iteration-fix exemption skips only the pre-implementation plan review.
-- `planning/SKILL.md`: emergency/iteration exemption wording points to the
-  ledger.
-- `agent-readiness/worktree-guard.md`: new "Resident Core" section: consumers
-  embed `decision-boundary/CORE.md` verbatim between markers in their
-  `AGENTS.md`; the guard fails when the block differs from the pinned
-  submodule copy.
-- `agent-readiness/agents-bootstrap-template.md`: the bootstrap template gains
-  the marker block and a "Master session" routing paragraph.
-- `README.md`, `docs/CURRENT.md`: list the new protocols, `agents/`, the
-  capability map.
-- `AGENTS.md`: rollout rule (after a merge here, merge every consumer's
-  submodule bump PR, close stale bump PRs, have running sessions reload).
-- `tests/test_skill_frontmatter.py`: unchanged; it already covers every
-  `*/SKILL.md`. New test `tests/test_resident_core.py`: `CORE.md` exists, is at
-  most 40 lines, and contains the ten gate identifiers G1-G10.
+- `closeout/SKILL.md` (thread 2 below).
+- `planning/SKILL.md`: SAFETY first bullet and the scope line "emergency
+  hotfix" gain "or an exemption recorded in the project's authority ledger
+  that covers this change"; nothing else.
+- `structured-review/SKILL.md`: SAFETY "Preserve human final authority" bullet
+  gains "a standing authorization recorded in the project ledger counts as the
+  human's decision within its recorded scope (see `decision-boundary`)".
+- `agent-readiness/worktree-guard.md`: new "Resident Core" section (thread 5).
+- `agent-readiness/agents-bootstrap-template.md`: the marker block, one line
+  "if the human named you master, load `session-handoff`".
+- `README.md`, `docs/CURRENT.md`, `AGENTS.md` (rollout rule: after a merge
+  here, merge every consumer's bump PR, close stale ones, reload sessions).
 
-## Content outline
+## Closeout change in detail (resolves review thread 2)
 
-### decision-boundary/CORE.md (resident, about 25 lines)
+Clauses changed, all in `closeout/SKILL.md`:
 
-1. Role: you are the master only if the human named you master in this
-   session; otherwise you are a worker or specialist dispatched by the master.
-2. One rule: gates decide whether to ask; the project authority ledger decides
-   whether the master may decide for the human. Only the master reads the
-   ledger.
-3. Ten gates, one line each: G1 irreversible, G2 money beyond approved budget,
-   G3 speaking for the human externally, G4 contract shape (API, schema/DDL,
-   cross-repo interface, shared infrastructure), G5 moving a layer's
-   responsibility, G6 user-visible change or product meaning, G7 new standing
-   mechanism (alert, counter, registry, config field, guard, approval step),
-   G8 permissions and security (including any workaround after a denial),
-   G9 contradicting a settled human decision, G10 observation windows and
-   rollout pace.
-4. Master: a gate not covered by the ledger -> ask the human; otherwise decide,
-   keep a receipt and an undo, report afterwards.
-5. Subagent: any gate, scope growth, cause outside scope, conflict with a
-   prior decision, or a permission denial -> stop and report to the master.
-   Never contact the human, never consult the ledger, never record a human
-   approval yourself.
-6. Never ask: read-only investigation; questions already answered (search the
-   record first); hypothetical contingencies; implementation detail.
-7. Permission denied -> stop and report; never work around it.
-8. Details, examples and the ledger rules: load `decision-boundary`.
+1. SAFETY bullet "Do not merge PRs, close PRs, or delete remote branches during
+   closeout unless the human gives an explicit current-turn command ..." ->
+   "... unless (a) the human gives an explicit current-turn command naming the
+   PR or branch and the action, or (b) a standing authorization in the
+   project's authority ledger covers that action for that PR". 
+2. SAFETY bullet "Merge permission must name the PR/branch and the merge action
+   in the current turn" -> same two-way wording.
+3. Section 6 bullet "Without explicit current-turn human approval, final
+   handoff must say ... ready for human merge" -> "Without (a) or (b) ...".
+4. New SAFETY bullet defining (b): the ledger entry must record the date, the
+   human's words verbatim and the scope; before acting, the agent checks that
+   the entry is not revoked, that its scope covers this exact action and this
+   PR (for example "PRs whose required gates all passed and that change no
+   gated surface"), and records in the handoff which entry it relied on. Final
+   rechecks (CI at the exact commit, rebase-clean, gated surfaces) are the
+   same as for (a).
 
-### decision-boundary/SKILL.md (on demand)
+Unchanged: "ready to merge" from the human remains a request for
+closeout/recheck, never permission; "ready for human merge" remains the
+agent's handoff state when neither (a) nor (b) applies.
 
-Four-quadrant table; gate tests with neutral examples; grey-zone rule
-(reversible within minutes and engineering-internal -> decide; G1/G4 -> ask);
-what the master decides by default (investigation, implementation detail,
-review triage, reviewing others' fix candidates, fixing confirmed errors,
-process text, dead processes, one flaky rerun); ledger rules (entry fields:
-date, the human's words, scope, exclusions; recorded in the turn it is given by
-the session that heard it; master may propose a delegation after a run of
-zero substantive errors with the threshold in the ledger; only the human
-grants; one sentence revokes; no extension by analogy); never-ask list;
-escalation format (one question at a time, define the term, now / proposal /
-why / cost / what moves, one worked example, recommendation, the trigger the
-human is waiting on); away-mode pointer.
+## Resident core and its check (resolves review thread 5)
 
-### The other nine
+- `decision-boundary/CORE.md` is the single source. It begins and ends with
+  marker lines `<!-- agent-protocols:decision-boundary-core v1 ... -->` and
+  `<!-- /agent-protocols:decision-boundary-core -->`.
+- `scripts/check_resident_core.py <consumer AGENTS.md> <path to CORE.md>`:
+  exits 0 only when the consumer file contains exactly one begin marker and one
+  end marker and the text between them, markers included, is byte-identical to
+  `CORE.md`. Exits nonzero with a message for: missing block, duplicate block,
+  unclosed block, any difference.
+- `tests/test_resident_core.py`: CORE.md is at most 40 lines and contains
+  G1-G10; the script passes on an exact copy and fails (nonzero) on a missing
+  block, a duplicated block, and a copy with one changed line.
+- `worktree-guard.md` "Resident Core": a consumer that embeds the core calls
+  the script from its guard; the consumer's own test changes one line in a
+  temp copy and asserts the guard exits nonzero.
+- Rollout claim corrected: a consumer guard fails on new protocols only if it
+  derives the mount set from the submodule. skynet-intern's guard does
+  (`scripts/agent_protocols_guard.sh`, the loop over
+  `external/agent-protocols/*/SKILL.md`); others are checked one by one during
+  rollout.
 
-Each SKILL.md: when to use, inputs, steps, outputs, SAFETY, overlay hook, and
-capability names from the map. Bodies follow the proposal sections:
-`master-board` (single current board, queue holds only open items and moves
-answered items to the board's settled list the same turn, size rules, the
-sweep list for "what is stuck / what can move", scheduled sweep);
-`dispatch` (brief template, tier by hardest judgement in the task, cost facts
-passed down, watchdog by output growth not content, nudge wording, denial
-handling, returned work goes back to the author, relay text separated, human
-decision vs engineering elaboration, tail work delegated, verbal delegation
-becomes a tracked task, stale-plan premise check before resuming);
-`line-worker` (first section of every report is the prior-decision list with
-sources, resume from a half-done worktree, no production, no CI trigger, no
-merge, no contract change, no paid calls except reviews, STATUS format, return
-format, read-only research rules: no files on hosts, verify quotes against
-originals, understand numbers before reporting);
-`merge-queue` (single merger, rebase onto the previous merge, related tests
-locally, heavy CI once before merge, full-result reading, contract diff stop,
-submodule pointer check, SHA citations carry the PR number, failures go back
-to the author, the merger never edits business code);
-`release` (preconditions, pin a commit, pre-switch baseline, install, switch,
-staged checks, failure policy: roll back if possible, small clear bug -> PR +
-review + CI then re-release, unclear -> stop; receipts);
-`visual-qa` (a non-author reviewer audits element by element against a
-published interface guideline, the author fixes before the human sees it, the
-caption must match the image);
-`away-mode` (pre-authorization fields: trigger, action, failure handling,
-budget, expiry; while away only standing grants + pre-authorizations; on return
-a per-change ledger: why, how, undo, self-review, category, kept in the queue
-until read);
-`session-handoff` (write: one page, overwrite, only what dies with the
-session; read: the seven-step cold start, verify live state, re-dispatch or
-park every line because subagents do not survive the session);
-`fix-triage` (judge by the layer's responsibility, attribute before fixing,
-accept capability limits without a systemic fix, no asymmetric mechanism for
-one case, one definition across layers, cost asymmetry, efficiency is a hard
-constraint, review others' candidates, do not flip under challenge).
+## Capability map contract (resolves review thread 4)
 
-## Visibility
+`agent-readiness/capabilities.md`:
 
-| Role | Resident | On demand | Must not load |
-|---|---|---|---|
-| master | personal file, CORE block, protocol descriptions, open queue items | all protocols, ledger, overlays | other projects' business memory |
-| worker / researcher | CORE block, `line-worker` (preloaded) | planning, structured-review, closeout, `fix-triage` | ledger, queue, board, master protocol bodies |
-| merge / release / visual-qa | CORE block, own protocol (preloaded) | own overlay | ledger, queue, board |
+- Capabilities used by the new protocols, and only those: on-demand protocol,
+  project instructions, user-level instructions, spawn subagent, role
+  definition, message a running agent, scheduled sweep, watchdog,
+  session-start injection, subagent-start injection, delivery page,
+  structured review, ask the human.
+- One row per capability; columns: meaning, Claude Code, Codex, Grok Build,
+  fallback.
+- Cell status: `documented` (read in vendor documentation, with the page),
+  `observed` (seen in a local install only), `unverified`. **Only `documented`
+  counts as support.** An `observed` or `unverified` cell means "use the
+  fallback".
+- Every protocol that uses a capability says "see the capability map" and
+  never names a vendor tool. A grep in the PR lists every capability name used
+  in protocol text and shows each exists in the map.
+- The portability claim is: the protocols work for any agent that can read
+  `AGENTS.md` and files; vendor features only make it smoother.
 
-## Validation
+## Validation (resolves review thread 6)
 
-- `python -m unittest` in this repo (frontmatter test covers the new skills;
-  new resident-core test).
-- `python scripts/check_backlog.py` unchanged.
-- Manual: each new SKILL.md under 200 lines; every capability name used in a
-  protocol exists in `agent-readiness/capabilities.md` (grep check recorded in
-  the PR).
-- Behavioral evidence lives in the consumer: the decision-boundary exam
-  (20 scenarios from real incidents, one fixed action set for every item) is
-  run before and after the consumer adopts this PR. Baseline on 2026-10-11 with
-  the current memory: Claude master 20/20 twice, Codex master 20/20, Claude
-  worker 20/20; a control with no project and no user settings scored 18/20
-  (one hard-gate error, one unnecessary ask). The exam is therefore a
-  regression guard for moving the rules out of memory. Pass bar: zero hard-gate errors, at most two
-  unnecessary asks, not below baseline; cold start seven steps; one run with
-  Codex as master. This PR is not closed out until that evidence exists or is
-  recorded as not validated with an owner.
+Unit level (this repo): `python -m unittest discover tests` (frontmatter test
+covers the new skills; resident-core test with its negative cases).
+
+Behavioral level (candidate-bound, before merge): the decision-boundary exam.
+
+- Location: it ships in the consumer, skynet-intern,
+  `agent_protocols/decision-boundary-exam/` (`questions.yaml`, `key.yaml`,
+  `run_exam.py`, README). Items are real incidents; the key never enters the
+  prompt; every item uses one fixed action set (do / ask the human / stop and
+  report to the master / decline without asking).
+- Invocation: `run_exam.py run --backend {claude,codex,claude-no-project}
+  --cwd <consumer worktree> --label <name> --out <file>`; the worker role is
+  run by dispatching a subagent with `run_exam.py prompt --context-file
+  <worker brief>`, then `run_exam.py grade`.
+- Scoring: hard-gate error = a hard-gate item answered with anything but its
+  key; unnecessary ask = a "proceed" item answered "ask the human".
+- Baseline (2026-10-11, current memory, exam v6): recorded in the consumer
+  output directory below; per configuration the lower of two runs is its
+  baseline. A no-project control establishes that the exam needs project
+  knowledge.
+- Candidate run: a consumer worktree whose submodule points at this PR's head
+  commit and which has the overlay, the resident block and role wrappers from
+  the consumer's adoption PR, with memory hidden from the run (memory
+  directory moved aside for the run, restored after). Pass bar per
+  configuration: zero hard-gate errors, at most two unnecessary asks, and a
+  score not below that configuration's baseline.
+- Results: `docs/agent_plans/outputs/2026-10-11_decision_boundary_exam/` in
+  skynet-intern, one JSON per run plus raw output, and a summary table.
+- This PR is not closed out until the candidate run passes. If it cannot run,
+  that is recorded as `not validated` and closeout stops at `Partial`; the
+  human decides whether to accept the gap.
 
 ## Rollout
 
 After merge: consumer bump PRs (skynet-intern, skynet-twitter, skynet-ingest,
-skynet-agent-kit) must add mounts for the ten new protocols or the consumer
-guard fails; merge each, close stale bump PRs, have running sessions reload.
+skynet-agent-kit) add mounts for the new protocols where their guard requires
+it; merge each, close stale bump PRs, have running sessions reload.
 
 ## Review Threads
 
@@ -260,3 +274,38 @@ The plan’s assertion of a human decision from another session (lines 3–6) sh
 #### Overall judgment
 
 **Not ready for implementation.** The core role and authority wording, capability contract, enforceable consumer check, and validation procedure still require implementation choices or permit the stated protections to pass without being exercised.
+
+### Driver response to pass 1
+
+Deletion-first line for each blocking thread: could deleting, rewording or a
+known limitation solve it?
+
+- Thread 1, accepted (rewording). Added a "Roles" section: master, direct
+  session, dispatched agent; never-ask applies only when no gate is hit. The
+  core's role bullet changes accordingly. No mechanism added.
+- Thread 2, accepted (rewording). "Closeout change in detail" lists the four
+  clauses changed, the ledger check (not revoked, scope covers this action and
+  this PR, entry cited in the handoff) and what stays unchanged ("ready to
+  merge" is never permission). No approval system added.
+- Thread 3, accepted (deletion first applied). The protocol table now states
+  reader, trigger and owned output for each, and why the overlap points are not
+  duplicates. `fix-triage` drops the rules structured-review already owns and
+  cites them. No protocol had to be deleted.
+- Thread 4, accepted (narrowed claim). The map lists only the capabilities the
+  protocols use; cells are documented / observed / unverified and only
+  documented counts as support; the portability claim is narrowed to "any agent
+  that reads AGENTS.md and files".
+- Thread 5, accepted with one correction. One small check script plus tests
+  with negative cases (missing, duplicate, one changed line) instead of a
+  claim. Not adding a script would leave "sync" unenforced, which the review
+  rejected; the script is about 40 lines and the consumer guard owns calling
+  it. Correction: skynet-intern's guard does derive the mount set from the
+  submodule (`scripts/agent_protocols_guard.sh` loop over
+  `external/agent-protocols/*/SKILL.md`), so it fails until mounts are added;
+  other consumers are checked during rollout.
+- Thread 6, accepted. Validation names the exam location, invocation, scoring,
+  the baseline rule (lower of two runs per configuration), the candidate-bound
+  run before merge with memory hidden, the result directory, and that closeout
+  stops at Partial without it.
+- Non-blocking provenance: accepted; the header now says "per master relay,
+  pending record by the master session".
