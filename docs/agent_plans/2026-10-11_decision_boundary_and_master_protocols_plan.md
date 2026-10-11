@@ -228,3 +228,35 @@ skynet-agent-kit) must add mounts for the ten new protocols or the consumer
 guard fails; merge each, close stale bump PRs, have running sessions reload.
 
 ## Review Threads
+
+### Reviewer pass 1 (impl-plan, codex reviewer)
+
+The human wants the master and specialist workflow to work across agents without relying on private memory, while keeping decisions and merge authority with the human. I inspected the plan and the current closeout, planning, review, and consumer guard contracts. The worktree was clean.
+
+#### Blocking issues
+
+**Thread 1 — The resident core can misclassify a directly tasked agent.**  
+At lines 119–120, anyone the human did not call “master” becomes a worker dispatched by a master. That excludes an ordinary session receiving a task directly from the human. Lines 132–139 also say both “ask when a gate is uncovered” and “never ask” about implementation details, without saying which rule wins when a detail changes a contract or user-visible behavior. Define the direct-task role and make the never-ask rule conditional on no gate being hit. Rewording the core is sufficient; no new mechanism is needed.
+
+**Thread 2 — The standing-authorization change leaves conflicting merge rules.**  
+Lines 56–59 and 95–100 propose a ledger-based grant, but `closeout/SKILL.md` currently requires a current-turn command both in SAFETY and in its final Git handoff. Changing one bullet would leave conflicting instructions, and a broad ledger entry could be read as permission for an unnamed PR or action. Specify every closeout clause to update and the check that the recorded **date, human’s words, and scope** cover the exact action and PR or branch, including revocation and the final rechecks. Preserve the distinction between “ready to merge” and permission to merge. This can be done with precise wording rather than another approval system.
+
+**Thread 3 — The ten-protocol split is not yet justified at the overlap points.**  
+The trigger table at lines 67–78 does not separate `away-mode`’s queue work from `master-board`, `session-handoff`’s cold start from the existing bootstrap template, or `fix-triage`’s premise and mechanism checks from `structured-review`. State the distinct reader, trigger, and owned output for each overlap, then delete or merge any protocol without one. Duplicated rules would drift. This is a deletion-first review of the proposed packages, not a request for more packages.
+
+**Thread 4 — The capability map has no implementable contract.**  
+Lines 82–84 and 160–161 name a file but give no capability names, mapping format, evidence standard, or state for an unverified agent capability. An implementer would have to invent these while claiming support for four coding agents. Define the minimum capabilities actually used, how each agent cell is marked verified or unverified, and what a protocol says when a capability is unavailable. The simpler alternative is to narrow the portability claim and record unknowns; an unverified cell must not imply support.
+
+**Thread 5 — The resident-core guard claim is not mechanically supported.**  
+Lines 101–104 say the guard fails on a changed embedded block, while the existing contract leaves the executable guard and required list in each consumer. The proposed test at lines 111–113 checks only length and gate tokens; it cannot detect a changed consumer `AGENTS.md`. Specify marker boundaries, comparison behavior for missing or duplicate blocks, and a consumer-side negative case that exits nonzero after changing one core line. The rollout claim at lines 226–228 is also premature: existing consumer guards will not fail merely because this repo gains ten skills unless their local required lists change. If consumer checks are deferred, describe sync as an unverified manual obligation instead of an enforced guard; that would leave the stated guard acceptance unmet.
+
+**Thread 6 — Validation cannot yet establish the stated pass bar.**  
+Lines 213–222 give scores but no exam location, invocation, case definitions, or result artifact. “At most two unnecessary asks” also conflicts with “not below baseline” when the cited baseline is 20/20. Specify the runnable before/after procedure, the hard-gate and unnecessary-ask scoring rule, who runs each role, and where candidate-bound results are recorded. Resolve whether this PR must have consumer evidence before closeout: recording “not validated” with an owner identifies a gap but does not itself meet the behavioral acceptance criterion.
+
+#### Non-blocking issue
+
+The plan’s assertion of a human decision from another session (lines 3–6) should identify its recorded source and whether the author received that approval directly. The existing review SAFETY rule permits only the direct recipient to record a human approval as such.
+
+#### Overall judgment
+
+**Not ready for implementation.** The core role and authority wording, capability contract, enforceable consumer check, and validation procedure still require implementation choices or permit the stated protections to pass without being exercised.
