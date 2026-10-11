@@ -62,3 +62,29 @@ Direct inspection confirms that the edits direct agents toward a line-level look
   `.agent-protocols/authority-ledger.md`, whose result was the single L1 row
   (line 26). It did not open the whole file. Before this change the same
   scenario opened the whole file.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+The human’s concern is that a delegated agent opened the whole authority ledger when it needed only its cited row. I rechecked the B1–B3 responses against the current files and plan.
+
+#### Blocking issues
+
+None.
+
+#### Thread resolutions
+
+- **B1 — Resolved.** `decision-boundary/CORE.md` now tells the dispatched agent to stop if the cited entry is inactive or no longer covers the action.
+- **B2 — Resolved.** `merge-queue/SKILL.md` directs the agent to search for the cited ID and clearly labels `L1` as an example.
+- **B3 — Resolved on driver-reported evidence.** The plan records passing unit tests and a traced session using commit `51111cf`. The reported ledger access was one line-level search that returned only the L1 row.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+The implementation is ready for closeout. The worktree is clean; the review target is one commit ahead of its remote branch.
+
+#### Residual risks and validation gaps
+
+I inspected the wording and commit diff directly. I did not independently rerun the unit tests or traced session, so B3’s behavioral result retains driver-reported provenance.
