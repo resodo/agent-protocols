@@ -168,8 +168,10 @@ Between its two marker lines, in this order:
 5. Direct session: a gated step -> ask the human; never use the ledger.
 6. Dispatched agent: any gate, scope growth, a cause outside scope, a conflict
    with an earlier decision, or anything needing the human -> stop and report
-   to whoever dispatched you; never contact the human, never consult the
-   ledger, never record a human approval.
+   to whoever dispatched you; the one exception is a gated action its brief
+   names exactly with the permission the master recorded (it may re-read only
+   that cited ledger entry, right before acting); never contact the human,
+   never use the ledger to find permission, never record a human approval.
 7. Never ask, when no gate is hit: read-only investigation, questions already
    answered (search the record and cite it), hypothetical contingencies,
    implementation detail.
@@ -278,7 +280,7 @@ the content against this list.
 | master | user-level file, CORE block, protocol descriptions, open queue items | all protocols, ledger, overlays | other projects' business memory |
 | direct session | user-level file, CORE block, protocol descriptions | protocols for its task | ledger |
 | worker / researcher | CORE block, `line-worker` (preloaded) | planning, structured-review, closeout, `fix-triage` | ledger (except the one entry a delegation cites), queue, board, master protocol bodies |
-| merge / release / visual-qa | CORE block, own protocol (preloaded), the delegation in its brief or queue line | own overlay | ledger, queue, board |
+| merge / release / visual-qa | CORE block, own protocol (preloaded), the delegation in its brief or queue line | own overlay; the one ledger entry a delegation cites, re-read right before acting | the rest of the ledger, queue, board |
 
 ## Closeout change in detail (resolves review thread 2)
 
@@ -767,8 +769,9 @@ The consumer scores, Claude drill, and Codex drill are driver-reported in PR #15
   brief cites, right before acting); the plan's core outline and Visibility
   table say the same. The risk choice stays as the human decided.
 - Thread 4: Codex step 4 (live PR check) is recorded as not validated: GitHub
-  TLS validation failed inside the Codex sandbox, an environment limit, not a
-  protocol gap; the same step passed in the Claude drill. Per the master's
+  TLS validation failed inside the Codex sandbox (an environment limit); the
+  protocol behavior of that Codex step remains unverified; the same step
+  passed in the Claude drill. Per the master's
   2026-10-11 decision this needs no separate human acceptance. The plan's
   Validation section now describes the check as executed (one-off local
   check, drill) instead of the superseded exam design.
@@ -792,3 +795,12 @@ The human wants new master sessions and specialists to work without private memo
 #### Residual risks and validation gaps
 
 The accepted revocation window remains a recorded risk. Codex’s live PR check remains `not validated` under the master’s recorded decision. The consumer drill results are driver-reported; this pass verified the records and text, not the sessions themselves.
+
+### Driver response to implementation pass 6
+
+- Thread 1, accepted. The plan's core outline item 6 and the Visibility row
+  for merge / release / visual-qa now carry the single-entry re-read
+  exception, matching the protocol and the core.
+- Thread 4, accepted (wording). The record says Codex step 4's protocol
+  behavior remains unverified because of the sandbox TLS failure; no claim
+  that there is no protocol gap.
