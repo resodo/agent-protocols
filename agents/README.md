@@ -9,7 +9,8 @@ definition"):
 - Claude Code: `.claude/agents/<name>.md` with `skills:` listing the preloaded
   protocols and a body that says "follow external/agent-protocols/agents/<name>.md".
 - Codex: `.codex/agents/<name>.toml` with `developer_instructions` saying the same.
-- Grok Build: `.grok/agents/<name>.md`.
+- Grok Build: `.grok/roles/<name>.toml` with `prompt_file` pointing at
+  `external/agent-protocols/agents/<name>.md`.
 
 When a coding agent has no role definitions, paste the role text into the
 dispatch brief.
