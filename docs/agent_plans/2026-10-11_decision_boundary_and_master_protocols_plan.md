@@ -804,3 +804,25 @@ The accepted revocation window remains a recorded risk. Codex’s live PR check 
 - Thread 4, accepted (wording). The record says Codex step 4's protocol
   behavior remains unverified because of the sandbox TLS failure; no claim
   that there is no protocol gap.
+
+### Reviewer pass 7 (impl, codex reviewer)
+
+The human wants new master sessions and specialists to work without private memory while keeping gated actions under human authority. I reviewed the response to pass 6 against the current plan and protocols. The worktree is clean.
+
+#### Blocking issues
+
+None.
+
+#### Thread resolutions
+
+**Thread 1 — Resolved.** The plan’s core outline and Visibility table now state the narrow exception: a delegated agent may re-read the single ledger entry cited in its brief right before acting. This matches the current protocol.
+
+**Thread 4 — Resolved.** The response now says that Codex’s live PR check remains unverified because of the sandbox TLS failure. It no longer claims that the failure proves there is no protocol gap.
+
+#### Overall judgment
+
+**Ready for closeout.** This is not a merge-readiness judgment.
+
+#### Residual risks and validation gaps
+
+The recorded revocation window remains an accepted risk. Codex’s live PR check remains `not validated` under the master’s recorded decision. Consumer drill results are driver-reported; I inspected the records and wording but did not rerun the drills.
