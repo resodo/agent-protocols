@@ -108,7 +108,11 @@ master. It lives in the overlay, not in memory, so any coding agent acting as
 master can read it.
 
 - Entry fields: date, the human's words (verbatim), scope, explicit
-  exclusions, where it was said.
+  exclusions, where it was said, status. An entry written from a record (for
+  example when a project first adopts this protocol) starts as `proposed` and
+  grants nothing until the human confirms it; the session that receives the
+  confirmation sets it `active` with the confirmation date. A paraphrase is
+  never an active entry.
 - Recording: in the same turn the human grants it, by the session that heard
   it. A session that only had it relayed writes "relayed by <session>,
   pending record" and never records the grant itself.
@@ -120,7 +124,7 @@ master can read it.
   turn.
 - No extension by analogy: "merges are yours" does not make "splits are
   yours".
-- A standing authorization in the ledger counts as the explicit permission
+- An `active` standing authorization in the ledger counts as the explicit permission
   that `closeout`, `planning` and `structured-review` accept, within its
   recorded scope. Before relying on one, check that it is not revoked and that
   its scope covers this exact action (and this PR, for merges), and cite the
