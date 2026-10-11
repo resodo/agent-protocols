@@ -674,3 +674,25 @@ None beyond the plan consistency noted in Thread 1.
   the Codex AGENTS.md page (CX-agents) and are documented.
 - Thread 4: unchanged, waiting for the human's confirmation of the exam run
   boundary; closeout stays Partial.
+
+### Reviewer pass 3 (impl, codex reviewer)
+
+The human wants master sessions and specialists to work across the supported agents without private memory while keeping gated actions under human authority. I reviewed the commits through `866f471`; the worktree is clean.
+
+#### Blocking issues
+
+**Thread 1 — Open: revocation can still race a delegated action.** The role exception is now consistent across the plan and protocols. But `decision-boundary/SKILL.md` tells the master to withdraw a queue line and message a running agent after revocation, while `closeout/SKILL.md` treats the master’s earlier check as the check before the agent acts. A merge or release agent can act on its brief before that message arrives, or after the master session ends. The promised execution-time protection has no demonstrated revocation case. The simpler alternative is for the master to execute gated actions; retaining a dedicated agent needs a human decision on the remaining revocation risk or a proven way to stop stale execution.
+
+**Thread 3 — Open: the new Codex citation reveals an instruction-loading exception.** The citation resolves the missing-page finding. But the [Codex `AGENTS.md` documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md) says `AGENTS.override.md` replaces `AGENTS.md` in the same directory. `agent-readiness/capabilities.md` calls project instructions essential and describes root `AGENTS.md` as loaded, while `scripts/check_resident_core.py` does not check for that override. A consumer guard could pass without Codex receiving the core. Record this condition in the adoption contract and verify the loaded instructions, or mark that configuration unsupported.
+
+#### Resolved thread
+
+**Thread 2 — Resolved for the static guard.** `scripts/check_resident_core.py` now compares the full block and scans ancestors. A read-only, in-memory probe rejected an ancestor file containing only the marker and accepted one containing the full core. `tests/test_resident_core.py` includes the same-directory marker-only failure and full-core success cases. Actual instruction loading remains part of the pending candidate session check.
+
+#### Non-blocking issue
+
+The plan still says the comparison is “byte-identical” at line 314; the script normalizes line endings.
+
+#### Overall judgment
+
+**Not ready for closeout.** Threads 1 and 3 remain blocking. Thread 4 remains pending on the previously identified consumer evidence; this pass does not reopen it as a new finding. Validation here is reviewer inspection and the read-only ancestor probe. I did not rerun the unit suite or consumer scenarios.
