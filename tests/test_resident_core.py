@@ -11,10 +11,12 @@ CORE = REPO_ROOT / "decision-boundary" / "CORE.md"
 SCRIPT = REPO_ROOT / "scripts" / "check_resident_core.py"
 
 
-def run(consumer_text: str) -> subprocess.CompletedProcess:
+def run(consumer_text: str, claude_md: str | None = None) -> subprocess.CompletedProcess:
     with tempfile.TemporaryDirectory() as tmp:
         consumer = Path(tmp) / "AGENTS.md"
         consumer.write_text(consumer_text, encoding="utf-8")
+        if claude_md is not None:
+            (Path(tmp) / "CLAUDE.md").write_text(claude_md, encoding="utf-8")
         return subprocess.run([sys.executable, str(SCRIPT), str(consumer), str(CORE)],
                               capture_output=True, text=True)
 
@@ -52,6 +54,20 @@ class ResidentCoreTest(unittest.TestCase):
     def test_unclosed_block_fails(self) -> None:
         result = run(self.core.split("<!-- /agent-protocols")[0])
         self.assertEqual(result.returncode, 1)
+
+
+class ClaudeShadowTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.core = CORE.read_text(encoding="utf-8")
+
+    def test_claude_md_without_import_fails(self) -> None:
+        result = run(self.core, claude_md="# Claude notes\n")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("does not read", result.stderr)
+
+    def test_claude_md_importing_agents_passes(self) -> None:
+        result = run(self.core, claude_md="@AGENTS.md\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

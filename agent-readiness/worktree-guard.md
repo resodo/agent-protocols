@@ -148,8 +148,12 @@ repo check should verify that:
 ## Resident Core
 
 A consumer that adopts `decision-boundary` embeds
-`decision-boundary/CORE.md` verbatim in its root `AGENTS.md` (the file every
-supported coding agent reads at session start). The block starts and ends with
+`decision-boundary/CORE.md` verbatim in its root `AGENTS.md`. Codex and Grok
+Build read `AGENTS.md`; Claude Code reads it only when no `CLAUDE.md`,
+`.claude/CLAUDE.md` or `CLAUDE.local.md` exists, so a consumer with any of
+those files imports `AGENTS.md` from one of them (a line `@AGENTS.md`). The
+check script fails otherwise; an untracked personal `CLAUDE.local.md` is
+caught when the guard runs locally. The block starts and ends with
 the marker lines in `CORE.md`.
 
 The consumer guard checks it:
@@ -160,7 +164,8 @@ python3 external/agent-protocols/scripts/check_resident_core.py AGENTS.md \
 ```
 
 The script exits nonzero when the block is missing, duplicated, unclosed, or
-differs from the pinned `CORE.md` in any character. After a submodule bump that
+differs from the pinned `CORE.md` (line endings normalized), or when a
+`CLAUDE.md`-family file hides `AGENTS.md` from Claude Code. After a submodule bump that
 changes `CORE.md`, the consumer copies the new block in the same bump PR.
 The consumer's own tests include one negative case: a temporary copy of
 `AGENTS.md` with one changed core line makes the guard exit nonzero.

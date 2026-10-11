@@ -24,9 +24,10 @@ merges collide. So exactly one merger merges, one PR at a time.
   too; if another session is already running a pre-merge job, pause until it
   finishes.
 - Merging needs explicit permission: a current-turn instruction from the
-  human, or a standing authorization in the project ledger (see
-  `decision-boundary`). The master records which one applies when it queues
-  a PR.
+  human, or an active standing authorization in the project ledger (see
+  `decision-boundary`). The master checks it and writes it into the queue line
+  when it queues a PR (Delegated Execution); the merge agent merges only PRs
+  whose line names that permission, and never reads the ledger itself.
 
 ## Queue File
 
