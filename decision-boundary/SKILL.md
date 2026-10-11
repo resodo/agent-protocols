@@ -166,8 +166,10 @@ that the named action matches what it is about to do, and stops at anything
 else. It never uses the ledger to find permission for itself. When the cited
 permission is a ledger entry, the agent re-reads that one entry right before
 acting and stops if it is no longer `active` or its scope no longer covers the
-action; this execution-time check closes the gap between the master's check
-and the action.
+action. This narrows, but does not remove, the window between a revocation
+and the action; a project that delegates ledger-based actions records in its
+ledger that the human accepted that window (date, his words). Without that
+record, the master performs ledger-based gated actions itself.
 
 The master keeps the delegation current: a delegation lives only inside the
 master's session; when the human revokes or narrows the cited permission, the
