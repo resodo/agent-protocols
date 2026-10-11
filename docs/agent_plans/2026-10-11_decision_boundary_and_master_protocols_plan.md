@@ -711,3 +711,25 @@ The plan still says the comparison is “byte-identical” at line 314; the scri
   (two new tests); the guard contract and the Codex cell record the override
   rule. Loaded-instruction verification stays in the candidate session check.
 - Non-blocking, accepted: the plan says "identical (line endings normalized)".
+
+### Reviewer pass 4 (impl, codex reviewer)
+
+The human wants master sessions and specialists to work without private memory while keeping gated actions under human authority. I reviewed commit `744c848` and the affected plan, protocols, guard, and tests. The worktree is clean.
+
+#### Blocking issue
+
+**Thread 1 — Open; escalate the delegation boundary.** The new recheck reduces the time between the master’s permission check and a delegated action, but it does not close the race claimed in `decision-boundary/SKILL.md`: revocation can occur after the agent’s recheck and before the merge or release action. No revoked-entry scenario demonstrates the promised stop. The recheck also requires a dispatched agent to read a ledger entry, while `decision-boundary/CORE.md`, the protocol’s Local Overlay section, and the plan’s Visibility table still reserve ledger reading for the master.
+
+This is the third consecutive implementation pass on the delegation mechanism. Stop revising that mechanism and put the boundary choice to the human: the master can execute gated actions, or the human can explicitly accept the remaining race and a narrowly defined ledger-read exception for delegated agents. A further textual recheck would not establish atomic revocation protection.
+
+#### Resolved thread
+
+**Thread 3 — Resolved for the stated override case.** `scripts/check_resident_core.py` now rejects a same-directory `AGENTS.override.md` without the full core and accepts one with it. I observed both outcomes with a read-only, in-memory probe. The adoption contract and capability map also state the override rule. Actual loaded instructions remain part of the pending candidate-session evidence.
+
+#### Non-blocking issue
+
+The guard also rejects an `AGENTS.override.md` above the project root without the core; I reproduced that result in memory. [Codex’s instruction-discovery documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md) says project files are loaded from the project root downward, so an override above that root need not contain this repo’s core. Narrowing the scan to the loaded path would avoid this false positive.
+
+#### Overall judgment
+
+**Not ready for closeout.** Thread 1 remains blocking. Thread 4 remains pending on the previously identified consumer evidence and is not reopened here. Validation in this pass consists of committed-file inspection and the read-only guard probes; I did not run the unit suite or consumer scenarios.
