@@ -769,3 +769,25 @@ cold-start drill passed all seven steps for Claude after two protocol text
 fixes (sweep at cold start, `dispatch` loaded at cold start), and for Codex
 with one environment limit (GitHub unreachable from its sandbox). Thread 4 is
 answered by this evidence.
+
+### Reviewer pass 5 (impl, codex reviewer)
+
+The human wants new master sessions and specialists to work without private memory while keeping gated actions under human authority. I reviewed commit `037278a`, the changes since pass 4, and the validation summary in skynet-intern PR #1523. The worktree is clean.
+
+#### Blocking issues
+
+**Thread 1 — The human decision is recorded; the instructions still conflict.** The consumer ledger records the human’s acceptance of the remaining revocation window, and `decision-boundary/SKILL.md` now describes that limit accurately. But its Local Overlay section still says only the master reads the ledger, while Delegated Execution requires an agent to re-read its cited entry. The plan’s Content outline and Visibility table retain the same conflict. Amend those statements to name the narrow exception. The risk choice itself needs no further review.
+
+**Thread 4 — Codex cold-start acceptance remains Partial.** PR #1523 reports that Claude completed all seven steps and returned a re-dispatched line’s result. It also reports that Codex could not check open PRs live because GitHub TLS validation failed in its sandbox. The plan requires live-state verification and all seven steps to pass; it says an unexercised step must go to the human before the goal is claimed. Re-run that step in a working environment, or record the human’s explicit acceptance of this specific gap. The plan’s Validation section also still describes the superseded baseline comparison, tracked exam outputs, and shipped runner; update the current source of truth to match the recorded one-off check.
+
+#### Resolved threads
+
+**Threads 2 and 3 remain resolved.** The earlier core-loading guard findings have no new counterexample in this pass.
+
+#### Overall judgment
+
+**Not ready for closeout.** Thread 1 needs the instruction conflict removed, and Thread 4 needs either complete Codex evidence or a recorded human decision on the remaining gap.
+
+#### Validation provenance and residual risk
+
+The consumer scores, Claude drill, and Codex drill are driver-reported in PR #1523. The `python` CI check on this PR passed; I reran the 12 focused resident-core tests successfully. The full local suite could not run because this environment lacks PyYAML. I did not rerun the consumer sessions. The human-accepted revocation window remains a documented residual risk.
