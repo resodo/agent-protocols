@@ -14,9 +14,12 @@ description: "[release agent] Preloaded by the agent that ships a release; the m
 
 ## Before
 
-1. Permission: the release itself is approved (current turn, a ledger entry,
-   or a pre-authorization from `away-mode`). Irreversible steps (for example
-   a migration without a downgrade) need their own explicit approval.
+1. Permission: the brief names the release and cites its approval (the
+   human's current-turn instruction, an active ledger entry, or a
+   pre-authorization from `away-mode`), checked by the master (Delegated
+   Execution). Irreversible steps (for example a migration without a
+   downgrade) are named separately with their own approval. Anything the
+   brief does not name stops the release agent.
 2. Observation windows: use the windows the human approved for this kind of
    release. A new window, or changed criteria, is gate G10: ask.
 3. Preconditions written in the plan are checked one by one and recorded.

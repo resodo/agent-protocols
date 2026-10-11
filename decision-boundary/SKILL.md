@@ -28,7 +28,7 @@ An overlay may add gates or narrow grants; it must not remove a gate.
 |---|---|---|
 | Master | Steps that hit no gate; gated steps the ledger hands to the master | A gated step the ledger does not cover -> the human |
 | Direct session | Steps that hit no gate | Any gated step -> the human (no ledger) |
-| Dispatched agent | Engineering choices inside the dispatched scope | Any gate, or anything outside the scope -> whoever dispatched it |
+| Dispatched agent | Engineering choices inside the dispatched scope; a gated action its brief names exactly with the permission the master recorded for it | Any other gate, or anything outside the scope -> whoever dispatched it |
 
 The never-ask list applies only when no gate is hit: an "implementation
 detail" that changes a contract or what users see is gated.
@@ -154,6 +154,16 @@ the options with a recommendation. Say what the human is waiting on (which
 number, which agent) so they know when it becomes theirs. Ask in plain text,
 not in a pop-up form, when the question needs reading first. The human's own
 language and style preferences come from the user-level instruction file.
+
+## Delegated Execution
+
+The permission for a gated action belongs to the master. The master may hand
+the execution of one already-permitted action to a dispatched agent (for
+example the merge agent or the release agent): the brief or queue line names
+the exact action and target, and cites the permission (the human's
+current-turn instruction, quoted, or the ledger entry id). The agent checks
+that the named action matches what it is about to do, and stops at anything
+else. It never reads the ledger to find permission for itself.
 
 ## Dispatched Agents
 

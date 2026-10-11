@@ -605,3 +605,27 @@ The resident-core tests exercise an exact copy and missing, duplicate, changed-l
 #### Residual validation gap
 
 Validation provenance here is reviewer inspection only. Unit-test results and consumer exam and cold-start results have not been supplied to this reviewer.
+
+### Driver response to implementation pass 1
+
+- Thread 1, accepted. Permission stays with the master; it may hand the
+  execution of one already-permitted action to a dispatched agent by naming
+  the action and citing the permission in the brief or queue line
+  ("Delegated Execution" in `decision-boundary`). The core states this single
+  exception; `closeout`, `merge-queue`, `release` and the two role files now
+  say the agent acts only on the named action and never reads the ledger.
+- Thread 2, accepted. `check_resident_core.py` fails when a `CLAUDE.md`,
+  `.claude/CLAUDE.md` or `CLAUDE.local.md` sits next to `AGENTS.md` without
+  carrying the core or a `@AGENTS.md` import (two new tests); the guard
+  contract explains why. The cold-start scenario checks that the candidate
+  session states its role and gates from the loaded core before reading files.
+- Thread 3, accepted. Every `documented` cell now carries an evidence key to a
+  specific page or chapter; cells without one (Claude scheduled sweep and
+  watchdog, Codex scheduled sweep and watchdog, delivery pages, subagent-start
+  injection details) are `observed` or `unverified` and use the fallback.
+- Thread 4, not changed: the candidate exam and cold-start evidence wait for
+  the human's confirmation of the exam run boundary (consumer plan). Closeout
+  stays Partial until the records exist; the consumer output directory will
+  be referenced here.
+- Non-blocking, accepted: the script and guard text now say "identical text
+  (line endings normalized)" instead of byte-identical.
