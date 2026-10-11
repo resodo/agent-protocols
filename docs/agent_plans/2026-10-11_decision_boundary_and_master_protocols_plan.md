@@ -826,3 +826,11 @@ None.
 #### Residual risks and validation gaps
 
 The recorded revocation window remains an accepted risk. Codex’s live PR check remains `not validated` under the master’s recorded decision. Consumer drill results are driver-reported; I inspected the records and wording but did not rerun the drills.
+
+### Update after pass 7 (consumer evidence)
+
+The Codex cold-start drill was rerun in the same sandbox with
+`SSL_CERT_FILE=/etc/ssl/cert.pem`; the live open-PR check (step 4) passed and
+all seven steps passed. Codex re-dispatched the line through the capability
+map's fallback (a separate CLI worker session). The "not validated" note above
+is superseded.
