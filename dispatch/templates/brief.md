@@ -9,8 +9,8 @@ You are <role> dispatched by the master. Objective: <one paragraph>.
   or make paid calls, unless this brief says otherwise. Any gate in the
   decision-boundary core: stop and report to the master.
 - Never contact the human; never write "the human approved".
-- Shape commands so no platform confirmation is needed (literal or `${x:?}`-guarded
-  paths in `rm`, one command per action); if a confirmation appears, stop and report.
+- Avoid preventable platform confirmations (literal paths or quoted `"${x:?}"` guarded
+  expansions in `rm`, one command per action); if a confirmation appears, stop and report.
 
 ## Decisions already made (sources)
 - <human decision> - <date, source>   (human decision: true)
