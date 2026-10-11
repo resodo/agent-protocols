@@ -12,10 +12,10 @@ stalls a session while he is away.
 Add one rule to `line-worker` ("While Working") and one line to `dispatch`
 ("The Brief" hard rules template):
 
-- Write commands so they never need a platform confirmation: delete only by
-  literal path or with guarded expansions (`"${dir:?}"/"${name:?}"`), never a
-  bare variable in `rm`; one command does one thing; for many deletions, a
-  script that lists literal paths. If a confirmation prompt appears anyway,
+- Avoid preventable platform confirmations: delete only by literal path or
+  with quoted guarded expansions (`"${dir:?}"/"${name:?}"`), never a
+  bare variable in `rm`; one command does one thing; for many deletions, list
+  the literal paths (a script is for clarity, never to get around a prompt). If a confirmation prompt appears anyway,
   stop and report the command instead of retrying variants.
 
 No new mechanism; text only. The capability map is unchanged.
