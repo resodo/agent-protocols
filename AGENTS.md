@@ -54,3 +54,13 @@ and committed skill mounts, not through this checkout's path; see
 
 When adding, renaming, moving, or retiring a protocol, update `README.md`,
 `docs/CURRENT.md`, and any affected index in the same change.
+
+## Rollout To Consumers
+
+After a change here merges, the change is not done until consumers use it:
+merge each consumer's submodule bump PR that points at the new head (adding
+skill mounts for new protocols and copying a changed `decision-boundary/CORE.md`
+in the same PR), close older bump PRs, and have running sessions and subagents
+update their submodule and reload the protocols. Before merging any consumer
+PR, check that it does not move the `external/agent-protocols` pointer
+backwards.

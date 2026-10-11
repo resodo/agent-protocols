@@ -16,9 +16,24 @@ rules live in `docs/README.md`; the current protocol map lives in
 - `readable-brief/` - turns a final, reviewed technical document into a brief the human decision-maker reads in full and approves; required for decision docs.
 - `scout/` - judgment-heavy repository discovery workflow that produces Scout reports and human-reviewed backlog candidate proposals without replacing CI.
 
+Master + subagent operation (each protocol's description says its reader and
+trigger; bodies load on demand):
+
+- `decision-boundary/` - who may decide what: ten gates, the project authority ledger, never-ask rules, escalation format. `CORE.md` is the resident block every consumer embeds in its `AGENTS.md`.
+- `master-board/` - the master's board, the queue of items waiting on the human, and the sweep.
+- `dispatch/` - dispatching subagents: brief, model tier, watchdog, returned work, keeping lines moving.
+- `line-worker/` - how a dispatched worker or researcher works and hands back.
+- `merge-queue/` - one merger, one PR at a time.
+- `release/` - release skeleton: preconditions, switch, staged checks, failure policy.
+- `visual-qa/` - independent review of user-visible changes before the human sees them.
+- `away-mode/` - pre-authorizations before the human leaves; per-change ledger on return.
+- `session-handoff/` - one-page handoff and the new master's cold start.
+- `fix-triage/` - whether something is wrong, attribution, and the smallest systemic fix.
+
 ## Guidance
 
-- `agent-readiness/` - worktree guard contract and `AGENTS.md` bootstrap template for keeping project coordinates and shared protocol availability explicit.
+- `agent-readiness/` - worktree guard contract (including the resident-core check), `AGENTS.md` bootstrap template, and `capabilities.md`, the map from capability names used in protocols to each coding agent's feature or fallback.
+- `agents/` - vendor-neutral role definitions for specialist subagents; consumers add thin per-agent wrappers.
 
 ## Docs
 

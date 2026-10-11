@@ -145,6 +145,26 @@ repo check should verify that:
   on memory;
 - the guard uses one local required-protocol list.
 
+## Resident Core
+
+A consumer that adopts `decision-boundary` embeds
+`decision-boundary/CORE.md` verbatim in its root `AGENTS.md` (the file every
+supported coding agent reads at session start). The block starts and ends with
+the marker lines in `CORE.md`.
+
+The consumer guard checks it:
+
+```bash
+python3 external/agent-protocols/scripts/check_resident_core.py AGENTS.md \
+  external/agent-protocols/decision-boundary/CORE.md
+```
+
+The script exits nonzero when the block is missing, duplicated, unclosed, or
+differs from the pinned `CORE.md` in any character. After a submodule bump that
+changes `CORE.md`, the consumer copies the new block in the same bump PR.
+The consumer's own tests include one negative case: a temporary copy of
+`AGENTS.md` with one changed core line makes the guard exit nonzero.
+
 ## Failure Semantics
 
 The guard must fail loudly when required protocols cannot be made available.

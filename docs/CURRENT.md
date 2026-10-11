@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-09-25
+Last updated: 2026-10-11
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -71,8 +71,18 @@ avoid treating historical plans as current instructions.
   lifecycle, reachability, coverage, documentation, process, and
   maintainability findings that should become human-reviewed backlog
   candidates rather than CI failures.
-- `agent-readiness/` - worktree guard contract and agent bootstrap template for
-  downstream repos.
+- Master + subagent operation: `decision-boundary/SKILL.md` (gates, authority
+  ledger rules, never-ask, escalation; `CORE.md` is the resident block
+  consumers embed verbatim and check with `scripts/check_resident_core.py`),
+  `master-board`, `dispatch`, `line-worker`, `merge-queue`, `release`,
+  `visual-qa`, `away-mode`, `session-handoff`, `fix-triage`. A standing
+  authorization recorded in a project's ledger counts as permission within its
+  scope for `closeout`, `planning` (plan-review exemption only) and
+  `structured-review`.
+- `agent-readiness/` - worktree guard contract (with the resident-core check),
+  agent bootstrap template, and `capabilities.md` (capability names to
+  per-agent features and fallbacks; only documented cells count as support).
+- `agents/` - vendor-neutral specialist role definitions.
 
 ## Runner And References
 
