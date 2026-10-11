@@ -128,3 +128,28 @@ The plan is ready for implementation.
 **Residual risks or validation gaps**
 
 The role-boundary checks remain planned for the consumer PR. No tests were run during this read-only plan review.
+
+### Reviewer pass 1 (impl, codex reviewer)
+
+**Blocking issues**
+
+None.
+
+**Non-blocking issues**
+
+None.
+
+**Overall judgment**
+
+The original concern was that a work-line agent could read the whole authority ledger while loading the shared decision-boundary overlay. The implementation matches the accepted plan:
+
+- **Done:** All tracked ledger-path references point to `.agent-protocols/authority-ledger.md`. The sole remaining `decision-boundary.md` reference identifies the shared gate-check and settled-decision overlay.
+- **Done:** Local Overlay gives every role the shared overlay and reserves the ledger file for the master, subject to the cited-entry exception.
+- **Done:** Delegated Execution specifies a line-level lookup of the cited entry.
+- **Done:** `CORE.md` changes only the ledger path. The diff adds no mechanism.
+
+Direct inspection supports readiness for closeout of this repository’s implementation.
+
+**Residual risks or validation gaps**
+
+I did not run the test suite: it invokes a protocol guard script, which this review was instructed not to run. Consumer startup and agent-trace checks remain for the consumer PR, as the plan specifies.
