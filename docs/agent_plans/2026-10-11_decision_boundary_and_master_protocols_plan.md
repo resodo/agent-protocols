@@ -309,3 +309,33 @@ known limitation solve it?
   stops at Partial without it.
 - Non-blocking provenance: accepted; the header now says "per master relay,
   pending record by the master session".
+
+### Reviewer pass 2 (impl-plan, codex reviewer)
+
+The human wants the master and specialist workflow to work across agents without relying on private memory, while retaining human decision authority. I inspected the revised plan, pass 1 response, relevant protocol text, and committed diff. The worktree is clean.
+
+#### Blocking issues
+
+**Thread 4 — Open: the capability fallback is still undefined.** The map now names capabilities and evidence states, but the plan does not say what happens when an agent cannot spawn a subagent or message one. Reading files alone cannot provide those behaviors, so the “any agent” portability claim at lines 187–202 exceeds the contract. The no-mechanism option is to narrow the claim and mark those workflows unsupported where the capability is absent. Alternatively, specify a workable fallback for each essential capability.
+
+**Thread 6 — Open: validation does not cover the stated workflow.** The exam at lines 209–236 checks decision answers for Claude and Codex; its invocation has no Grok configuration and does not exercise a new master’s cold start, dispatch, or handoff. The prior cold-start check was removed. A small manual scenario using the candidate is enough; no new runner is needed. If Grok or the workflow cannot be exercised, record that limit and obtain a decision before claiming the goal met.
+
+**Thread 7 — New: the revision removed the implementation contract for the protocols.** The former “Content outline” and “Visibility” sections defined G1–G10, specialist behavior, and who loads which material. The replacement table at lines 75–110 identifies outputs but does not define those rules; the test at lines 171–173 would accept any core containing the ten tokens. Restore the relevant existing outline, updated for the direct-session role, or point to an equally reviewable source. This requires no new mechanism.
+
+**Thread 8 — New: the planning exemption is broader than the recorded decision.** Lines 124–126 direct an exemption for iteration fixes into `planning/SKILL.md`’s first SAFETY bullet. That bullet requires explicit scope, worktree, review path, and acceptance before sensitive work; an exemption from *plan review* should not waive all four prerequisites. Change the proposed sentence so the ledger grant applies only to the review step it names.
+
+#### Non-blocking issues and pass 1 resolutions
+
+- **Thread 1 — Resolved.** The direct-session role and gate precedence address the reported misclassification.
+- **Thread 2 — Resolved.** The closeout clauses now cover the standing grant, its exact scope, revocation, and final rechecks. The protocol table should reword “closeout stops at ready” because closeout may now merge under a valid grant.
+- **Thread 3 — Resolved.** The overlap points have distinct triggers and outputs.
+- **Thread 5 — Resolved at plan level.** The proposed comparison and negative cases can demonstrate a changed consumer core failing its guard.
+- **Provenance issue — Resolved.** The header identifies the approval as a master relay pending record by that session.
+
+#### Overall judgment
+
+**Not ready for implementation.** Threads 4, 6, 7, and 8 remain blocking. In particular, the removed protocol definitions would leave the implementer to reconstruct core behavior from an external scratchpad.
+
+#### Residual validation gap
+
+The proposed guard and exam are still plan-level checks. Their protective claims need the stated negative cases and candidate-bound run during implementation.
