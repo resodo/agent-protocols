@@ -629,3 +629,25 @@ Validation provenance here is reviewer inspection only. Unit-test results and co
   be referenced here.
 - Non-blocking, accepted: the script and guard text now say "identical text
   (line endings normalized)" instead of byte-identical.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+The human wants a new master session and its specialists to work across Claude Code, Codex, and Grok Build without private memory while keeping gated actions under human authority. I reviewed the changes through `e6b2000`. The worktree is clean.
+
+#### Blocking issues
+
+**Thread 1 — Open: delegated permission can become stale.** The master checks a ledger entry when it queues a merge or briefs a release, but `closeout/SKILL.md` requires a revocation and scope check *before acting*. The dispatched agent is forbidden to read the ledger, so a later revocation can leave it acting on an outdated queue line or brief. Align the point of execution with that requirement. The simpler alternative is for the master to perform the gated action. The plan’s role and visibility sections also still say dispatched agents stop at any gate; update the accepted contract if delegation remains.
+
+**Thread 2 — Open: the Claude shadow check accepts an incomplete core.** `scripts/check_resident_core.py` treats any shadow file containing the begin-marker text as sufficient. A read-only probe confirmed that a file containing only that marker is accepted. Its two new tests cover a missing import and a valid import, but not this failure case. Require the full core or a working `@AGENTS.md` import and add a negative test. [Claude Code’s documentation](https://code.claude.com/docs/en/memory) also says instruction files above the working directory can shadow `AGENTS.md`; the new check only examines files beside it. Verify the actual loaded instructions in the candidate session, as the driver proposed.
+
+**Thread 3 — Open: the capability map contradicts its support rule for Codex.** `agent-readiness/capabilities.md` makes project instructions essential with no fallback and counts only `documented` cells as support, but marks Codex `AGENTS.md` loading `observed`. The [Codex AGENTS.md documentation](https://learn.chatgpt.com/docs/agent-configuration/agents-md) provides the missing page evidence. Cite it for that cell, or narrow the Codex support claim. The other newly keyed cells address the original page-attribution concern by inspection.
+
+**Thread 4 — Open: consumer evidence is pending.** No candidate commit, memory-hidden exam scores, or seven-step cold-start observations are recorded here. Per the driver response, these await human confirmation of the consumer exam run boundary. Keep closeout `Partial` until the candidate-bound results and any `not validated` items are recorded.
+
+#### Non-blocking issues
+
+None beyond the plan consistency noted in Thread 1.
+
+#### Overall judgment
+
+**Not ready for closeout.** The new protocols and roles are present, but Threads 1–3 remain blocking, and the required consumer behavior evidence in Thread 4 is still pending. Validation provenance for this pass is reviewer inspection and the read-only guard probe; I did not rerun the unit suite or consumer scenarios.
