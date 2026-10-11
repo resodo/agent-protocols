@@ -24,6 +24,10 @@ the ledger".
   path in this protocol uses the new file.
 - `closeout/SKILL.md`, `planning/SKILL.md`, `structured-review/SKILL.md`: the
   ledger path changes to `.agent-protocols/authority-ledger.md`.
+- Delegated Execution in `decision-boundary/SKILL.md`: the re-read is a
+  line-level lookup of the cited entry id in `authority-ledger.md` (for
+  example a search for the row that starts with `| L1 |`), not a read of the
+  whole file.
 - `line-worker` needs no change: it never points at the ledger; it reads
   `context.md` and `line-worker.md`, and the core.
 
@@ -40,17 +44,18 @@ the core block, whose text changes).
   `.agent-protocols/authority-ledger.md`, update references in its overlays
   and `AGENTS.md`, copy the new core; guard passes.
 - Read-only role-boundary inspection in the consumer (no new script):
-  1. the shared `decision-boundary.md` contains only gate checks and settled
-     decisions (grep for ledger entry ids `L1`..`L13` and "Authority Ledger"
-     finds nothing);
-  2. trace what a work line loads: start a dispatched-worker session in the
-     consumer (Claude, with its normal settings and the `line-worker`
-     preload) on a small read-only task that touches a gate, and check its
-     tool-call trace: it may read `decision-boundary.md`, it must not read
-     `authority-ledger.md`;
-  3. trace a delegated merge-agent session given a queue line that cites
-     `L1`: its trace shows a read of `authority-ledger.md` right before the
-     (dry, no-push) merge step, and its answer quotes only L1.
+  1. static: the shared `decision-boundary.md`, `AGENTS.md` (core block and
+     other text), `context.md`, the `line-worker` overlay, the role wrappers
+     and the SubagentStart hook text contain no ledger content (grep for
+     entry ids `| L1 |`..`| L13 |`, "Authority Ledger", and verbatim grant
+     quotes finds nothing);
+  2. traced worker: a dispatched-worker session in the consumer (normal
+     settings, `line-worker` preloaded) on a small read-only task that touches
+     a gate; its trace shows at least one known file read (the trace captures
+     reads) and no read or search of `authority-ledger.md`;
+  3. traced delegated merge agent: given a queue line citing `L1`, its trace
+     shows exactly one lookup in `authority-ledger.md`, a line-level search
+     for `| L1 |`, and the tool result returned only that row.
   Results are recorded in the consumer PR.
 
 ## Review Threads
@@ -97,3 +102,11 @@ The revised plan improves validation, but Thread 1 remains blocking. It is not y
 **Residual risks or validation gaps**
 
 The consumer checks remain planned for the follow-up PR. No tests were run during this read-only plan review.
+
+### Driver response to pass 2
+
+- Thread 1, accepted. Static inspection now covers every startup material
+  (AGENTS.md, context, line-worker overlay, wrappers, hook text); the worker
+  trace must show at least one known read; the delegated re-read becomes a
+  line-level lookup of the cited entry (protocol text changes accordingly),
+  and the check verifies the tool result contained only that row.
