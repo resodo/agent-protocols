@@ -15,9 +15,9 @@ least one of them must carry the full core block or import AGENTS.md with a
 line "@AGENTS.md"; otherwise exit 1. Files above the repository can only be
 seen on the machine where the check runs.
 
-Codex reads AGENTS.override.md instead of AGENTS.md in the same directory. If
-an AGENTS.override.md exists next to AGENTS.md or in any ancestor, it must
-carry the full core block; otherwise exit 1.
+Codex reads AGENTS.override.md instead of AGENTS.md in the same directory
+(project files load from the project root downward). If an AGENTS.override.md
+exists next to AGENTS.md, it must carry the full core block; otherwise exit 1.
 """
 from __future__ import annotations
 
@@ -75,17 +75,15 @@ def claude_shadow_problem(consumer: Path, expected: str) -> str | None:
 
 
 def codex_override_problem(consumer: Path, expected: str) -> str | None:
-    for directory in [consumer.resolve().parent, *consumer.resolve().parent.parents]:
-        override = directory / "AGENTS.override.md"
-        if not override.is_file():
-            continue
-        try:
-            if extract(override.read_text(encoding="utf-8")).strip() == expected:
-                continue
-        except ValueError:
-            pass
-        return f"{override} replaces AGENTS.md for Codex but does not carry the full resident core"
-    return None
+    override = consumer.resolve().parent / "AGENTS.override.md"
+    if not override.is_file():
+        return None
+    try:
+        if extract(override.read_text(encoding="utf-8")).strip() == expected:
+            return None
+    except ValueError:
+        pass
+    return f"{override} replaces AGENTS.md for Codex but does not carry the full resident core"
 
 
 def check(consumer: Path, core: Path) -> str | None:

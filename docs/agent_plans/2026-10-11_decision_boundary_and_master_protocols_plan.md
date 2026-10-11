@@ -733,3 +733,17 @@ The guard also rejects an `AGENTS.override.md` above the project root without th
 #### Overall judgment
 
 **Not ready for closeout.** Thread 1 remains blocking. Thread 4 remains pending on the previously identified consumer evidence and is not reopened here. Validation in this pass consists of committed-file inspection and the read-only guard probes; I did not run the unit suite or consumer scenarios.
+
+### Driver response to implementation pass 4
+
+- Thread 1: stop signal reached (three consecutive passes on the delegation
+  mechanism). No further revision of the mechanism; the boundary choice goes
+  to the human as one question: (a) the master itself performs every gated
+  action that rests on a ledger entry (the merge agent prepares, rebases and
+  runs CI; the master merges), or (b) the human accepts the remaining
+  revocation race and a narrow exception letting a delegated agent read only
+  the one ledger entry its brief cites. The text stays as committed until he
+  answers; the PR does not merge before that.
+- Non-blocking, accepted: the override check now looks only next to the
+  embedding `AGENTS.md`, matching Codex's load path from the project root
+  downward.
