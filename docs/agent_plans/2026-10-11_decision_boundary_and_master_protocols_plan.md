@@ -67,7 +67,10 @@ This PR adds to agent-protocols:
   master. It talks to the human, so gated steps are asked of the human; it
   does not use the ledger (grants are to the master).
 - **Dispatched agent**: started by the master or another agent. Gated steps go
-  to whoever dispatched it; it never contacts the human.
+  to whoever dispatched it; it never contacts the human. Single exception
+  (added in implementation review): a gated action its brief names exactly,
+  with the permission the master checked and cited ("Delegated Execution");
+  the master withdraws such delegations when the permission is revoked.
 
 The never-ask list applies only when no gate is hit: implementation detail
 that changes a contract or what users see is gated.
@@ -274,7 +277,7 @@ the content against this list.
 | master | user-level file, CORE block, protocol descriptions, open queue items | all protocols, ledger, overlays | other projects' business memory |
 | direct session | user-level file, CORE block, protocol descriptions | protocols for its task | ledger |
 | worker / researcher | CORE block, `line-worker` (preloaded) | planning, structured-review, closeout, `fix-triage` | ledger, queue, board, master protocol bodies |
-| merge / release / visual-qa | CORE block, own protocol (preloaded) | own overlay | ledger, queue, board |
+| merge / release / visual-qa | CORE block, own protocol (preloaded), the delegation in its brief or queue line | own overlay | ledger, queue, board |
 
 ## Closeout change in detail (resolves review thread 2)
 
@@ -651,3 +654,23 @@ None beyond the plan consistency noted in Thread 1.
 #### Overall judgment
 
 **Not ready for closeout.** The new protocols and roles are present, but Threads 1–3 remain blocking, and the required consumer behavior evidence in Thread 4 is still pending. Validation provenance for this pass is reviewer inspection and the read-only guard probe; I did not rerun the unit suite or consumer scenarios.
+
+### Driver response to implementation pass 2
+
+- Thread 1, accepted. Delegated Execution now says the delegation lives only
+  inside the master's session; on a revocation or narrowing the master
+  withdraws every queue line and brief citing it and messages running agents
+  first; a new master re-checks the ledger before re-issuing. `closeout`
+  states that for a delegated action the master's check at issue time is the
+  revocation and scope check. The plan's Roles and Visibility sections record
+  the exception. Keeping delegation (rather than making the master merge
+  itself) follows the human's 2026-10-09 request for a dedicated merge agent.
+- Thread 2, accepted. The shadow check requires a `@AGENTS.md` import in the
+  same directory or the full core block (compared exactly), and scans the
+  directory and every ancestor, ignoring the user-level `~/.claude/CLAUDE.md`.
+  New tests: marker only fails; full core passes. The candidate-session check
+  stays in the cold-start scenario.
+- Thread 3, accepted. Codex `AGENTS.md` and `~/.codex/AGENTS.md` cells cite
+  the Codex AGENTS.md page (CX-agents) and are documented.
+- Thread 4: unchanged, waiting for the human's confirmation of the exam run
+  boundary; closeout stays Partial.
