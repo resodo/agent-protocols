@@ -25,26 +25,35 @@ capabilities:
 - project instructions and reading files: required, no fallback;
 - spawn subagent and message a running agent: documented for all three;
   fallbacks below;
-- scheduled sweep: documented for Claude Code and Grok Build, unverified for
-  Codex; with the fallback, the sweep may run late;
+- scheduled sweep: documented for Grok Build only (observed for Claude Code,
+  unverified for Codex); elsewhere use the fallback, and the sweep may run
+  late;
 - session-start and subagent-start injection: optional; the resident core in
   `AGENTS.md` and the brief template carry the same rules.
 
 When an essential capability is missing and its fallback cannot run, the
 workflow that needs it is unsupported for that agent.
 
+Evidence keys: CC-skills = code.claude.com/docs/en/skills; CC-sub =
+code.claude.com/docs/en/sub-agents; CC-hooks = code.claude.com/docs/en/hooks;
+CC-mem = code.claude.com/docs/en/memory; CX-skills =
+developers.openai.com/codex/skills; CX-hooks = learn.chatgpt.com/docs/hooks;
+CX-sub = learn.chatgpt.com/docs/agent-configuration/subagents; GK-nn = Grok
+Build user guide chapter nn (`~/.grok/docs/user-guide/`). A cell without a
+key is `observed` or `unverified` and does not count as support.
+
 | Capability | Meaning in protocols | Claude Code | Codex | Grok Build | Fallback when missing |
 |---|---|---|---|---|---|
-| on-demand protocol | a protocol whose description is always listed and whose body loads when used | skills in `.claude/skills/` (documented) | skills in `.agents/skills/`; name, description and path listed up front, `SKILL.md` read when used (documented) | skills; also scans `.claude/skills/` and `.agents/skills/` (documented) | the repo `AGENTS.md` routes "before X, read `external/agent-protocols/X/SKILL.md`" |
-| project instructions | always-loaded project text | `CLAUDE.md`; reads `AGENTS.md` when no `CLAUDE.md` exists (documented) | `AGENTS.md` | `AGENTS.md`, also `CLAUDE.md` and `~/.claude/CLAUDE.md` (documented) | none needed: every agent reads `AGENTS.md` |
-| user-level instructions | the human's personal preferences | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | reads `~/.claude/CLAUDE.md` (documented) | keep one source and generate the other copy |
-| spawn subagent | start a worker with its own context | Agent tool (documented) | sub-agent threads (documented) | built-in agent types and custom roles (documented) | start a separate CLI session for the worker; exchange files |
-| role definition | a specialist with preloaded protocols and tool limits | `.claude/agents/<name>.md`, `skills:` preloads full bodies (documented) | `.codex/agents/<name>.toml`, `developer_instructions`, `skills.config` (documented) | `.grok/roles/<name>.toml` with `description`, `default_capability_mode`, `prompt_file` (documented) | paste the neutral role text from `agents/<name>.md` into the dispatch brief |
-| message a running agent | nudge or add instructions to a live worker | SendMessage (documented) | parent routes follow-up instructions to sub-agent threads (documented); `codex queue` for an existing session (observed) | `send_subagent_message`, steer or queue (documented) | the worker reads `lines/<line>/INBOX.md` after each step |
-| scheduled sweep | run the sweep on a timer | CronCreate or `/loop`; session-scoped, expires after 7 days (documented) | unverified | `/loop` and scheduler (documented) | an OS timer (launchd, cron) that sends the sweep prompt; otherwise sweep on every agent notification |
-| watchdog | notice a stalled worker | Monitor on the worker's output file size | watch the session log size | `monitor` tool (documented) | check whether output files grow; never read their content to decide |
-| session-start injection | short text added when a session starts or after compaction | SessionStart hook, matchers include `compact`; stdout becomes context (documented) | SessionStart hook; stdout "added as extra developer context"; PreCompact/PostCompact exist (documented) | SessionStart (not for subagents), PreCompact/PostCompact (documented); whether output reaches the model is unverified | the resident core in `AGENTS.md` tells the agent to read the handoff file first |
-| subagent-start injection | short text added to every new worker | SubagentStart `additionalContext` (documented) | SubagentStart (documented; injection details unverified) | SubagentStart (documented; injection details unverified) | the dispatch brief template starts with the worker hard rules |
-| delivery page | a finished page for the human to read or approve | Artifact (observed) | none (unverified); PR page or repo markdown | none (unverified) | repo markdown or the PR description. The local or repo file is always the source of truth; any page is a copy |
-| structured review | plan and implementation review | `structured-review` runner (Claude, Codex or Grok backend) | same runner | same runner | — |
-| ask the human | a question that needs reading first | plain text (pop-up forms can hide the explanation) | plain text | plain text | — |
+| on-demand protocol | description always listed, body loaded when used | skills in `.claude/skills/` (documented, CC-skills) | skills in `.agents/skills/`; name, description, path listed, `SKILL.md` read when used (documented, CX-skills) | skills; also scans `.claude/skills/` and `.agents/skills/` (documented, GK-08) | the repo `AGENTS.md` routes "before X, read `external/agent-protocols/X/SKILL.md`" |
+| project instructions | always-loaded project text | `AGENTS.md` only when no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists; otherwise import it with `@AGENTS.md` (documented, CC-mem) | `AGENTS.md` (observed) | `AGENTS.md`, also `CLAUDE.md` files (documented, GK-12) | none: required |
+| user-level instructions | the human's personal preferences | `~/.claude/CLAUDE.md` (documented, CC-mem) | `~/.codex/AGENTS.md` (observed) | reads `~/.claude/CLAUDE.md` with Claude compatibility on (documented, GK-12) | keep one source and generate the other copy |
+| spawn subagent | start a worker with its own context | Agent tool (documented, CC-sub) | sub-agent threads (documented, CX-sub) | built-in agent types and custom roles (documented, GK-16) | a separate CLI session started with the brief as its prompt; results exchanged through files |
+| role definition | a specialist with preloaded protocols and tool limits | `.claude/agents/<name>.md`, `skills:` preloads full bodies (documented, CC-sub) | `.codex/agents/<name>.toml`, `developer_instructions`, `skills.config` (documented, CX-sub) | `.grok/roles/<name>.toml` with `description`, `default_capability_mode`, `prompt_file` (documented, GK-16) | paste the neutral role text from `agents/<name>.md` into the brief |
+| message a running agent | nudge or add instructions to a live worker | SendMessage (documented, CC-sub) | the parent routes follow-up instructions to sub-agent threads (documented, CX-sub) | `send_subagent_message`, steer or queue (documented, GK-16) | the worker reads `lines/<line>/INBOX.md` after each step |
+| scheduled sweep | run the sweep on a timer | session cron or `/loop` (observed) | unverified | `/loop` and scheduler (documented, GK-20) | an OS timer (launchd, cron) that sends the sweep prompt; otherwise a sweep on every agent notification, which may run late |
+| watchdog | notice a stalled worker | a monitor on the worker's output file size (observed) | unverified | `monitor` tool (documented, GK-20) | check whether output files grow; never read their content to decide |
+| session-start injection | short text added when a session starts or after compaction | SessionStart hook, matchers include `compact`; stdout becomes context (documented, CC-hooks) | SessionStart hook; stdout added as developer context; PreCompact/PostCompact exist (documented, CX-hooks) | SessionStart (not for subagents), PreCompact/PostCompact (documented, GK-10); whether output reaches the model is unverified | the resident core in `AGENTS.md` tells the agent what to load first |
+| subagent-start injection | short text added to every new worker | SubagentStart `additionalContext` (documented, CC-hooks) | SubagentStart event exists (documented, CX-hooks); injection unverified | SubagentStart event exists (documented, GK-10); injection unverified | the brief template starts with the worker hard rules |
+| delivery page | a finished page for the human to read or approve | Artifact (observed) | unverified | unverified | repo markdown or the PR description; the local or repo file is always the source of truth, any page is a copy |
+| structured review | plan and implementation review | `structured-review` runner, Claude backend | same runner, Codex backend | same runner, Grok backend | — |
+| ask the human | a question that needs reading first | plain text | plain text | plain text | — |
