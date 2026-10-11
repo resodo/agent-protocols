@@ -14,13 +14,14 @@ takes back an authorization.
 ## Local Overlay
 
 1. Read `.agent-protocols/context.md` if present.
-2. Read `.agent-protocols/decision-boundary.md` if present. It holds the
-   project's **authority ledger** and its concrete gate checks (which paths
-   count as contract shape, the archive location before deletes, budgets).
-   Only the master reads the ledger, with one narrow exception: an agent
-   acting under Delegated Execution re-reads the single entry its brief cites,
-   right before acting. A direct session asks the human; any other dispatched
-   agent stops at the gate and reports to whoever dispatched it.
+2. Read `.agent-protocols/decision-boundary.md` if present (every role): the
+   project's concrete gate checks (which paths count as contract shape, the
+   archive location before deletes, budgets) and its settled decisions.
+3. Master only: read `.agent-protocols/authority-ledger.md`, the project's
+   **authority ledger**. A delegated agent looks up only the one entry its
+   brief cites (Delegated Execution). A direct session asks the human; any
+   other dispatched agent stops at the gate and reports to whoever dispatched
+   it.
 
 An overlay may add gates or narrow grants; it must not remove a gate.
 
@@ -106,8 +107,9 @@ report.
 ## Authority Ledger
 
 The ledger is the project's list of gated steps the human has handed to the
-master. It lives in the overlay, not in memory, so any coding agent acting as
-master can read it.
+master. It lives in `.agent-protocols/authority-ledger.md`, a file of its own
+(not in memory, and not in the overlay every role reads), so any coding agent
+acting as master can read it and no other role loads it by accident.
 
 - Entry fields: date, the human's words (verbatim), scope, explicit
   exclusions, where it was said, status. An entry written from a record (for
@@ -166,8 +168,10 @@ the exact action and target, and cites the permission (the human's
 current-turn instruction, quoted, or the ledger entry id). The agent checks
 that the named action matches what it is about to do, and stops at anything
 else. It never uses the ledger to find permission for itself. When the cited
-permission is a ledger entry, the agent re-reads that one entry right before
-acting and stops if it is no longer `active` or its scope no longer covers the
+permission is a ledger entry, the agent looks up that one entry right before
+acting, with a line-level search for the entry id in
+`.agent-protocols/authority-ledger.md` (for example the row starting with
+`| L1 |`), not a read of the whole file, and stops if it is no longer `active` or its scope no longer covers the
 action. This narrows, but does not remove, the window between a revocation
 and the action; a project that delegates ledger-based actions records in its
 ledger that the human accepted that window (date, his words). Without that

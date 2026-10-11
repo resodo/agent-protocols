@@ -98,7 +98,7 @@ instruction and say why.
   not earlier messages in the same conversation. This rule narrows but does not
   replace the destructive-git-operations rule above.
 - A standing authorization counts only when the project's authority ledger
-  (`.agent-protocols/decision-boundary.md`, see
+  (`.agent-protocols/authority-ledger.md`, see
   `decision-boundary/SKILL.md`) records it as `active` with its date, the
   human's words and its scope. It is used by the session acting as master,
   or by an agent the master dispatched whose brief names this exact action for

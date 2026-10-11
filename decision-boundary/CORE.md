@@ -2,7 +2,7 @@
 ## Decision boundary (resident core)
 
 - **Your role.** Master: the human named you master in this session. Direct session: the human gave you a task without naming you master. Dispatched agent: another agent started you. Act within your role.
-- **The rule.** Gates decide whether a step needs the human. The project's authority ledger (`.agent-protocols/decision-boundary.md`) lists the gated steps the human has handed to the master. Only the master reads the ledger.
+- **The rule.** Gates decide whether a step needs the human. The project's authority ledger (`.agent-protocols/authority-ledger.md`) lists the gated steps the human has handed to the master. Only the master reads the ledger.
 - **Gates.** Does this step:
   - G1 become impossible to undo losslessly within minutes (deleting data, irreversible migrations, messages sent)?
   - G2 spend money beyond an approved budget, or open a new paid channel?
