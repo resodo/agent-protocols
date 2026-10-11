@@ -35,7 +35,9 @@ Write it whenever the context is getting full, not only at the very end.
 ## Cold Start (new master)
 
 1. Confirm the human named you master in this session. If not, you are not.
-2. Load `decision-boundary`, `master-board`, this protocol, and their overlays.
+2. Load `decision-boundary`, `master-board`, `dispatch` (re-dispatching lines
+   follows it, including the model tier rules in its overlay), this protocol,
+   and their overlays.
 3. Read the handoff file, then the board, then the queue.
 4. Verify live state instead of trusting files: open PRs and the merge queue,
    one production line (read-only), each line's worktree and STATUS. Every
