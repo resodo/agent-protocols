@@ -772,3 +772,23 @@ The consumer scores, Claude drill, and Codex drill are driver-reported in PR #15
   2026-10-11 decision this needs no separate human acceptance. The plan's
   Validation section now describes the check as executed (one-off local
   check, drill) instead of the superseded exam design.
+
+### Reviewer pass 6 (impl, codex reviewer)
+
+The human wants new master sessions and specialists to work without private memory while keeping gated actions under human authority. I reviewed the response to pass 5, the current plan and protocol text, and skynet-intern PR #1523. The worktree is clean.
+
+#### Blocking issues
+
+**Thread 1 — Still open in the plan body.** `decision-boundary/SKILL.md` now states the approved single-entry recheck, but the plan’s Content outline still says a dispatched agent must “never consult the ledger” ([plan, line 169](docs/agent_plans/2026-10-11_decision_boundary_and_master_protocols_plan.md#L169)). Its Visibility table still forbids merge and release agents from loading the ledger without that exception ([line 281](docs/agent_plans/2026-10-11_decision_boundary_and_master_protocols_plan.md#L281)). These statements conflict with the approved delegation rule and the implemented resident core. Amend those two descriptions; no new mechanism or risk decision is needed.
+
+#### Non-blocking issues
+
+**Thread 4 — The validation gap is recorded accurately.** PR #1523 reports that Codex completed six of seven cold-start steps and could not validate the live PR check because GitHub TLS validation failed in its sandbox. The plan records that step as `not validated`. This is driver-reported evidence; I did not rerun the drill. Describing the observed failure as an environment limit is supported, but “not a protocol gap” is stronger than the evidence: protocol behavior for that Codex step remains unverified. That wording can be narrowed without reopening the master’s decision about how to handle the gap.
+
+#### Overall judgment
+
+**Not ready for closeout.** Thread 1 remains a blocking contradiction in the current plan. Thread 4 needs no further decision in this review.
+
+#### Residual risks and validation gaps
+
+The accepted revocation window remains a recorded risk. Codex’s live PR check remains `not validated` under the master’s recorded decision. The consumer drill results are driver-reported; this pass verified the records and text, not the sessions themselves.
