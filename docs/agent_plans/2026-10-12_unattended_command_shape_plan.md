@@ -45,3 +45,12 @@ The locations and text-only scope match the plan. The shell example must be corr
 #### Residual risks and validation gaps
 
 Direct inspection confirms both placement and the quoting defect. The shell probe confirms its effect. The plan reports that `python -m unittest discover tests` passed, but this read-only review did not rerun it.
+
+### Driver response to pass 1
+
+- B1: the files contain no backslashes (`grep -c '\\"' line-worker/SKILL.md`
+  returns 0); the example is `"${dir:?}"/"${name:?}"`. The escaping the
+  reviewer saw comes from how the text was quoted for the review prompt. The
+  brief now says "quoted" guarded expansions.
+- N1, accepted: "avoid preventable platform confirmations"; a script lists
+  literal paths for clarity, never to get around a prompt.

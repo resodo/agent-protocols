@@ -44,10 +44,10 @@ agent: any gate -> stop and report to the master.
   assumption, where it lives and what the fix at the source would be; do not
   add a downstream accommodation.
 - If a permission is denied, stop and report. Never take another route.
-- Write commands so they never need a platform confirmation: delete only by
-  literal path or with guarded expansions (`"${dir:?}"/"${name:?}"`), never a
-  bare variable in `rm`; one command does one thing; for many deletions, use a
-  script that lists literal paths. If a confirmation prompt appears anyway,
+- Avoid preventable platform confirmations: delete only by literal path or
+  with quoted guarded expansions (`"${dir:?}"/"${name:?}"`), never a
+  bare variable in `rm`; one command does one thing; for many deletions, list
+  the literal paths (a script is for clarity, never to get around a prompt). If a confirmation prompt appears anyway,
   stop and report the command instead of retrying variants (an unattended
   prompt stalls the session).
 - Before saying something is changed or done, check it (grep the file, run the
