@@ -579,3 +579,29 @@ None.
 #### Residual validation gap
 
 The candidate-bound exam and workflow scenario remain implementation-stage evidence. Any agent or step that cannot be exercised must be recorded and brought to the human before the goal is claimed.
+
+### Reviewer pass 1 (impl, codex reviewer)
+
+The human wants a new master session and its specialists to work across Claude Code, Codex, and Grok Build without private memory, while keeping gated decisions under human authority. I inspected the plan, the commits after `508a3f2`, and the changed protocols. The worktree is clean.
+
+#### Blocking issues
+
+**Thread 1 — Dispatched merge and release agents have conflicting authority rules.** `decision-boundary/CORE.md` says a dispatched agent stops and reports on *any* gate and never reads the ledger. `closeout/SKILL.md` allows ledger authority only for the master. Yet `merge-queue/SKILL.md` and `agents/merge-queue.md` direct a dedicated dispatched agent to merge under a queued ledger permission; `release/SKILL.md` similarly directs a release agent to act under a ledger entry. Following the core stops these workflows; following the specialist instructions crosses the core boundary. Resolve who executes each gated action and how that actor receives valid permission. Deletion is the simpler option if the master must perform the gated action: remove the specialist instruction to execute it.
+
+**Thread 2 — The resident core is not assured to load in Claude Code.** `agent-readiness/worktree-guard.md` calls root `AGENTS.md` the file every supported agent reads, but `agent-readiness/capabilities.md` says Claude Code reads it only when no project `CLAUDE.md` exists. [Claude Code’s documentation](https://code.claude.com/docs/en/memory) confirms that default behavior. The guard can therefore pass while a Claude session never receives the core. Make the consumer adoption contract cover that case and verify the loaded instructions in a candidate session.
+
+**Thread 3 — “Documented” capability cells lack the promised page evidence.** The plan requires a vendor documentation page for each supported cell. `agent-readiness/capabilities.md` gives a broad source list, with no page tied to individual claims such as role preloading, messaging, or hook injection. The reader cannot distinguish verified support from an inference. Add precise source references for supported cells, or mark cells without that evidence `unverified` and use their stated fallback.
+
+**Thread 4 — Candidate-bound behavioral acceptance is not evidenced for this review.** The plan requires exam results with memory hidden and a cold-start scenario that re-dispatches an eligible line and receives its result. The reviewed artifact supplies neither results nor a reference to the consumer run record. Those records may exist outside this worktree; their absence here does not prove no run occurred. Provide the candidate commit, configurations, scores, seven-step observations, and any `not validated` items before judging this implementation ready for closeout.
+
+#### Non-blocking issue
+
+The resident-core tests exercise an exact copy and missing, duplicate, changed-line, and unclosed cases. Their assertions can fail on those samples by inspection. I did not rerun them because this reviewer pass is read-only. The script reads text with newline normalization, so its “byte-identical” description is stronger than its actual comparison; reword that claim or compare bytes.
+
+#### Overall judgment
+
+**Not ready for closeout.** The protocol and role files are present, and the core guard has meaningful negative tests, but the authority path and Claude loading path remain contradictory. The required behavioral evidence is unavailable in this review.
+
+#### Residual validation gap
+
+Validation provenance here is reviewer inspection only. Unit-test results and consumer exam and cold-start results have not been supplied to this reviewer.
