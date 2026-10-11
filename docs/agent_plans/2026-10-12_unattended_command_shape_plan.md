@@ -54,3 +54,26 @@ Direct inspection confirms both placement and the quoting defect. The shell prob
   brief now says "quoted" guarded expansions.
 - N1, accepted: "avoid preventable platform confirmations"; a script lists
   literal paths for clarity, never to get around a prompt.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+The human’s concern is that a deletion command could trigger a platform confirmation and stall an unattended session. I re-reviewed B1 and N1 against the committed files.
+
+#### Blocking issues
+
+None.
+
+- **Thread B1 — Resolved.** The examples in `docs/agent_plans/2026-10-12_unattended_command_shape_plan.md:16` and `line-worker/SKILL.md:48` contain zero backslash bytes and use `"${dir:?}"/"${name:?}"`. The brief also specifies quoted guarded expansions. Read-only Bash and zsh probes produced one path when both variables contained spaces. The earlier finding came from prompt escaping, not the committed files.
+- **Thread N1 — Resolved in the implementation.** `line-worker/SKILL.md` and `dispatch/templates/brief.md` now say “Avoid preventable platform confirmations.” The line-worker rule says a script is for clarity and never a way around a prompt.
+
+#### Non-blocking issues
+
+- The plan body at `docs/agent_plans/2026-10-12_unattended_command_shape_plan.md:15` still says commands should “never need” confirmation and retains the older script wording. Align it with the accepted wording in the driver response so the plan body reflects the implemented rule.
+
+#### Overall judgment
+
+There are no blocking issues. The implementation is ready for closeout.
+
+#### Residual risks and validation gaps
+
+A platform may still prompt for a literal or guarded path; both instructions say to stop and report if it does. This pass verified the committed bytes, wording, and shell quoting directly. I did not rerun the driver-reported full test suite.
