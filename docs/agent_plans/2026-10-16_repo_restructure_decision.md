@@ -418,3 +418,39 @@ records).
 | A40 | Memory rule entries added since 10-11 (ask-only-nontrivial, self-check, plan-ahead, survey-before-asking) | duplicates after this work | archive and delete |
 
 ## Review Threads
+
+### Reviewer pass 1 (other-plan, codex reviewer)
+
+The human’s concern is that the repository does not clearly define its roles, the master’s responsibilities, or each protocol’s scope.
+
+#### Blocking issues
+
+##### Thread: Complete the master’s ownership boundary
+
+`docs/agent_plans/2026-10-16_repo_restructure_decision.md:99–124` names the master as owner of the board and queue, but does not settle what happens when master sessions overlap or ownership transfers. It also leaves the board’s write boundary implicit. The audit identifies both gaps at `docs/agent_plans/2026-10-16_repo_structure_audit.md:181–189`. The proposed master definition should state who owns coordination during a handoff, who writes shared state, and that project governance authority comes only from recorded grants. These are role boundaries, not implementation details.
+
+##### Thread: State the scopes that are currently “as today”
+
+The scope table at `docs/agent_plans/2026-10-16_repo_restructure_decision.md:134–144` groups `away-mode`, `session-handoff`, `fix-triage`, and `visual-qa` as “as today,” and gives the lifecycle protocols one collective scope. That leaves part of the human’s central question unanswered, including the audit’s finding that `fix-triage` is not inherently a multi-agent workflow. Give each protocol a short ownership and exclusion boundary before splitting this decision into plans.
+
+##### Thread: Present authority choices as real questions
+
+The audit calls the master’s implementation role and merger ownership scope decisions. The decision doc places them, along with permission to implement approved contract changes, under “confirm in passing” (`docs/agent_plans/2026-10-16_repo_restructure_decision.md:341–349`). In particular, the merger proposal does not present the audit’s alternative of project-specific exclusive merging (`docs/agent_plans/2026-10-16_repo_structure_audit.md:304–314`). Move these material boundaries into fairly framed choices or explain the prior human decision that settles each one. Also make downstream statements conditional on the answers: the coordinator is still listed unconditionally in plan 1 (`docs/agent_plans/2026-10-16_repo_restructure_decision.md:225–227`).
+
+##### Thread: Separate ledger policy from reconciliation of existing entries
+
+Question 3 (`docs/agent_plans/2026-10-16_repo_restructure_decision.md:332–339`) combines a prospective change to the direct-recipient recording rule with a single reconfirmation of several existing entries. Those entries have different scopes, and their IDs alone do not show the human what one answer would affirm. The other option, re-recording entries, does not by itself establish their original provenance. Ask separately whether a checked delegated scribe is permitted going forward and how the direct recipient should reconcile existing records against the original authorizations. Present any requested human reconfirmation with the actual scopes.
+
+#### Non-blocking issues
+
+##### Thread: Correct the audit’s CI evidence
+
+The audit says the consumer CI workflow runs on pull requests (`docs/agent_plans/2026-10-16_repo_structure_audit.md`, “Consumer-specific operating and product assumptions”). The inspected consumer workflow has `push` on `main` and `workflow_dispatch`, with no pull-request trigger. The decision doc’s statement that ordinary PR pushes trigger nothing is consistent with that workflow. Correct the audit’s evidence; the decision to keep CI topology out of the generic protocol still stands.
+
+#### Overall judgment
+
+**Blocking issues remain.** The decision doc addresses all five audit findings marked blocking, but its master and protocol boundaries and several human questions need revision before it is ready for a readable brief.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the two artifacts and the cited consumer CI workflow. No files were changed; the worktree remained clean.
