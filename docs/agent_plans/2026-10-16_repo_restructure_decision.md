@@ -600,3 +600,27 @@ This was a read-only review of the two artifacts, the latest handoff, and the ci
   as `proposed` until the human confirms them.
 - Question 5 framing: accepted. The recommendation states a risk and a
   tradeoff for both options instead of an impossibility.
+
+### Reviewer pass 4 (other-plan, codex reviewer)
+
+The human wants clear role boundaries, one master definition, and a defined scope for each protocol.
+
+#### Blocking issues
+
+##### Thread: Make ledger access consistent with question 3
+
+The layer table says the authority ledger is read “by the master only” (`docs/agent_plans/2026-10-16_repo_restructure_decision.md:74`). Question 3 allows either another agent to type an entry or the session that heard the grant to write it; that session could be a direct session. The table therefore appears to rule out access needed by both options before the human chooses one.
+
+Clarify in the table that the master uses the ledger for authorization, while entry writing follows question 3. Keep the existing narrow entry lookup for delegated actions distinct from full ledger access. This is a wording fix, not a new mechanism. The earlier ledger-ownership thread remains open.
+
+#### Non-blocking issues
+
+None. The pass 3 changes correctly mark later transcriptions as `proposed` and frame the master’s implementation choice as a tradeoff.
+
+#### Overall judgment
+
+**One blocking boundary inconsistency remains.** Resolve it before making the readable brief.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the two artifacts, the pass 3 response, and the cited ledger rule. The worktree remained clean. Existing ledger grants were not independently verified.
