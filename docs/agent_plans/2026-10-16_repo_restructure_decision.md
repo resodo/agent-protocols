@@ -98,7 +98,7 @@ may decide, where it must stop, whom it reports to; plus what it preloads.
 
 | Role | Who | Owns | Reports to | File |
 |---|---|---|---|---|
-| master | the session the human named master in this session | the board and queue, dispatch, every gated decision the ledger hands it, merge and release permission and their delegation, go/no-go at points of no return, all talk with the human; it coordinates and does not run whole implementation lines (item 5) | the human | `agents/master.md` (new) |
+| master | the session the human named master in this session | the board and queue, dispatch, every gated decision the ledger hands it, merge and release permission and their delegation, go/no-go at points of no return, all talk with the human; whether it also runs implementation lines: question 5 | the human | `agents/master.md` (new) |
 | direct session | a session the human started without naming it master | its task | the human | resident core only |
 | coordinator (if question 2 is (a)) | a dispatched agent that runs one multi-PR program and may dispatch its own workers | the program's plan, its workers, its go/no-go checklist | the master | a section of `agents/README.md`; no new authority tier |
 | line-worker | implements one line | its worktree, branch, PR | master or coordinator | existing |
@@ -124,17 +124,13 @@ Master ownership boundaries, written into `agents/master.md`:
   stops coordinating: it starts nothing new, takes no gated step, and hands
   its open items over through the handoff file. Running agents report to the
   new master after its cold start re-dispatches or parks them.
-- Shared state has one writer. The master alone writes the board, the queue,
-  the settled list and the ledger. Each line writes only its own status file;
+- Shared state has one writer. The master alone writes the board, the queue
+  and the settled list. Who may write a ledger entry follows question 3. Each line writes only its own status file;
   release, ops and coordinator lines report results to the master, which
   updates the board (today `release` says "update the board" itself).
 - The master's authority over project governance comes only from recorded
   ledger grants; without a grant it is not a governance layer.
-- The master coordinates. This follows the existing `dispatch` text ("tail
-  work goes to a cheap-tier agent so the master stays on the main line"): it
-  decides, dispatches, merges and releases or delegates them, and does small
-  checks and fixes itself, but does not run a whole implementation line
-  (confirm in passing, item 5).
+- How much the master implements itself follows question 5.
 
 The master file is the single definition. `CORE.md` keeps one sentence per
 role and points to `agents/master.md`; `master-board`, `dispatch`,
@@ -381,10 +377,20 @@ Core questions (each changes who owns what):
    core says only "one merger at a time"; master-exclusive merging is project
    policy in each overlay.
 
+5. **Does the master run implementation lines itself?** Today `dispatch`
+   says only that tail work goes to a cheap agent "so the master stays on the
+   main line"; nothing says whether the master may take a whole
+   implementation line. Options: (a) the master coordinates: it decides,
+   dispatches, merges and releases or delegates them, and does small checks
+   and fixes itself, but every implementation line goes to a worker
+   (recommended: the human relies on the master and its sweep to keep every
+   line moving while he is away, which a master busy implementing cannot do;
+   on 10-11 and 10-12 the lines stalled when the sweep did not push them);
+   (b) the master may take an implementation line when it judges that faster,
+   and says so on the board.
+
 Confirm in passing (one answer accepts all; any one can be rejected):
 
-5. The master coordinates and does not run whole implementation lines
-   (section 4; restates the existing `dispatch` rule).
 6. The lines' shared notes file stops holding rules (they move into the
    protocols and the overlay); the collaboration rules added to memory since
    10-11 move the same way and are archived before deletion; the design-method
@@ -547,3 +553,10 @@ The pass 1 protocol-scope thread is resolved: section 5 now gives each protocol 
 #### Residual risks or validation gaps
 
 This was a read-only review of the revised decision doc, audit, pass 1 response and cited current protocols. The worktree remained clean. No claim is made about the provenance of existing ledger grants.
+
+### Driver response to reviewer pass 2
+
+- Ledger write ownership: accepted. Section 4 keeps the single writer for the
+  board, the queue and the settled list; ledger writing follows question 3.
+- Master implementation role: accepted. It is now core question 5 with both
+  options; section 4 and the role table follow the answer.
