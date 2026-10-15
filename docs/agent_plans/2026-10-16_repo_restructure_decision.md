@@ -517,3 +517,33 @@ This was a read-only review of the two artifacts and the cited consumer CI workf
   human with its full scope.
 - Audit CI evidence: accepted; correction recorded in section 8 (the audit
   thread itself is append-only).
+
+### Reviewer pass 2 (other-plan, codex reviewer)
+
+The human’s concern is that the repository does not clearly define its roles, the master’s responsibilities, or each protocol’s scope.
+
+#### Blocking issues
+
+##### Thread: Ledger write ownership conflicts with question 3
+
+Section 4 says the master alone writes the ledger (`docs/agent_plans/2026-10-16_repo_restructure_decision.md:127–130`). Question 3 recommends allowing another agent to type an entry, while its alternative allows the session that heard the grant to write it (`docs/agent_plans/2026-10-16_repo_restructure_decision.md:364–374`). The master-only statement rules out the recommended option before the human answers and may also rule out a direct session that heard a grant.
+
+Keep the single-writer boundary for the board, queue and settled list. State ledger write ownership as a pending choice in question 3, then make the role boundary follow that answer. This needs no new mechanism. The pass 1 ledger-policy thread remains open.
+
+##### Thread: Ask the human whether the master may run a whole implementation line
+
+Section 4 says the master does not run whole implementation lines, and item 5 presents that as a restatement of `dispatch` (`docs/agent_plans/2026-10-16_repo_restructure_decision.md:133–137,386–387`). The cited `dispatch` text assigns *tail work* to another agent so the master stays on the main line (`dispatch/SKILL.md:69–72`); it does not establish a categorical ban on implementation lines. The audit identified this as an unsettled master-scope choice (`docs/agent_plans/2026-10-16_repo_structure_audit.md`, “The master role”).
+
+Present coordination as the recommendation, with a fair alternative that permits the master to take an implementation line when appropriate. Apply the answer to section 4. The pass 1 master-boundary thread remains open on this point.
+
+#### Non-blocking issues
+
+The pass 1 protocol-scope thread is resolved: section 5 now gives each protocol a reader, ownership and exclusion boundary. The merge-execution choice is fairly presented in question 4. The approved-contract exception is supported by `decision-boundary/CORE.md`. The CI correction is recorded in section 8.
+
+#### Overall judgment
+
+**Two blocking issues remain.** The decision doc is not yet ready for its readable brief.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the revised decision doc, audit, pass 1 response and cited current protocols. The worktree remained clean. No claim is made about the provenance of existing ledger grants.
