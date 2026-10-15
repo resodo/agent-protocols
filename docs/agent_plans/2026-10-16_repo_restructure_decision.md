@@ -21,8 +21,8 @@ the 2026-10-11 migration (appendix A).
    deleted, and where each new lesson lands (section 6, appendix A).
 
 Out of scope: product rules (targets, Curator, Keeper policy), the content of
-the authority ledger (the master records grants; this doc only says where they
-live), and production changes. This is documentation-only work.
+the authority ledger (who writes entries is question 3; this doc only says
+where they live), and production changes. This is documentation-only work.
 
 ## 2. Today
 
@@ -240,10 +240,12 @@ Moved from the shared notes file and memory: production read-query limits and
 pausing in release windows; quiet-window slots in briefs; docker and local-key
 hygiene; pyright and guard-test sets; lock-wait timeouts; perf A/B method;
 gate numbers (+20 ms, load +1.0 void, two rounds of 160); long-lived tools
-location; merge-queue test-only fixes. The master records in the ledger the
-grants it heard and that are not there yet (the 10-15 baseline wording of
-L14, the night pre-authorizations as dated temporary entries, the Feedbox
-grants); this work does not record grants.
+location; merge-queue test-only fixes. Grants that were given but are not in the
+ledger yet (the 10-15 baseline wording of L14, the night pre-authorizations,
+the Feedbox grants) are added under the answer to question 3. Because they are
+written later from a record, each starts as `proposed` and grants nothing
+until the human confirms it, as `decision-boundary` already requires. This
+work records no grant.
 
 ## 7. Plans after approval (each one PR, reviewed)
 
@@ -384,10 +386,11 @@ Core questions (each changes who owns what):
    dispatches, merges and releases or delegates them, and does small checks
    and fixes itself, but every implementation line goes to a worker
    (recommended: the human relies on the master and its sweep to keep every
-   line moving while he is away, which a master busy implementing cannot do;
-   on 10-11 and 10-12 the lines stalled when the sweep did not push them);
-   (b) the master may take an implementation line when it judges that faster,
-   and says so on the board.
+   line moving while he is away; a master that is also implementing risks
+   running the sweep late, and on 10-11 and 10-12 lines stalled when the sweep
+   did not push them); (b) the master may take an implementation line when it
+   judges that faster, and says so on the board (saves a dispatch and a
+   brief for small lines, at the cost of less attention to the other lines).
 
 Confirm in passing (one answer accepts all; any one can be rejected):
 
@@ -421,8 +424,9 @@ Sources: the lines' shared notes file (state directory), the master board,
 memory, the human's messages in the master session (10-11 to 10-16), the
 user-level files. Status: in = already in the protocols; miss = missing;
 conflict = contradicts the protocols or an overlay; stale = outdated text.
-Layer: C core, O project overlay, P personal, S state/ledger (the master
-records).
+Layer: C core, O project overlay, P personal, S state or ledger (ledger
+entries are written under question 3 and start as `proposed` when transcribed
+from a record).
 
 | # | Rule or lesson (date, source) | Status | Layer, home |
 |---|---|---|---|
@@ -449,8 +453,8 @@ records).
 | A21 | Pyright on every changed file incl. scripts; boundary guard tests; route and error-envelope tests; lock wait exits non-zero (10-11 to 10-13) | partial | O line-worker, merge-queue |
 | A22 | Merge queue may fix test-only typing or whitespace (10-11) | miss | O merge-queue |
 | A23 | Local perf: alternating A/B, at least 5 rounds, under current load (10-13) | miss | O line-worker |
-| A24 | Night pre-authorizations recorded as dated temporary ledger entries | practice gap (only in notes/memory) | S ledger (master records) |
-| A25 | Feedbox built to launch independently, gates kept; three-tier redo with history rerun (human 10-14, 10-15) | not recorded | S ledger (master records) |
+| A24 | Night pre-authorizations recorded as dated temporary ledger entries | practice gap (only in notes/memory) | S ledger, `proposed` until confirmed (question 3) |
+| A25 | Feedbox built to launch independently, gates kept; three-tier redo with history rerun (human 10-14, 10-15) | not recorded | S ledger, `proposed` until confirmed (question 3) |
 | A26 | Forwarded text printed in full with its context, never only a path (human 10-14/10-15) | partial (separators only) | C dispatch Relaying (N11) |
 | A27 | Progress reports map steps to PRs with a progress bar (human 10-14) | miss | P master preferences |
 | A28 | Before a new standard, find what exists and extend it; keep it light (human 10-13) | partial | C fix-triage (N12) |
@@ -588,3 +592,11 @@ None.
 #### Residual risks or validation gaps
 
 This was a read-only review of the two artifacts, the latest handoff, and the cited protocol rules. The worktree remained clean. Existing ledger grants were not independently verified.
+
+### Driver response to reviewer pass 3
+
+- Question 3 applied throughout: accepted. The scope statement, section 6.3
+  and Appendix A now follow question 3; grants added later from a record start
+  as `proposed` until the human confirms them.
+- Question 5 framing: accepted. The recommendation states a risk and a
+  tradeoff for both options instead of an impossibility.
