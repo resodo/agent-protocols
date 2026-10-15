@@ -560,3 +560,31 @@ This was a read-only review of the revised decision doc, audit, pass 1 response 
   board, the queue and the settled list; ledger writing follows question 3.
 - Master implementation role: accepted. It is now core question 5 with both
   options; section 4 and the role table follow the answer.
+
+### Reviewer pass 3 (other-plan, codex reviewer)
+
+The human wants clear role boundaries, one master definition, and a defined scope for each protocol.
+
+#### Blocking issues
+
+##### Thread: Apply question 3 throughout the ledger discussion
+
+Section 4 now correctly leaves ledger write ownership to question 3. Other passages still say the master records grants as though the choice were settled: the scope statement, section 6.3, and Appendix A’s layer note and A24–A25 rows in `docs/agent_plans/2026-10-16_repo_restructure_decision.md`. Make those passages conditional on question 3.
+
+Section 6.3 also proposes adding older, missing grants. Under `decision-boundary/SKILL.md`, an entry transcribed later from a record starts as `proposed` and grants nothing until the human confirms it. State that boundary for the proposed backfill. This needs wording changes, not a new mechanism. The earlier ledger thread remains open.
+
+##### Thread: Frame question 5’s recommendation without unsupported certainty
+
+Question 5 now offers a genuine choice, resolving the missing-option finding. Its recommendation says a master busy implementing *cannot* keep the lines moving. The cited stalls show why the sweep matters; they do not establish that implementation makes the sweep impossible. Describe the coordination cost as a risk or tradeoff so the human can weigh both options fairly. The earlier master-role thread remains open on this wording.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Two blocking issues remain.** The pass 2 correction to section 4 is sound, but the decision doc is not yet ready for its readable brief.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the two artifacts, the latest handoff, and the cited protocol rules. The worktree remained clean. Existing ledger grants were not independently verified.
