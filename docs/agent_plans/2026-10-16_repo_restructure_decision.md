@@ -71,7 +71,7 @@ The whole-repo audit confirmed these and added more (section 8).
 | Layer | Holds | Location | Read by |
 |---|---|---|---|
 | Core | rules true for any project and any coding agent | this repo | every role, by protocol |
-| Project overlay | this project's paths, commands, numbers, business terms; its settled-decisions index; its authority ledger | `<repo>/.agent-protocols/` | the role loading that protocol; the ledger by the master only |
+| Project overlay | this project's paths, commands, numbers, business terms; its settled-decisions index; its authority ledger | `<repo>/.agent-protocols/` | the role loading that protocol; the ledger is read for authorization by the master only (a delegated agent looks up only the one entry its brief cites); who writes entries follows question 3 |
 | Personal | the human's own preferences, true for him in any project | `~/.config/agent-prefs/` (user-level, outside every repo) | every session (`PREFERENCES.md`); the master only (master preferences, see question 1) |
 | State | where things are now: board, queue, line status, handoff, per-change ledger | the master's state directory | the master; lines read their own status |
 
@@ -624,3 +624,9 @@ None. The pass 3 changes correctly mark later transcriptions as `proposed` and f
 #### Residual risks or validation gaps
 
 This was a read-only review of the two artifacts, the pass 3 response, and the cited ledger rule. The worktree remained clean. Existing ledger grants were not independently verified.
+
+### Driver response to reviewer pass 4
+
+- Ledger access: accepted. The layer table now separates reading for
+  authorization (master only, plus the single-entry lookup for delegated
+  actions) from writing entries (question 3).
