@@ -630,3 +630,29 @@ This was a read-only review of the two artifacts, the pass 3 response, and the c
 - Ledger access: accepted. The layer table now separates reading for
   authorization (master only, plus the single-entry lookup for delegated
   actions) from writing entries (question 3).
+
+### Reviewer pass 5 (other-plan, codex reviewer)
+
+The human wants clear role boundaries, one master definition, and a defined scope for each protocol.
+
+#### Blocking issues
+
+None. The pass 4 revision separates who reads the ledger for authorization from who may write an entry. The delegated agent’s lookup remains limited to the entry cited in its brief.
+
+#### Non-blocking issues
+
+None.
+
+#### Thread resolutions
+
+- **Ledger threads from passes 1–4: Resolved.** Section 3 now leaves entry writing to question 3. Section 4 follows that choice, and later transcriptions remain `proposed` until the human confirms them.
+- **Master-boundary threads from passes 1–3: Resolved.** Section 4 states coordination and shared-state ownership. Question 5 fairly presents whether the master may run an implementation line.
+- **Scope and authority-choice threads from pass 1: Resolved.** Section 5 gives each protocol an ownership boundary, and section 9 presents the unsettled ownership choices to the human. The CI correction is recorded in section 8.
+
+#### Overall judgment
+
+**No blocking findings remain under the four decision-doc checks.** The source decision doc is ready for the readable-brief step. It is not yet human-approved.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the two artifacts, the pass 4 response, and the cited ledger rules. The worktree was clean. The provenance of existing ledger grants was not independently verified; question 3 assigns their reconciliation to the master.
