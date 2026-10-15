@@ -117,6 +117,25 @@ switch, a merge or anything the ledger covers is asked of the master as a
 message and acknowledged (section 6, rule N7); its workers report to it and
 never to the master or the human directly.
 
+Master ownership boundaries, written into `agents/master.md`:
+
+- One master per project at a time. A session becomes master only when the
+  human names it in that session; from that turn the earlier master session
+  stops coordinating: it starts nothing new, takes no gated step, and hands
+  its open items over through the handoff file. Running agents report to the
+  new master after its cold start re-dispatches or parks them.
+- Shared state has one writer. The master alone writes the board, the queue,
+  the settled list and the ledger. Each line writes only its own status file;
+  release, ops and coordinator lines report results to the master, which
+  updates the board (today `release` says "update the board" itself).
+- The master's authority over project governance comes only from recorded
+  ledger grants; without a grant it is not a governance layer.
+- The master coordinates. This follows the existing `dispatch` text ("tail
+  work goes to a cheap-tier agent so the master stays on the main line"): it
+  decides, dispatches, merges and releases or delegates them, and does small
+  checks and fixes itself, but does not run a whole implementation line
+  (confirm in passing, item 5).
+
 The master file is the single definition. `CORE.md` keeps one sentence per
 role and points to `agents/master.md`; `master-board`, `dispatch`,
 `session-handoff` and `away-mode` are the master's procedures and say so in
@@ -131,17 +150,27 @@ lifecycle protocols get one too. `README.md` groups protocols by reader and
 carries one line each; `docs/CURRENT.md` becomes a map of paths only, without
 restating protocol bodies.
 
-| Protocol | Owns | Does not own |
-|---|---|---|
-| decision-boundary | gates, ledger rules, delegated execution (the single home of merge and release permission), never-ask, escalation format, approval recording | role definitions (agents/) |
-| master-board | board, queue, settled list, sweep | dispatch mechanics |
-| dispatch | briefs, tiers, watchdog, pacing, acknowledgements, relaying | worker behaviour |
-| line-worker | how any dispatched agent works and hands back; command shape; production contact rules | permission rules |
-| merge-queue | one merger, per-PR steps | who may grant merge permission |
-| release | any production change: preconditions, baseline, switch, staged checks, failure policy | observation windows' values (overlay) |
-| away-mode, session-handoff, fix-triage, visual-qa | as today | — |
-| planning, structured-review, closeout, readable-brief, retrospective, backlog-maintenance, scout | the authoring lifecycle | permission rules (point to decision-boundary) |
-| agent-readiness | bootstrap, guard, capability map | roles |
+| Protocol | Reader | Owns | Does not own |
+|---|---|---|---|
+| decision-boundary | every role | gates, ledger rules, delegated execution (the single home of merge and release permission), never-ask, the information an escalation must carry, approval recording | role definitions (`agents/`); how questions are presented (personal preferences) |
+| master-board | master | board, queue, settled list, sweep | agent supervision (dispatch) |
+| dispatch | master, coordinator | briefs, tiers, watchdog, pacing, acknowledgements, relaying | how a worker works |
+| line-worker | every dispatched agent | common dispatched-agent rules; implementation-worker restrictions in their own section; command shape; production contact rules | permission rules |
+| merge-queue | merge agent, master | one merger, per-PR steps | who may grant merge permission; the project's CI topology (overlay) |
+| release | production operator | any production change: preconditions, baseline, switch, staged checks, failure policy | window values (overlay); board updates (master) |
+| away-mode | master | pre-authorizations before the human leaves, the per-change list on return | the ledger rules themselves |
+| session-handoff | master | what dies with a session, the cold start | the master definition (`agents/master.md`) |
+| visual-qa | visual QA agent | independent non-author review of visible changes before the human sees them | UI quality criteria (structured-review UI reference); final evidence accounting (closeout) |
+| fix-triage | any author | whether something is wrong, attribution, smallest systemic fix | product error tolerances (overlay) |
+| planning | any author | discussion to an executable plan | approval of decision docs (structured-review) |
+| structured-review | driver, reviewer | review of plans and implementations, document levels, decision-doc approval | merge readiness (closeout); runner operations for drivers (a driver reference, not loaded into reviewer prompts) |
+| closeout | author | final checks and delivery handoff | merge permission (decision-boundary); review criteria (structured-review) |
+| readable-brief | author of a decision doc | turning a reviewed source into the human's brief | the approval rule (structured-review) |
+| retrospective | any role after an incident | evidence-based learning and routing fixes | vendor transcript locations (agent-readiness) |
+| backlog-maintenance | any author | the deferred-work registry | active plans |
+| scout | scout executor | judgment-based discovery and candidate proposals | backlog states |
+| agent-readiness | repo maintainers | bootstrap, guard, capability map | roles |
+| agents | every role | role definitions and how roles combine | procedures (they link to protocols) |
 
 ## 6. Changes
 
@@ -222,13 +251,15 @@ grants); this work does not record grants.
 
 ## 7. Plans after approval (each one PR, reviewed)
 
-1. Core: roles (`agents/master.md`, role composition and the coordinator in
-   `agents/README.md`, production operator scope, line-worker split), `CORE.md` role sentences, pointers replacing copies,
+1. Core: roles (`agents/master.md`, role composition in `agents/README.md`,
+   the coordinator section only if question 2 is (a), production operator
+   scope, line-worker split), `CORE.md` role sentences, pointers replacing copies,
    README/CURRENT as maps, reader tags.
 2. Core: new rules N1-N14, consumer assumptions moved out, driver-only runner
    text moved to a driver reference, guard freshness narrowed.
 3. skynet-intern overlay and `AGENTS.md`: pointers, moved rules, stale text,
-   personal preferences moved out per question 1, submodule bump.
+   personal preferences moved per question 1, merge text per question 4,
+   submodule bump.
 4. skynet-apps overlay: point to the home repo; submodule bump.
 5. Personal files and memory: the master-preferences file (question 1),
    reviewer-model wording in the user-level files, memory archive and delete,
@@ -259,16 +290,16 @@ each resolved here or listed as a question:
   depend on the brief and the project overlay.
 - **Approved contract changes.** `agents/line-worker.md` forbids contract
   changes, while the overlay prescribes migration and endpoint tests.
-  Resolution (confirm in passing): a worker may implement a contract change
-  the human already approved when the brief cites that approval; merging it
-  still goes through the gated-surface check.
+  Resolution: already settled by the resident core's exception for a gated
+  action the brief names with its recorded permission (section 9, last
+  paragraph); `agents/line-worker.md` is corrected to say so.
 - **Merge permission versus merge execution.** `closeout` accepts a current-turn
   merge instruction from any session; `merge-queue` gives merging only to the
   master or its merge agent. Question 4.
 - **Ledger provenance.** The rule says only the session that heard a grant
   records it, but most active ledger entries were written by an agent from the
   master's relay. This is a record problem, not evidence the grants are false.
-  Question 3.
+  Question 3 and its reconciliation note.
 - **Worktree guard versus merge queue.** The guard fails whenever `main`
   moves, forcing workers to rebase although the queue owns rebasing.
   Resolution: the guard checks freshness only when work starts and when it is
@@ -278,6 +309,10 @@ each resolved here or listed as a question:
   restart condition are recorded instead. Escalation presentation rules
   (one question per message, plain text) move to personal preferences; the
   core keeps only the information a question must carry.
+- **Audit correction.** The audit says the consumer's CI runs on pull
+  requests; its workflow triggers only on pushes to `main` and manual
+  dispatch, so "a PR push starts nothing" is true there. The conclusion stands:
+  the CI topology belongs in the overlay, not in the core.
 - **Consumer assumptions in the core.** `merge-queue` assumes "push triggers
   nothing" and rebase merges; `fix-triage` assumes one record more or fewer is
   not an error and prefers redundancy; `closeout` assumes phase-output
@@ -311,7 +346,7 @@ Core questions (each changes who owns what):
 1. **Where the master's personal preferences live.** Today the report shape,
    the question style, the model tiers, the quota rule and pacing numbers sit
    in skynet-intern's overlay, so a master in skynet-apps or any other repo
-   does not see them, and on 10-11 he classed model tiers and language as
+   does not see them; on 10-11 he classed model tiers and language as
    personal. Options: (a) a second personal file next to `PREFERENCES.md`
    that only the master reads (recommended: every master sees it in any repo,
    no other role loads it, which is what he asked for on 10-11); (b) a
@@ -319,48 +354,60 @@ Core questions (each changes who owns what):
    (c) keep them in the skynet-intern overlay.
 2. **Nested dispatch (the coordinator).** On 10-13 to 10-15 the app-split
    coordinator dispatched its own workers and ran go/no-go checks. The protocols
-   allow "it may dispatch its own subagents" in one sentence and define
-   nothing else. Options: (a) define the coordinator role with the limits in
-   section 4: it never grants or widens a gate, every point of no return,
-   switch, merge or ledger-covered step is asked of the master and
-   acknowledged, its workers report only to it (recommended: it matches how
-   the split ran and closes the gap that delayed W2); (b) only the master
+   say only "it may dispatch its own subagents". Options: (a) define the
+   coordinator with the limits in section 4: it never grants or widens a gate,
+   every point of no return, switch, merge or ledger-covered step is asked of
+   the master and acknowledged, its workers report only to it, and it cannot
+   pass on a delegated execution it received (recommended: it matches how the
+   split ran and closes the gap that delayed W2); (b) only the master
    dispatches; a program line asks the master to start each worker.
-3. **Who writes a grant into the ledger.** The rule is "only the session that
-   heard the human records it", but the active entries were typed by an agent
-   from the master's relay. Options: (a) the session that heard the grant owns
-   the entry: it may have another agent type it, but it checks the exact text
-   before the entry becomes active, and he re-confirms the current active
-   list (L1, L3, L4, L6-L11, L13, L14) once (recommended: one reply fixes
-   the record, and the rule matches how grants are actually written); (b)
-   keep the strict rule and have the master re-record each entry itself.
+3. **Who may type a ledger entry from now on.** The rule is "only the session
+   that heard the human records it". In practice the master that heard a
+   grant has had another agent type it. Options: (a) the hearing session stays
+   responsible: another agent may type the entry, but the hearing session
+   checks the exact words and scope against what it heard before the entry
+   becomes active (recommended: matches how entries are written, keeps one
+   accountable session); (b) only the hearing session itself may write the
+   file. Either way, the existing entries are reconciled by the master against
+   the original conversations; any entry whose original words it cannot find
+   is shown to the human with its full scope for re-confirmation, never as a
+   bare id.
+4. **Who executes a merge.** Permission comes from `decision-boundary`
+   either way. Options: (a) core rule: one merger per repo at a time; while a
+   master runs in the project only the master or its merge agent merges; a
+   direct session merges on a current-turn instruction only when no master
+   runs (recommended: two mergers on one repo is the collision the queue
+   exists to prevent, and it holds for any project with a master); (b) the
+   core says only "one merger at a time"; master-exclusive merging is project
+   policy in each overlay.
 
 Confirm in passing (one answer accepts all; any one can be rejected):
 
-4. The master coordinates: it decides, dispatches, merges and releases or
-   delegates them; it does small checks and fixes itself but does not run a
-   whole implementation line.
-5. A worker may implement a contract change he already approved when its
-   brief cites the approval; merging still stops at the gated-surface check.
-6. Merging: one merger per repo at a time; with a master running, only the
-   master or its merge agent merges.
-7. The lines' shared notes file stops holding rules (they move into the
+5. The master coordinates and does not run whole implementation lines
+   (section 4; restates the existing `dispatch` rule).
+6. The lines' shared notes file stops holding rules (they move into the
    protocols and the overlay); the collaboration rules added to memory since
    10-11 move the same way and are archived before deletion; the design-method
    principles he kept in memory on 10-11 stay there.
-8. The board keeps state only: sweep notes move to their own log, the settled
+7. The board keeps state only: sweep notes move to their own log, the settled
    list is brought up to date, the queue keeps only open items.
-9. Brief delivery: the master gives the path or a link and opens nothing on
+8. Brief delivery: the master gives the path or a link and opens nothing on
    his machine (replaces "open it in Zed").
-10. In his user-level files, "prefer Terra or Sol" becomes "Sol for normal,
-    Astra for hard" (Terra was replaced on 09-24); the exact text is shown to
-    him before the change.
-11. Rollout: skynet-intern and skynet-apps get the new version first;
+9. In his user-level files, "prefer Terra or Sol" becomes "Sol for normal,
+   Astra for hard" (Terra was replaced on 09-24); the exact text is shown to
+   him before the change.
+10. Rollout: skynet-intern and skynet-apps get the new version first;
     skynet-agent-kit and skynet-ingest (49 commits behind, no resident core)
     get bump PRs after that; skynet-twitter belongs to another team, so it
     gets a note he forwards, not a PR from us.
-12. No new standing mechanism (alert, counter, guard, config field) is added
+11. No new standing mechanism (alert, counter, guard, config field) is added
     by this restructure.
+
+Already settled, not asked: a worker may implement a contract change the
+human already approved when its brief names the change and cites the
+approval; this is the existing resident-core exception for "a gated action
+your brief names exactly, together with the permission the master recorded".
+Merging it still stops at the gated-surface check.
 
 ## Appendix A. Rules and lessons since 10-11, classified
 
@@ -451,3 +498,22 @@ The audit says the consumer CI workflow runs on pull requests (`docs/agent_plans
 #### Residual risks or validation gaps
 
 This was a read-only review of the two artifacts and the cited consumer CI workflow. No files were changed; the worktree remained clean.
+
+### Driver response to reviewer pass 1
+
+- Master ownership boundary: accepted. Section 4 now states one master at a
+  time and the handover, the single writer of shared state, governance only
+  from ledger grants, and the coordination role with its prior source.
+- Scopes "as today": accepted. Section 5 now gives every protocol its reader,
+  what it owns and what it does not.
+- Authority choices as questions: accepted for merge execution (now question
+  4 with both options). The master's implementation role restates the
+  existing `dispatch` rule and stays in passing with that source. Approved
+  contract changes are settled by the resident core's named-action exception;
+  section 9 says so instead of asking. Plan 1 is conditional on question 2.
+- Ledger policy versus reconciliation: accepted. Question 3 now asks only the
+  forward rule; reconciliation of existing entries is the master's job
+  against the original words, and any entry it cannot source goes to the
+  human with its full scope.
+- Audit CI evidence: accepted; correction recorded in section 8 (the audit
+  thread itself is append-only).
