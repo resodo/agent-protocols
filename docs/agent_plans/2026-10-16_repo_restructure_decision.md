@@ -98,9 +98,9 @@ may decide, where it must stop, whom it reports to; plus what it preloads.
 
 | Role | Who | Owns | Reports to | File |
 |---|---|---|---|---|
-| master | the session the human named master in this session | the board and queue, dispatch, every gated decision the ledger hands it, merge and release permission and their delegation, go/no-go at points of no return, all talk with the human; it coordinates and does not run whole implementation lines (question 4) | the human | `agents/master.md` (new) |
+| master | the session the human named master in this session | the board and queue, dispatch, every gated decision the ledger hands it, merge and release permission and their delegation, go/no-go at points of no return, all talk with the human; it coordinates and does not run whole implementation lines (item 5) | the human | `agents/master.md` (new) |
 | direct session | a session the human started without naming it master | its task | the human | resident core only |
-| coordinator (if question 2 is yes) | a dispatched agent that runs one multi-PR program and may dispatch its own workers | the program's plan, its workers, its go/no-go checklist | the master | a section of `agents/README.md`; no new authority tier |
+| coordinator (if question 2 is (a)) | a dispatched agent that runs one multi-PR program and may dispatch its own workers | the program's plan, its workers, its go/no-go checklist | the master | a section of `agents/README.md`; no new authority tier |
 | line-worker | implements one line | its worktree, branch, PR | master or coordinator | existing |
 | researcher | read-only investigation | its findings | master or coordinator | existing |
 | merge agent | the single merger | the merge queue | master | existing |
