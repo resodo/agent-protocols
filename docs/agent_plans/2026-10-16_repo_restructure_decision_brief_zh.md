@@ -10,10 +10,10 @@
 
 独立评审（Codex 最强档 Astra，审的是整个仓库现状加 intern 的项目补充文件，不是某次改动）结论是：零件大多有用，但缺一份"角色总说明"，所以显得一团乱。具体五点，每点一个真实例子：
 
-1. **master 没有一个完整定义。** master 是什么、能做什么，散在至少 9 处：常驻核心、决策边界、看板、派活、交接、合并、开局模板，intern 的 AGENTS.md 里还写了两遍。专门放角色定义的目录里有 5 个专职角色，偏偏没有 master。
+1. **master 没有一个完整定义。** master 是什么、能做什么，散在至少 9 处：常驻核心（每个会话开头一定带着的一小段决策边界规矩）、决策边界、看板、派活、交接、合并、开局模板，intern 的 AGENTS.md 里还写了两遍。专门放角色定义的目录里有 5 个专职角色，偏偏没有 master。
 2. **实际在用的角色没有定义。** 10-13 到 10-15 应用拆分时，"协调线"自己派子线、主持开工前检查、再把"过了就回不去的那一步"交给 master 拍板。协议里只有"master"和"被派出的 agent"两种。10-15 停写窗口 W2（搬应用数据时暂停写入的那段时间）那次，协调线的请示没送到 master，窗口多开了约 40 分钟。运维线改过生产配置（数据库容器关 swap），但协议里只有发版角色能改生产。
 3. **同一条规矩写了好几份。** "谁能合并"写了 8 份；评审用哪个模型、哪一档写了 3 份。改一处、漏一处，就会互相打架。
-4. **规矩又漏到协议外面了。** 10-11 搬家以后新定的约 30 条，只写在工作线的共用说明文件和记忆里，例如：交给合并队列后作者别再推、别用生产写命令查东西、实现线不许往生产发请求、门槛基线用切换前同一时段测的线上版本。有一条已经和项目补充文件打架：补充文件写"不限并发，能并行就并行"，你 10-13、10-14 说过别一下开很多 subagent。
+4. **规矩又漏到协议外面了。** 10-11 搬家以后新定的约 30 条，只写在工作线的共用说明文件和记忆里，例如：交给合并队列（唯一负责合并 PR 的那条线）后作者别再推、别用生产写命令查东西、实现线不许往生产发请求、门槛基线用切换前同一时段测的线上版本。有一条已经和项目补充文件打架：补充文件写"不限并发，能并行就并行"，你 10-13、10-14 说过别一下开很多 subagent。
 5. **个人偏好和项目规矩混在一起。** 你的汇报格式、简版用中文和禁用词、模型档位，都放在 intern 的项目补充文件里，换个仓库的 master 就看不到。还有一条和你的个人偏好冲突：补充文件写"用 Zed 把简版打开给你"，你的偏好是没有你当场同意，不打开你电脑上的任何东西。
 
 评审还多查出几处：研究员角色被要求"不碰生产"，却又被允许按派活说明只读生产；"收尾"协议允许任何会话按你当轮指令合并，"合并"协议却只许 master 合；授权台账里多数生效条目，是别的 agent 按 master 转述写进去的，而规矩要求"谁亲耳听到谁记"（这只是记录方式的问题，不代表授权是假的）。
@@ -25,7 +25,7 @@
 | 层 | 放什么 | 在哪 | 谁读 |
 |---|---|---|---|
 | 通用协议 | 换项目、换 coding agent 都成立的规矩 | agent-protocols 仓库 | 所有角色，用到哪份读哪份 |
-| 项目补充 | 这个项目的路径、命令、数字、业务词、已定决定、你给这个项目的授权（台账） | 各仓库的 `.agent-protocols/` | 读对应协议的角色；台账只有 master 读 |
+| 项目补充 | 这个项目的路径、命令、数字、业务词、已定决定、你给这个项目的授权（台账） | 各仓库的 `.agent-protocols/` | 读对应协议的角色；台账只有 master 用来判断有没有授权；被派出的 agent 只能查自己派活说明里点名的那一条 |
 | 个人偏好 | 你本人的习惯，换项目也成立 | `~/.config/agent-prefs/` | 所有会话读通用那份；master 偏好见第 1 题 |
 | 现状记录 | 现在做到哪：看板、待你决定的队列、各线状态、交接 | master 的状态目录 | master |
 
@@ -47,10 +47,12 @@
 | 生产操作者 | 用正式命令做一次指名的生产改动：发版、改配置、运维动作 | 这次改动和它的检查 | master |
 | 视觉 QA | 非作者审页面改动 | 审查结论 | 派它的人 |
 
-"作者、评审发起方、评审方"只是对某份文档或改动的分工，任何角色都可能担任，不带任何权限。
+角色分两种，一个 agent 同时有两种：一种决定它有什么权限、碰到闸找谁（master、直接会话、被派出的 agent）；另一种决定它做什么活、交什么（实现线、研究员、合并、生产操作、视觉 QA、协调）。"作者、评审发起方、评审方"只是对某份文档或改动的分工，任何角色都可能担任，不带任何权限。
+
+研究员和实现线分开写：实现线不碰生产；研究员能不能只读生产，看它的派活说明和项目补充文件。
 
 master 的完整定义只写在一个新文件里，其他地方都只指向它。里面写明三条边界：
-- 一个项目同一时间只有一个 master。你点名新的 master 后，旧会话不再协调：不开新活、不做要过闸的事，把手上的事写进交接文件；在跑的 agent 由新 master 接手后重新派或暂停。
+- 一个项目同一时间只有一个 master。你点名新的 master 后，旧会话不再协调：不开新活、不做要过闸（碰到就要停下问人的那类事，例如不可逆、花钱、改接口）的事，把手上的事写进交接文件；在跑的 agent 由新 master 接手后重新派或暂停。
 - 看板、队列、已定决定只有 master 写（台账谁来写看第 3 题）；各线只写自己的状态文件，发版线、运维线、协调线把结果报给 master，由 master 更新看板。
 - master 管治理类的事（例如批 Curator 提案），只能凭台账里你给的授权；没有授权就不是治理层。
 
@@ -143,5 +145,7 @@ master 的完整定义只写在一个新文件里，其他地方都只指向它�
 
 ## 出处
 
-- 决策稿原文：[2026-10-16_repo_restructure_decision.md](https://github.com/resodo/agent-protocols/blob/protocols-restructure-2026-10/docs/agent_plans/2026-10-16_repo_restructure_decision.md)
-- 整仓审查记录：[2026-10-16_repo_structure_audit.md](https://github.com/resodo/agent-protocols/blob/protocols-restructure-2026-10/docs/agent_plans/2026-10-16_repo_structure_audit.md)
+（链接钉在当前提交上；分支合并后路径不变。）
+
+- 决策稿原文：[第 3 节 规矩分四层](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_restructure_decision.md#L69)、[第 4 节 角色](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_restructure_decision.md#L93)、[第 5 节 协议范围](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_restructure_decision.md#L141)、[第 6 节 改动](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_restructure_decision.md#L171)、[第 8 节 审查发现](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_restructure_decision.md#L271)、[第 9 节 要你定的](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_restructure_decision.md#L340)、[附录 A 近期规矩逐条归类](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_restructure_decision.md#L421)
+- 整仓审查记录：[审查结论全文](https://github.com/resodo/agent-protocols/blob/86daa169413bc8977f1c93cfee74bb6da1b43632/docs/agent_plans/2026-10-16_repo_structure_audit.md#L106)
