@@ -264,10 +264,7 @@ each resolved here or listed as a question:
   still goes through the gated-surface check.
 - **Merge permission versus merge execution.** `closeout` accepts a current-turn
   merge instruction from any session; `merge-queue` gives merging only to the
-  master or its merge agent. Resolution (confirm in passing): permission comes
-  only from `decision-boundary`; the executor is one merger per repo at a
-  time: the master or its merge agent when a master is running, otherwise the
-  direct session that received the instruction.
+  master or its merge agent. Question 4.
 - **Ledger provenance.** The rule says only the session that heard a grant
   records it, but most active ledger entries were written by an agent from the
   master's relay. This is a record problem, not evidence the grants are false.
