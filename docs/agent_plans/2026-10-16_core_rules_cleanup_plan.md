@@ -124,3 +124,35 @@ Out: consumer overlays, consumer `AGENTS.md`, personal files and memory
   finds no reference.
 
 ## Review Threads
+
+### Reviewer pass 1 (impl-plan, codex reviewer)
+
+The human’s concern is that core rules should have one clear home, while consumer assumptions and driver-only instructions leave the shared reviewer material.
+
+#### Blocking issues
+
+##### Thread: Remove driver-only tier instructions from the generated reviewer prompt
+
+The plan moves runner operations out of `structured-review/SKILL.md`, but `structured-review/scripts/claude_structured_review.py:576` also inserts guidance telling the *driver* when to select hard tier into every reviewer prompt. Section D does not include this prompt-builder change. Delete that instruction from the generated prompt while retaining the reviewer’s instruction to apply the same readiness standard at both tiers. Validate the generated prompt itself: show that reviewer guidance is present and the driver-only tier instruction is absent. The planned word count alone cannot prove this goal.
+
+##### Thread: Account for general principles before deleting their file
+
+Section B moves four lines from `fix-triage/references/principles.md` and drops the rest, saying they already live in project or personal guidance. It does not give a home or a deletion reason for “measure after narrowing scope” or “fast process, correct product.” The approved decision says valid lines move to their owners. State the disposition of these lines, with a source for any claimed existing home, so implementation does not have to decide which approved guidance to discard. This needs no new mechanism.
+
+##### Thread: Complete the index changes required by the decision
+
+The approved decision’s section 5 says `README.md` groups protocols by reader, with one line each. Section C only replaces the runner usage text and corrects the resident-core copy statement; the current README remains grouped by protocol family. Add that reader grouping to the plan. Also list the new `structured-review/references/runner-operations.md` in `docs/CURRENT.md`’s reference map and point drivers to it from the skill. Keep the existing `references/recovery.md` as the home of detailed recovery instructions rather than creating a second copy.
+
+#### Non-blocking issue
+
+##### Thread: Make the deletion check test deletion
+
+The proposed `git grep principles.md` check already finds no reference before the file is removed. Pair the reference search with a direct check that `fix-triage/references/principles.md` no longer exists.
+
+#### Overall judgment
+
+**Blocking issues remain.** The plan covers N1–N14 and most remaining audit items, but the prompt, principle-file disposition, and index work need the changes above before it is ready for implementation.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the plan, approved decision, and relevant current files. The worktree was clean; no validation commands were run.
