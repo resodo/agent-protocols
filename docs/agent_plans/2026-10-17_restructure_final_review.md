@@ -263,3 +263,27 @@ This documentation-only pass used the changed diff, current instructions, and co
   handoff; no second agent, no re-issued delegation before that.
 - Brief language: accepted; the reader's user-level preference wins, the
   source language is only the fallback.
+
+### Reviewer pass 3 (impl, codex reviewer)
+
+The human wants the restructured protocols to give each role clear instructions and keep each rule in one authoritative home. I reviewed `HEAD~1..HEAD`, the requested artifacts, and the existing threads. The worktree is clean.
+
+#### Blocking issues
+
+##### Thread: A stopped agent cannot acknowledge handoff
+
+`session-handoff/SKILL.md:47-53` permits redispatch when the previous agent is confirmed stopped, but then says to re-issue the line’s gated delegation “only after” that agent is reached and acknowledges handoff. A stopped agent cannot do that. The instruction leaves the replacement agent’s delegation path unclear, despite `decision-boundary/SKILL.md:221-222` requiring the new master to recheck the ledger before re-issuing it.
+
+**Smallest fix:** state the two cases separately. For a confirmed stopped agent, recheck the ledger before delegating to its replacement. For a live agent, keep the line parked until the agent acknowledges handoff. This needs no new mechanism.
+
+#### Non-blocking issues
+
+`session-handoff/SKILL.md:8` still says subagents die with the session, while its cold-start procedure now explicitly checks for surviving agents. Remove that blanket claim so the opening does not undermine the procedure.
+
+#### Overall judgment
+
+The brief-language thread is **resolved** by `readable-brief/SKILL.md:34-35`: the reader’s recorded preference takes priority, with the source language as fallback. The cold-start thread is **Partial**. It now safely parks live or unknown agents, but the stopped-agent delegation path above needs correction. The scoped core fixes are **not yet ready for closeout**. Consumer findings remain outside this pass.
+
+#### Residual risks and validation gaps
+
+This documentation-only review used the committed diff and direct reading of the instructions. No scripts or tests were run. Cross-session messaging was not demonstrated; the revised procedure parks a line when contact is unavailable.
