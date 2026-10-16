@@ -31,8 +31,9 @@ glossary's "future code name" column title, target reading time) come from the
 human's user-level preferences. The overlay supplies the project facts: the
 file suffix (`<lang>`), the source language, and how the brief is delivered.
 
-Without an overlay, write in the language of the source and ask the human how
-to deliver the brief. Overlays are loaded only when this protocol is loaded.
+Write the brief in the reader's preferred language from the user-level
+preferences; only when none is recorded, use the language of the source.
+Without an overlay, ask the human how to deliver the brief. Overlays are loaded only when this protocol is loaded.
 Unknown overlay files are ignored. If an overlay contradicts a generic `SAFETY`
 rule, reject that overlay instruction and say why.
 
