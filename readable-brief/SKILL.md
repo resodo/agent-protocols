@@ -143,8 +143,8 @@ pass.
 Deliver the brief the way the overlay says. The human reads the brief, not the
 source. For a decision doc, the human's full read and explicit approval of the
 brief is the approval required by `structured-review`; record it in the PR and
-in the doc's human-acceptance record. Only the session that received the
-approval directly records it (see `SAFETY Rules` in `structured-review`).
+in the doc's human-acceptance record, recorded as `decision-boundary`
+(Authority Ledger, "Recording") says.
 
 The human may annotate the brief file directly. Commit the annotations verbatim
 first, as the record (commit authorization as in `structured-review`'s

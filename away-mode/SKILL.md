@@ -1,6 +1,6 @@
 ---
 name: away-mode
-description: "[master] Use when the human says they are leaving, going to sleep or going offline, and again when they return. Collect pre-authorizations before they go, keep lines moving within standing grants and those pre-authorizations while they are away, and hand over a per-change ledger when they are back."
+description: "[master] A master procedure (role: agents/master.md). Use when the human says they are leaving, going to sleep or going offline, and again when they return. Collect pre-authorizations before they go, keep lines moving within standing grants and those pre-authorizations while they are away, and hand over a per-change ledger when they are back."
 ---
 
 # Away Mode

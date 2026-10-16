@@ -1,6 +1,6 @@
 ---
 name: master-board
-description: "[master] Use when state changes and must be recorded, when the human asks for progress or what is stuck or what can still move, when the scheduled sweep fires, and before any status report. Keeps the board (current lines, settled decisions, production line) and the queue of items waiting on the human, and runs the full sweep."
+description: "[master] A master procedure (role: agents/master.md). Use when state changes and must be recorded, when the human asks for progress or what is stuck or what can still move, when the scheduled sweep fires, and before any status report. Keeps the board (current lines, settled decisions, production line) and the queue of items waiting on the human, and runs the full sweep."
 ---
 
 # Master Board

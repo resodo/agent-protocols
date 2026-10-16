@@ -53,7 +53,7 @@ Overlays are loaded only when this protocol is loaded. Unknown overlay files are
 - Do not re-ask settled decisions unless new evidence changes the decision.
 - Do not put secrets, credentials, provider balances, private account details, host keys, or raw private production data into repo artifacts.
 - Do not edit the main/default worktree for feature or follow-up work unless the human explicitly asked for that location.
-- A project may record in its authority ledger (`.agent-protocols/authority-ledger.md`) that a named class of change, such as fixes found during an iteration round, skips the separate plan-review step before implementation. That exemption covers only that review step: scope, worktree, review path for the remaining gates, and acceptance must still be explicit before the work starts.
+- A project may record in its authority ledger (`decision-boundary/SKILL.md`, Authority Ledger) that a named class of change, such as fixes found during an iteration round, skips the separate plan-review step before implementation. That exemption covers only that review step: scope, worktree, review path for the remaining gates, and acceptance must still be explicit before the work starts.
 
 ## Option Discipline
 
