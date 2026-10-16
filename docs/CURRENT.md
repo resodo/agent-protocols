@@ -74,7 +74,8 @@ avoid treating historical plans as current instructions.
 - Master + subagent operation: `decision-boundary/SKILL.md` (gates, authority
   ledger rules, never-ask, escalation; `CORE.md` is the resident block
   consumers embed verbatim and check with `scripts/check_resident_core.py`),
-  `master-board`, `dispatch`, `line-worker`, `merge-queue`, `release`,
+  `master-board`, `dispatch`, `line-worker`, `merge-queue`, `release` (any
+  production change),
   `visual-qa`, `away-mode`, `session-handoff`, `fix-triage`. A standing
   authorization recorded in a project's ledger counts as permission within its
   scope for `closeout`, `planning` (plan-review exemption only) and
@@ -82,7 +83,8 @@ avoid treating historical plans as current instructions.
 - `agent-readiness/` - worktree guard contract (with the resident-core check),
   agent bootstrap template, and `capabilities.md` (capability names to
   per-agent features and fallbacks; only documented cells count as support).
-- `agents/` - vendor-neutral specialist role definitions.
+- `agents/` - role definitions: `README.md` (role composition, coordinator),
+  `master.md` (the single master definition), and the dispatched specialists.
 
 ## Runner And References
 

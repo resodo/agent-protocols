@@ -1,6 +1,6 @@
 ---
 name: session-handoff
-description: "[master] Use when this session is about to end or its context is nearly full, and at the start of a new session in which the human named you master (cold start). Write a one-page handoff of what dies with the session; on cold start, load the state, verify it live, and re-dispatch or park every line."
+description: "[master] A master procedure (role: agents/master.md). Use when this session is about to end or its context is nearly full, and at the start of a new session in which the human named you master (cold start). Write a one-page handoff of what dies with the session; on cold start, load the state, verify it live, and re-dispatch or park every line."
 ---
 
 # Session Handoff
@@ -17,8 +17,8 @@ would otherwise die.
 
 ## Writing The Handoff
 
-Overwrite `templates/SESSION_HANDOFF.md` in the state directory (one page; do
-not append history):
+Write the handoff file in the state directory from `templates/SESSION_HANDOFF.md`
+(one page; overwrite the previous handoff, do not append history):
 
 - lines that were running: worktree or branch, STATUS path, where it stopped,
   next step, model tier;
@@ -34,7 +34,9 @@ Write it whenever the context is getting full, not only at the very end.
 
 ## Cold Start (new master)
 
-1. Confirm the human named you master in this session. If not, you are not.
+1. Confirm the human named you master in this session (`agents/master.md`).
+   If not, you are not. From this turn the earlier master session stops
+   coordinating.
 2. Load `decision-boundary`, `master-board`, `dispatch` (re-dispatching lines
    follows it, including the model tier rules in its overlay), this protocol,
    and their overlays.

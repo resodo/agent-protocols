@@ -24,7 +24,7 @@ trigger; bodies load on demand):
 - `dispatch/` - dispatching subagents: brief, model tier, watchdog, returned work, keeping lines moving.
 - `line-worker/` - how a dispatched worker or researcher works and hands back.
 - `merge-queue/` - one merger, one PR at a time.
-- `release/` - release skeleton: preconditions, switch, staged checks, failure policy.
+- `release/` - production changes (release, configuration, ops action): permission, preconditions, baseline, official command, staged checks, failure policy.
 - `visual-qa/` - independent review of user-visible changes before the human sees them.
 - `away-mode/` - pre-authorizations before the human leaves; per-change ledger on return.
 - `session-handoff/` - one-page handoff and the new master's cold start.
@@ -33,7 +33,7 @@ trigger; bodies load on demand):
 ## Guidance
 
 - `agent-readiness/` - worktree guard contract (including the resident-core check), `AGENTS.md` bootstrap template, and `capabilities.md`, the map from capability names used in protocols to each coding agent's feature or fallback.
-- `agents/` - vendor-neutral role definitions for specialist subagents; consumers add thin per-agent wrappers.
+- `agents/` - role definitions: how roles combine and the coordinator (`agents/README.md`), the master (`agents/master.md`, its single definition), and each dispatched specialist; consumers add thin per-agent wrappers.
 
 ## Docs
 

@@ -163,6 +163,37 @@ role, not a dispatched specialist.
   with full conditions only in `decision-boundary/SKILL.md` (positive control:
   the grep finds them there).
 
+## Implementation Record
+
+Done as scoped (items 1-14). Validation (driver-reported):
+
+- `python -m unittest discover -s tests`: 30 tests OK (resident core 23 lines,
+  all ten gates named, frontmatter parses).
+- `python scripts/check_backlog.py`: exit 0.
+- `python -m unittest discover -s structured-review/tests`: 123 tests OK.
+- Copy check: "line-level" appears only in `decision-boundary/SKILL.md`
+  (Delegated Execution); "standing authorization" only in
+  `decision-boundary/SKILL.md`; "current-turn" with merge conditions only in
+  `decision-boundary/SKILL.md`, plus the short form in `CORE.md` and the
+  queue-line field name in `merge-queue/templates/MERGE_QUEUE.md`.
+- Scenarios, each answered by one file:
+  1. Named master: `agents/master.md` (owns, may decide, coordinates only,
+     stops at uncovered gates).
+  2. Coordinator at a point of no return: `agents/README.md`, Coordinator
+     (ask the master, counts only after the answer, re-send on silence).
+  3. Direct session told "merge PR 12" while a master runs:
+     `decision-boundary` Delegated Execution (only the master or its merge
+     agent merges while a master runs; the session reports to the human).
+  4. Researcher told to read production: `agents/researcher.md` (only when
+     the brief allows it, within the overlay's production-read rules).
+  5. Worker brief cites approval of a new response field:
+     `agents/line-worker.md` and `line-worker` Implementation Workers (may
+     implement it; merging still stops at the gated-surface check).
+  6. Another agent typed a ledger entry the master heard:
+     `decision-boundary` Authority Ledger, Recording (`proposed` until the
+     master compares it and sets it `active`).
+
+
 ## Review Threads
 
 审查发现四处会让实施者猜测权限或职责边界；以下是供 runner 记录的完整审查线程。

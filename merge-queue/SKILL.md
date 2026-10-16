@@ -23,15 +23,10 @@ merges collide. So exactly one merger merges, one PR at a time.
   hand the PR over. PRs opened by other sessions are reported into the queue
   too; if another session is already running a pre-merge job, pause until it
   finishes.
-- Merging needs explicit permission: a current-turn instruction from the
-  human, or an active standing authorization in the project ledger (see
-  `decision-boundary`). The master checks it and writes it into the queue line
-  when it queues a PR (Delegated Execution); the merge agent merges only PRs
-  whose line names that permission. When the line cites a ledger entry, the
-  merge agent looks up only that entry right before merging: a line-level
-  search for the cited id (for example the row starting with `| L1 |`) in
-  `.agent-protocols/authority-ledger.md`, never opening the whole file. It
-  stops if the entry is no longer `active` or no longer covers the PR, and it
+- Permission and who executes a merge: `decision-boundary/SKILL.md`,
+  Delegated Execution. The master writes the permission into the queue line
+  when it queues a PR; the merge agent merges only PRs whose line names it,
+  verifies a cited ledger entry right before merging as that section says, and
   never uses the ledger to find permission.
 
 ## Queue File
@@ -63,6 +58,7 @@ line after checking the gated surfaces. Archive merged lines daily.
 
 ## SAFETY Rules
 
-- Do not merge without one of the two permissions above.
+- Do not merge without the permission the queue line names
+  (`decision-boundary`, Delegated Execution).
 - Do not merge past a gated-surface diff without the human's answer.
 - Do not report "green" without reading every check.

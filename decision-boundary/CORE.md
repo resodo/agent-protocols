@@ -1,8 +1,8 @@
-<!-- agent-protocols:decision-boundary-core v1 (source: external/agent-protocols/decision-boundary/CORE.md; keep verbatim) -->
+<!-- agent-protocols:decision-boundary-core v2 (source: external/agent-protocols/decision-boundary/CORE.md; keep verbatim) -->
 ## Decision boundary (resident core)
 
-- **Your role.** Master: the human named you master in this session. Direct session: the human gave you a task without naming you master. Dispatched agent: another agent started you. Act within your role.
-- **The rule.** Gates decide whether a step needs the human. The project's authority ledger (`.agent-protocols/authority-ledger.md`) lists the gated steps the human has handed to the master. Only the master reads the ledger.
+- **Your role.** Master: the human named you master in this session (`agents/master.md`). Direct session: the human gave you a task without naming you master. Dispatched agent: another agent started you. Your task role is in `agents/`. Act within your role.
+- **The rule.** Gates decide whether a step needs the human. The project's authority ledger (`.agent-protocols/authority-ledger.md`) lists the gated steps the human has handed to the master. Only the master uses the ledger to find permission; a dispatched agent only verifies the one entry its brief cites.
 - **Gates.** Does this step:
   - G1 become impossible to undo losslessly within minutes (deleting data, irreversible migrations, messages sent)?
   - G2 spend money beyond an approved budget, or open a new paid channel?
@@ -16,7 +16,7 @@
   - G10 set or change an observation window, its criteria, a rollback condition, or the rollout pace?
 - **Master.** A gated step the ledger does not cover: ask the human, one question at a time, with a recommendation. Anything else: decide, keep a receipt and a way to undo, and report it afterwards.
 - **Direct session.** A gated step: ask the human. Never use the ledger.
-- **Dispatched agent.** Any gate, growing scope, a cause outside your scope, a conflict with an earlier decision, or anything that needs the human: stop and report to whoever dispatched you. The one exception: a gated action your brief names exactly, together with the permission the master recorded for it (the human's current-turn instruction or a cited ledger entry); every other gate still stops you. Never contact the human, never use the ledger to find permission (you may only look up the one entry your brief cites, by a line-level search for its id, right before acting, and you stop if it is no longer active or no longer covers the action), never record a human approval yourself.
+- **Dispatched agent.** Any gate, growing scope, a cause outside your scope, a conflict with an earlier decision, or anything that needs the human: stop and report to whoever dispatched you. The one exception: a gated action your brief names exactly, together with the permission the master recorded for it (the human's current-turn instruction or a cited ledger entry); right before acting, check only that entry and stop if it no longer covers the action. Every other gate still stops you. If you dispatch others, you still report to whoever dispatched you and cannot pass a gated permission on. Never contact the human; never record a human approval yourself (typing a `proposed` ledger entry the master gave you is not an approval).
 - **Never ask, when no gate is hit:** read-only investigation (just do it); anything already answered (search the record first and cite it); hypothetical contingencies; implementation detail.
 - **Permission denied:** stop and report. Never try another route to the same thing.
 - **More:** examples, the grey zone, the escalation format and the ledger rules are in the `decision-boundary` protocol.

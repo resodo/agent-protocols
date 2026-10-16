@@ -33,6 +33,9 @@ An overlay may add gates or narrow grants; it must not remove a gate.
 | Direct session | Steps that hit no gate | Any gated step -> the human (no ledger) |
 | Dispatched agent | Engineering choices inside the dispatched scope; a gated action its brief names exactly with the permission the master recorded for it | Any other gate, or anything outside the scope -> whoever dispatched it |
 
+Roles and how they combine are defined in `agents/README.md`; the master in
+`agents/master.md`.
+
 The never-ask list applies only when no gate is hit: an "implementation
 detail" that changes a contract or what users see is gated.
 
@@ -117,9 +120,12 @@ acting as master can read it and no other role loads it by accident.
   grants nothing until the human confirms it; the session that receives the
   confirmation sets it `active` with the confirmation date. A paraphrase is
   never an active entry.
-- Recording: in the same turn the human grants it, by the session that heard
-  it. A session that only had it relayed writes "relayed by <session>,
-  pending record" and never records the grant itself.
+- Recording: in the same turn the human grants it. The session that heard it
+  is responsible for the entry. Another agent may type it as `proposed` from
+  the text that session gives; typing grants nothing. Only the session that
+  heard the grant compares the entry with what it heard (words and scope) and
+  sets it `active` with the date. A session that only had it relayed writes
+  "relayed by <session>, pending record" and never sets an entry `active`.
 - Proposing: the master may propose handing over a class of decisions after
   a run without substantive errors and without the human reversing any of
   them; the threshold for "a run" is set in the ledger. Only the human
@@ -152,14 +158,29 @@ acting as master can read it and no other role loads it by accident.
 
 ## Escalation Format
 
-One question per message. Define any term first. Then: what it is today, the
-proposal, why, the cost, what moves; one concrete worked example with numbers;
-the options with a recommendation. Say what the human is waiting on (which
-number, which agent) so they know when it becomes theirs. Ask in plain text,
-not in a pop-up form, when the question needs reading first. The human's own
-language and style preferences come from the user-level instruction file.
+A question to the human carries: any term defined first; what it is today,
+the proposal, why, the cost, what moves; one concrete worked example; the
+options with a recommendation; and what the human is waiting on (which
+number, which agent) so they know when it becomes theirs. How questions are
+presented (one at a time, plain text, batching) comes from the human's
+preferences in the user-level instructions.
 
 ## Delegated Execution
+
+This section is the single home of merge and release permission; other
+protocols point here.
+
+Permission for a merge or a release is one of: the human's current-turn
+instruction naming the PR or release and the action ("current-turn" means the
+human's most recent message), or an `active` ledger entry whose scope covers
+this exact action (and this PR, for merges). Before relying on an entry, check
+that it is not revoked and covers the action, and cite it in the receipt.
+"Ready to merge" from the human is a request for the final recheck, not
+permission.
+
+Who executes a merge: one merger per repo at a time. While a master runs in
+the project, only the master or the one merge agent it dispatched merges. A
+direct session merges on a current-turn instruction only when no master runs.
 
 The permission for a gated action belongs to the master. The master may hand
 the execution of one already-permitted action to a dispatched agent (for
@@ -177,6 +198,9 @@ and the action; a project that delegates ledger-based actions records in its
 ledger that the human accepted that window (date, his words). Without that
 record, the master performs ledger-based gated actions itself.
 
+A coordinator or any other dispatched agent cannot pass a delegated execution
+on; the master delegates each gated action to the agent that performs it.
+
 The master keeps the delegation current: a delegation lives only inside the
 master's session; when the human revokes or narrows the cited permission, the
 master withdraws every queue line and brief that cites it and messages the
@@ -186,7 +210,7 @@ delegation.
 
 ## Dispatched Agents
 
-- Report to the master in the master's working language.
+- Report to whoever dispatched you, in the language it asks for.
 - Relayed human decisions are real; the master's engineering elaboration around
   them can be challenged with evidence. Red-line changes are confirmed with the
   human by the master, not by you.
@@ -196,7 +220,8 @@ delegation.
 
 - Do not cross a gate on the strength of a summary; check the gated surface
   itself.
-- Do not record an authorization you did not hear from the human directly.
+- Do not set a ledger entry `active`, or record an approval, that you did not
+  hear from the human directly.
 - Do not treat silence, timing, or the presence of text in a file the human
   may have read as consent.
 - Do not work around a platform or permission denial.

@@ -1,22 +1,26 @@
 ---
 name: line-worker
-description: "[dispatched worker] Preloaded when a work-line or research agent starts. How a dispatched agent works: list prior decisions first, resume half-done work, stay out of production, CI triggers, merges and contract changes, keep STATUS.md, and hand back in a fixed shape. Read-only research rules are in references/read-only-research.md."
+description: "[dispatched agent] Preloaded when a work-line, research or coordinator agent starts. How every dispatched agent works (prior decisions first, resume half-done work, stay in scope, command shape, STATUS.md, hand back in a fixed shape) and the extra limits for implementation workers (no production, CI triggers, merges). Read-only research rules are in references/read-only-research.md."
 ---
 
 # Line Worker
 
-You were dispatched by the master. The human talks to the master, not to you.
-The decision-boundary core in `AGENTS.md` applies to you as a dispatched
-agent: any gate -> stop and report to the master.
+You were dispatched by another agent. The human talks to the master, not to
+you. The decision-boundary core in `AGENTS.md` applies to you as a dispatched
+agent: any gate -> stop and report to whoever dispatched you. Your task role
+is in `agents/`.
 
 ## Local Overlay
 
 1. Read `.agent-protocols/context.md` if present.
 2. Read `.agent-protocols/line-worker.md` if present: environment setup, test
    limits and locks, where earlier decisions are recorded, checks that are
-   mandatory for some kinds of change, credential sources.
+   mandatory for some kinds of change, credential sources, production-read
+   rules.
 
-## Start
+## Every Dispatched Agent
+
+### Start
 
 1. Read the repo entrypoint (`AGENTS.md`) and its routing for your task.
 2. **List the decisions already made** that touch your task, each with its
@@ -29,17 +33,8 @@ agent: any gate -> stop and report to the master.
 4. Resuming old work: write "premise then vs state now" first; if the premise
    changed, report before continuing.
 
-## While Working
+### While Working
 
-- Follow `planning`, `structured-review` and `closeout` for the gates the
-  project requires; the project overlay says which gates apply and which
-  exemptions are recorded.
-- Do not touch production. If you need production data or an operation, write
-  what and why, and hand it to the master.
-- Push and open PRs freely; do not trigger CI, do not merge. Hand the PR to
-  the master.
-- Do not change a contract (API, schema/DDL), make paid calls (reviews
-  excepted), or add a standing mechanism. Stop and report instead.
 - If the root cause is outside your scope, stop and report the wrong
   assumption, where it lives and what the fix at the source would be; do not
   add a downstream accommodation.
@@ -47,28 +42,45 @@ agent: any gate -> stop and report to the master.
 - Avoid preventable platform confirmations: delete only by literal path or
   with quoted guarded expansions (`"${dir:?}"/"${name:?}"`), never a
   bare variable in `rm`; one command does one thing; for many deletions, list
-  the literal paths (a script is for clarity, never to get around a prompt). If a confirmation prompt appears anyway,
-  stop and report the command instead of retrying variants (an unattended
-  prompt stalls the session).
+  the literal paths (a script is for clarity, never to get around a prompt).
+  If a confirmation prompt appears anyway, stop and report the command instead
+  of retrying variants (an unattended prompt stalls the session).
 - Before saying something is changed or done, check it (grep the file, run the
   command, read the full test output). List what you did not verify.
 
-## STATUS.md
+### STATUS.md
 
 Keep `templates/STATUS.md` current from the first hour: decisions already made
 (with sources), what is left before done, what you are doing now, what you are
 waiting on and on whom. One screen. Put long logs in a separate `LOG.md`.
 
-## Hand Back
+### Hand Back
 
-Reply to the master in three to ten plain lines: PR link (or the blocker), what
-you did, validation split into local tests / review / not validated, and what
-needs the master or the human to decide. Never write "the human approved";
-write "per master relay".
+Reply to whoever dispatched you in three to ten plain lines: PR link (or the
+blocker), what you did, validation split into local tests / review / not
+validated, and what needs a decision. Never write "the human approved"; write
+"per master relay".
+
+## Implementation Workers
+
+These limits apply to a line worker (`agents/line-worker.md`). A researcher
+follows its own brief and `references/read-only-research.md` instead.
+
+- Follow `planning`, `structured-review` and `closeout` for the gates the
+  project requires; the project overlay says which gates apply and which
+  exemptions are recorded.
+- Do not touch production. If you need production data or an operation, write
+  what and why, and hand it to whoever dispatched you.
+- Push and open PRs freely; do not trigger CI, do not merge. Hand the PR back.
+- Do not change a contract (API, schema/DDL), make paid calls (reviews
+  excepted), or add a standing mechanism, unless your brief names that exact
+  change with its recorded permission (the resident-core exception). Otherwise
+  stop and report.
 
 ## SAFETY Rules
 
 - Never contact the human directly.
 - Never work around a denial.
-- Never record a human approval.
+- Never record a human approval or set a ledger entry `active`. Typing a
+  `proposed` entry from text the master gave you is not an approval.
 - Never put secrets or raw private production data in files or PRs.

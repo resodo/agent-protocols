@@ -89,37 +89,16 @@ instruction and say why.
   a PR was merged via merge commit, squash merge, or rebase/linear merge before
   explaining why branch commits are or are not ancestors of the target branch.
 - Do not perform destructive git operations without explicit human approval.
-- Do not merge PRs, close PRs, or delete remote branches during closeout unless
-  (a) the human gives an explicit current-turn command to perform that exact
-  action for the named PR or branch, or (b) a standing authorization in the
-  project's authority ledger covers that action for that PR (see the next
-  rule). Without (a) or (b), closeout stops at reporting
-  `ready for human merge`. `Current-turn` means the user's most recent message,
-  not earlier messages in the same conversation. This rule narrows but does not
-  replace the destructive-git-operations rule above.
-- A standing authorization counts only when the project's authority ledger
-  (`.agent-protocols/authority-ledger.md`, see
-  `decision-boundary/SKILL.md`) records it as `active` with its date, the
-  human's words and its scope. It is used by the session acting as master,
-  or by an agent the master dispatched whose brief names this exact action for
-  this PR and cites the entry (see `decision-boundary`, Delegated Execution).
-  For a delegated action, the agent looks up only the cited entry right before
-  acting (a line-level search for its id in the ledger file, never the whole
-  file; status and scope) and stops if it no longer covers the action; the
-  master also withdraws the delegation the moment the entry is revoked. Before
-  acting on it,
-  check that it has not been revoked and that its scope covers this exact
-  action for this PR (for example "PRs whose required gates all passed and
-  that change no gated surface"), run the same final rechecks as for (a), and
-  name the ledger entry relied on in the handoff.
-- Treat a human statement such as `ready to merge`, `looks ready`, or `ready`
-  as a request to run the final closeout/recheck pass, not as permission to
-  merge. Merge permission is either (a) a current-turn instruction naming the
-  PR/branch and the merge action, or (b) a ledger authorization as defined
-  above.
-- These phrases are deliberately different: `ready to merge` is human input
-  shorthand for closeout/recheck, while `ready for human merge` is the agent's
-  verified handoff state after closeout/recheck.
+- Do not merge PRs, close PRs, or delete remote branches during closeout
+  without the permission defined in `decision-boundary/SKILL.md`, Delegated
+  Execution (which also says who executes a merge). Without it, closeout stops
+  at reporting `ready for human merge`. This rule narrows but does not replace
+  the destructive-git-operations rule above. When a ledger entry is relied on,
+  name it in the handoff.
+- A human statement such as `ready to merge`, `looks ready`, or `ready` is a
+  request to run the final closeout/recheck pass, not permission to merge
+  (`decision-boundary`, Delegated Execution). `ready for human merge` is the
+  agent's verified handoff state after closeout/recheck.
 - Do not commit secrets, credentials, provider balances, private account
   details, host keys, or raw private production data.
 - Do not call a branch/phase closed when planned items are missing, partial, or
@@ -345,9 +324,8 @@ Do not create a separate lessons-learned document unless explicitly requested. P
   closeout evidence, status/doc lifecycle claims, or stale-wording decisions are
   accurate.
 - Treat merge strategy preference as reporting guidance only. It does not
-  authorize the agent to merge. Without (a) explicit current-turn human
-  approval or (b) a ledger authorization covering this PR (see SAFETY Rules),
-  final handoff must say whether the PR is ready for human merge and confirm no
+  authorize the agent to merge. Without the permission in SAFETY Rules, final
+  handoff must say whether the PR is ready for human merge and confirm no
   merge was executed.
 - Say `ready for human merge` only after final rechecks are complete, pushed CI
   is in the expected state when applicable, and tracked source-of-truth docs do

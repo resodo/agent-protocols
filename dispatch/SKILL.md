@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: "[master] Use when about to spawn a subagent, when an agent notification arrives, when an agent stalls or reports a denial, and when resuming an old plan or PR. Covers the dispatch brief, choosing a model tier, watchdogs and nudges, returned work, relaying human decisions, and keeping every line moving."
+description: "[master, coordinator] A master procedure (role: agents/master.md); a coordinator (agents/README.md) uses it for its own workers. Use when about to spawn a subagent, when an agent notification arrives, when an agent stalls or reports a denial, and when resuming an old plan or PR. Covers the dispatch brief, choosing a model tier, watchdogs and nudges, returned work, relaying human decisions, and keeping every line moving."
 ---
 
 # Dispatch
@@ -46,8 +46,10 @@ Ask "what is the hardest judgement in this task?". Any real judgement (design,
 attribution, resolving conflicts, deciding whether something can merge,
 verifying identities) -> the strong tier. Only mechanical execution under a
 written procedure (collect receipts, run a checklist, update status) -> the
-cheap tier. Pass the rule and the cost facts to the agent; it may dispatch its
-own subagents under the same rule. Concrete model names are in the user-level
+cheap tier. Pass the rule and the cost facts to the agent. An agent that
+dispatches its own workers is a coordinator (`agents/README.md`): it follows
+this protocol for them, stays inside its own brief, and cannot pass a gated
+permission on. Concrete model names are in the user-level
 file.
 
 ## After Dispatching
@@ -74,9 +76,9 @@ file.
 ## Keeping Lines Moving
 
 Every approval gets its next step dispatched in the same turn. A line that
-stops is either moved forward or written down with what blocks it and what
-will unblock it. The only acceptable blocker is a decision that belongs to
-the human, stated as such in the queue.
+stops is either moved forward or written down with the real blocker, who owns
+it, and the condition that restarts it. A blocker that is the human's decision
+is stated as such in the queue.
 
 ## Relaying To The Human
 
@@ -87,5 +89,7 @@ lines. Outside the separators, talk to the human.
 
 - Do not give a dispatched agent production access, merge rights or CI
   triggers unless its role definition says so.
-- Do not ask an agent to record a human approval.
+- Do not ask an agent to record a human approval; an agent may type a
+  `proposed` ledger entry that you then check (`decision-boundary`, Authority
+  Ledger).
 - Do not let a dispatched agent talk to the human directly.
