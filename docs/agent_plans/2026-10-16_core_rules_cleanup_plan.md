@@ -248,3 +248,35 @@ None.
 #### Residual risks or validation gaps
 
 This was a read-only plan review. The worktree was clean; the planned prompt and test checks have not yet been run.
+
+### Reviewer pass 1 (impl, codex reviewer)
+
+The human wants general rules to have one home, consumer assumptions removed from the core, indexes to remain maps, and driver-only runner guidance kept out of reviewer prompts.
+
+#### Blocking issues
+
+##### Thread: Make output manifests conditional on the repo contract
+
+`closeout/SKILL.md:295-302` still requires `MANIFEST.md` whenever a repo uses worktree or PR output folders. Accepted section B requires manifest checks only when the repo’s own documentation contract uses output manifests. An output folder alone does not establish that contract. Narrow the condition and remove the unconditional requirement.
+
+##### Thread: Finish the single-checklist move
+
+`closeout/SKILL.md:137-148` retains the mechanism lifecycle checklist, and `closeout/SKILL.md:192-196` retains UI quality criteria after adding pointers to their review references. Section E calls for those criteria to have one home, with closeout retaining evidence accounting and the question of whether a retained mechanism is owned and still needed. Remove the duplicated criteria and keep the closeout evidence requirements.
+
+##### Thread: Remove stale index-maintenance instructions
+
+`structured-review/references/runner-operations.md:147-151` tells future maintainers to update “this skill,” the root runner summary, and `docs/CURRENT.md` when profiles or signals change. Sections C–D deliberately removed that policy from the skill and indexes. Update the instruction to name the runner, tests, and driver-only operations reference; update indexes only if their routes change.
+
+#### Non-blocking issue
+
+##### Thread: Retain transcript filtering guidance
+
+The Codex transcript paths moved to `agent-readiness/capabilities.md:59`, but the former instruction to filter transcripts to the relevant time window and user messages was dropped from `retrospective/SKILL.md`. Keep that use instruction in the retrospective protocol.
+
+#### Overall judgment
+
+**Blocking issues remain.** Traceability against the accepted plan: A is Done, including N1–N14 and A29; B is Partial because of the manifest condition; C is Partial because of the stale maintenance instruction; D is Done; E is Partial; F is Done. The Implementation Record’s “Done as scoped (A–F)” claim should be revised until the partial items are resolved. This implementation is not yet ready for closeout.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of `git diff HEAD~1` and the reviewed artifacts. The worktree was clean and `git diff --check HEAD~1` found no whitespace errors. The current reviewer prompt contains the shared readiness rule and omits the removed driver tier instruction. Test results and prompt word counts in the Implementation Record are driver-reported; I did not rerun them.
