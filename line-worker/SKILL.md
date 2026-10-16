@@ -45,6 +45,14 @@ is in `agents/`.
   the literal paths (a script is for clarity, never to get around a prompt).
   If a confirmation prompt appears anyway, stop and report the command instead
   of retrying variants (an unattended prompt stalls the session).
+- A request that blocks a window or a dependent is sent as a message and
+  re-sent until acknowledged (`dispatch`, Blocking Requests).
+- Wait on artifacts (a marker file, a completion line, a PR or CI state),
+  never on a process-name match (`pgrep -f` matches itself and other
+  worktrees). Match markers exactly, anchored to the line start. Every
+  background wait has a time bound, and its owner stops it when the task ends.
+- Look facts up (a sha, a status, a path) with read-only commands only; never
+  run a production write command to see what it prints.
 - Before saying something is changed or done, check it (grep the file, run the
   command, read the full test output). List what you did not verify.
 
@@ -72,6 +80,11 @@ follows its own brief and `references/read-only-research.md` instead.
 - Do not touch production. If you need production data or an operation, write
   what and why, and hand it to whoever dispatched you.
 - Push and open PRs freely; do not trigger CI, do not merge. Hand the PR back.
+  Once a PR is handed to the merge queue, do not push to its branch: rebases,
+  fixes and follow-up commits go to the queue as requests.
+- Send no requests of any kind to production: no page checks, smoke tests or
+  load tests against it. Test against local or development servers; checks on
+  production belong to the production operator inside its plan.
 - Do not change a contract (API, schema/DDL), make paid calls (reviews
   excepted), or add a standing mechanism, unless your brief names that exact
   change with its recorded permission (the resident-core exception). Otherwise
@@ -84,3 +97,6 @@ follows its own brief and `references/read-only-research.md` instead.
 - Never record a human approval or set a ledger entry `active`. Typing a
   `proposed` entry from text the master gave you is not an approval.
 - Never put secrets or raw private production data in files or PRs.
+- Never send the human's email address or other personal information to an
+  outside service, including request headers such as a User-Agent contact.
+- Never run a production write command to look something up.

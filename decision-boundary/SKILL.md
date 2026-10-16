@@ -151,12 +151,22 @@ acting as master can read it and no other role loads it by accident.
 - Do not ask implementation detail; decide it and put it in the plan.
 - Do not ask what the record already answers (was it merged, deleted,
   deployed); check the PR history and the repo.
+- Filter a list of questions down to the human's real choices: contract
+  shape, deleting data, product meaning, the overall direction or timeline,
+  external voice, and anything the human reserved. Decide the rest by the
+  recommendation and report it afterwards as "decided: ...".
 - A group of questions: give the count first, ask only the real choices one by
   one, bundle the rest as "the rest per recommendation: X, Y, Z".
 - A rejection often hides inside a redirect ("no, I think X is actually ...");
   record rejections as carefully as approvals.
 
 ## Escalation Format
+
+Before asking the human to approve a fix, survey the root cause, how mature
+projects solve the same problem, and whether the fix stays right long-term;
+say in the question what was checked, with sources. Never relay a line's first
+proposal or your own first instinct unchecked; if the survey changes the
+answer, withdraw the original request.
 
 A question to the human carries: any term defined first; what it is today,
 the proposal, why, the cost, what moves; one concrete worked example; the

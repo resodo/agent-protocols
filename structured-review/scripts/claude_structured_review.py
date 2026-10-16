@@ -573,7 +573,6 @@ def build_prompt(config: RunConfig) -> str:
             f"- Effort: {active_effort(config)}",
             f"- Effort source: {config.effort_source}",
             "- Review tier affects model routing and the default attempt time limit. Apply the same readiness standard at both tiers; do not invent scope or low-value findings for a hard review.",
-            "- Normal is the default. Reserve hard for roughly the hardest 20% of the driver's tasks: major design, major architecture, or unusually difficult bugs. This is judgment, not a numerical quota. Mechanical recommendations and routine protocol edits alone do not qualify; do not evade this guidance with provider overrides.",
             "",
             "Task-specific focus:",
             config.focus.strip(),

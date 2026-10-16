@@ -66,11 +66,12 @@ assumed:
 
 - If the fetch fails (offline, auth, remote unavailable), stop and report
   the blocker. Do not start feature work against an unverified base.
-- The guard verifies the base after creation as well: it fails when `HEAD`
-  does not contain the freshly fetched default-branch ref. Re-running the
-  guard after the remote default branch has advanced therefore fails until
-  the worktree is rebased onto the fetched base; this is intentional and
-  matches a rebase-clean handoff discipline.
+- The guard verifies the base when the worktree is created and when the
+  branch is prepared for the merge queue: then it fails if `HEAD` does not
+  contain the freshly fetched default-branch ref. A guard run during planning,
+  review or implementation fetches and verifies the mounts but does not
+  require a rebase: rebasing onto a moved default branch is the merger's job
+  (`merge-queue`), and forcing every line to rebase multiplies work and CI.
 - After the worktree exists, materialize the vendored protocols at their
   pinned version with `git submodule update --init --recursive`.
 
@@ -206,7 +207,9 @@ if ! git fetch origin; then
   exit 1
 fi
 
-if ! git merge-base --is-ancestor "$base_ref" HEAD; then
+# Base containment only when work starts or is prepared for the merge queue.
+mode="${1:-check}"  # start | handoff | check
+if [[ "$mode" != "check" ]] && ! git merge-base --is-ancestor "$base_ref" HEAD; then
   echo "stale base: HEAD does not contain freshly fetched $base_ref" >&2
   echo "create feature worktrees from the fetched base:" >&2
   echo "  git worktree add ../repo-feature -b feature/topic $base_ref" >&2

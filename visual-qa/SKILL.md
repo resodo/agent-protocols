@@ -35,7 +35,8 @@ guideline skill) and go element by element:
 
 ## Output
 
-A list: each finding with the screenshot, the element, what is wrong, and the
+The report opens with the guideline used, its source (URL or path) and the
+date it was read; a report without it does not count. Then a list: each finding with the screenshot, the element, what is wrong, and the
 expected state. "No findings" only after every item above was checked. The
 author fixes and reshoots; QA rechecks the fixed items.
 

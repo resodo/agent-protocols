@@ -6,34 +6,50 @@ Agents should start with `AGENTS.md`. Documentation placement and lifecycle
 rules live in `docs/README.md`; the current protocol map lives in
 `docs/CURRENT.md`.
 
-## Protocols
+## Roles
 
-- `structured-review/` - structured review for high-level plans, implementation plans, and completed implementation validation.
-- `closeout/` - final hygiene checklist before handing off completed work.
-- `planning/` - discussion-to-plan workflow before implementation starts.
-- `retrospective/` - evidence-based post-incident or post-closeout learning workflow.
-- `backlog-maintenance/` - YAML backlog registry maintenance for deferred work, including add/update/close/read operations and CI schema expectations.
-- `readable-brief/` - turns a final, reviewed technical document into a brief the human decision-maker reads in full and approves; required for decision docs.
-- `scout/` - judgment-heavy repository discovery workflow that produces Scout reports and human-reviewed backlog candidate proposals without replacing CI.
+Start with `agents/README.md`: how authority roles and task roles combine,
+the role list, and the coordinator. The master is defined once, in
+`agents/master.md`.
 
-Master + subagent operation (each protocol's description says its reader and
-trigger; bodies load on demand):
+## Protocols, by reader
 
-- `decision-boundary/` - who may decide what: ten gates, the project authority ledger, never-ask rules, escalation format. `CORE.md` is the resident block every consumer embeds in its `AGENTS.md`.
-- `master-board/` - the master's board, the queue of items waiting on the human, and the sweep.
-- `dispatch/` - dispatching subagents: brief, model tier, watchdog, returned work, keeping lines moving.
-- `line-worker/` - how a dispatched worker or researcher works and hands back.
+Each protocol's description says its reader and trigger; bodies load on
+demand.
+
+Every role:
+
+- `decision-boundary/` - who may decide what: ten gates, the authority ledger, delegated execution (the single home of merge and production-change permission), never-ask, escalation. `CORE.md` is the resident block every consumer embeds in its `AGENTS.md`.
+
+The master (and a coordinator for `dispatch`):
+
+- `master-board/` - the board, the queue of items waiting on the human, the settled list, and the sweep.
+- `dispatch/` - briefs, model tier, watchdog, pacing, blocking requests, returned work, relaying.
+- `away-mode/` - pre-authorizations before the human leaves; per-change list on return.
+- `session-handoff/` - one-page handoff and the new master's cold start.
+
+Dispatched agents:
+
+- `line-worker/` - how every dispatched agent works and hands back; the extra limits for implementation workers.
 - `merge-queue/` - one merger, one PR at a time.
 - `release/` - production changes (release, configuration, ops action): permission, preconditions, baseline, official command, staged checks, failure policy.
 - `visual-qa/` - independent review of user-visible changes before the human sees them.
-- `away-mode/` - pre-authorizations before the human leaves; per-change ledger on return.
-- `session-handoff/` - one-page handoff and the new master's cold start.
+
+Authors, drivers and reviewers:
+
+- `planning/` - discussion to an executable plan.
+- `structured-review/` - review of plans and implementations, document levels, decision-doc approval.
+- `closeout/` - final checks and delivery handoff.
+- `readable-brief/` - turns a final, reviewed document into the human's brief; required for decision docs.
 - `fix-triage/` - whether something is wrong, attribution, and the smallest systemic fix.
+- `retrospective/` - evidence-based learning after an incident or closeout.
+- `backlog-maintenance/` - the YAML backlog of deferred work.
+- `scout/` - judgment-heavy repository discovery that proposes backlog candidates.
 
-## Guidance
+Repo maintainers:
 
-- `agent-readiness/` - worktree guard contract (including the resident-core check), `AGENTS.md` bootstrap template, and `capabilities.md`, the map from capability names used in protocols to each coding agent's feature or fallback.
-- `agents/` - role definitions: how roles combine and the coordinator (`agents/README.md`), the master (`agents/master.md`, its single definition), and each dispatched specialist; consumers add thin per-agent wrappers.
+- `agent-readiness/` - worktree guard contract (including the resident-core check), `AGENTS.md` bootstrap template, and `capabilities.md` (capability names to each coding agent's feature or fallback).
+- `agents/` - role definitions; consumers add thin per-agent wrappers.
 
 ## Docs
 
@@ -84,7 +100,10 @@ The canonical source of these protocols is this repository's `origin/main`.
    mounts - `.claude/skills/<protocol>` for Claude Code and
    `.agents/skills/<protocol>` for Codex, symlinked into the vendored
    submodule - so a fresh submodule makes the agents load the protocols
-   natively at startup. No pointer files, and no copied protocol content.
+   natively at startup. No pointer files, and no copied protocol content,
+   with one deliberate exception: the resident core
+   (`decision-boundary/CORE.md`) is copied verbatim into each consumer's
+   `AGENTS.md` and checked by `scripts/check_resident_core.py`.
 3. There is no machine-global read path. Outside a vendoring repo, the
    human directs the agent to a checkout explicitly in session.
 
@@ -95,9 +114,8 @@ refinements only.
 
 ## Usage
 
-Point an agent at the relevant `SKILL.md` file and provide the requested role, artifact, and type.
-
-Example:
+Point an agent at the relevant `SKILL.md` and give it the requested role,
+artifact and type, for example:
 
 ```text
 Please read <your agent-protocols checkout>/structured-review/SKILL.md
@@ -106,14 +124,7 @@ Artifact: docs/some_plan.md
 Type: impl-plan
 ```
 
-For implementation closeout:
-
-```text
-Please read <your agent-protocols checkout>/closeout/SKILL.md
-Scope: current implementation task
-```
-
-For structured-review reviewer passes, use the bundled runner:
+For structured-review gates, use the bundled runner:
 
 ```bash
 python structured-review/scripts/claude_structured_review.py \
@@ -122,57 +133,11 @@ python structured-review/scripts/claude_structured_review.py \
   --type impl-plan \
   --thread-file docs/some_plan.md \
   --artifact docs/some_plan.md \
+  --coding-agent codex \
   --review-tier normal \
   --focus "Review acceptance, validation, scope, and role boundaries." \
   --topic "some plan"
 ```
 
-The runner loads the shared skill from this repo and target-repo overlays from
-the explicit `--worktree`.
-
-The runner supports Claude Code, Codex, and Grok Build. `--reviewer-backend auto`
-tries Claude > Codex > Grok, excluding `--coding-agent NAME`. Missing binaries
-and authoritative exhausted-allowance errors advance without human permission.
-For Codex with Claude exhausted this selects Grok; for Kimi Code it can select
-Codex. Pass the coding identity explicitly, especially for Grok (no pinned
-environment marker). Explicit backend pins do not fall back. Diagnose other
-failures and try eligible alternatives without asking per-provider permission;
-escalate availability only when all three are unavailable or excluded.
-
-Drivers must pass `--review-tier normal` or `--review-tier hard` for new
-repo-backed reviews. Hard additionally requires `--tier-reason` with a concrete
-semantic rationale. Normal is the default; hard is for roughly the hardest 20%
-of the agent's tasks, such as major design/architecture or unusually difficult
-bugs. This is judgment, not a numerical quota. Routine protocol edits and
-mechanical complexity hints alone do not qualify; use normal when in doubt.
-Claude Opus 5.5 `high` / Fable 5.1 `xhigh` and Codex GPT-6 Sol `high` /
-GPT-6 Astra `xhigh` are the normal / hard profiles. Grok uses `grok-4.7`
-for both, with `medium` / `xhigh` effort respectively.
-
-For legacy callers, omitted tier or `--review-tier auto` emits a deprecation
-warning and always selects normal. The runner may recommend hard from review
-type, artifact body size, multi-artifact implementation scope, or pinned
-complexity signals, but that recommendation never changes selected tier,
-model, timeout, scope, or quality gate. Prompt and run metadata record driver
-selection/reason separately from runner recommendation/reasons.
-
-Provider-specific model/effort flags remain deliberate overrides for the
-selected backend, but normal/auto cannot use them to select that backend's
-pinned hard-only profile model; select hard with `--tier-reason` instead. Grok's
-shared model is allowed for normal. Do not evade rare-hard guidance with effort
-overrides. Grok flags are `--grok-bin`, `--grok-model`, and `--grok-effort`. An
-override for the non-selected provider is ignored with a warning.
-
-`--protocol-dir` is optional and mainly for tests or intentional alternate
-checkouts; normal usage relies on the script's own `structured-review`
-directory.
-
-Review attempts default to 1800 seconds for normal and 3600 seconds for hard,
-with explicit `--timeout-sec` overrides. Drivers can queue a reasoned stop via
-`--stop-run RUN --stop-reason REASON`, then resume a cleaned incomplete attempt
-with `--resume-run RUN` and the same review arguments. Auto resume stays on the
-recorded backend/identity, even if a preferred provider becomes available.
-Each launch prints its
-private attempt directory. Recovery preserves the CLI conversation and rejects
-changed targets, concurrent/stale attempts, and repeated write-back. See
-`structured-review/references/recovery.md` for lifecycle and limitations.
+Backends, tiers, models, timeouts and recovery are in
+`structured-review/references/runner-operations.md`.

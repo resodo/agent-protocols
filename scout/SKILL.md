@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Use when a repo should be manually or periodically inspected for lifecycle, reachability, documentation, coverage, process, or maintainability issues and high-signal discoveries should be proposed as backlog candidates without treating judgment-heavy discovery as CI.
+description: "[scout executor] Use when a repo should be manually or periodically inspected for lifecycle, reachability, documentation, coverage, process, or maintainability issues and high-signal discoveries should be proposed as backlog candidates without treating judgment-heavy discovery as CI."
 ---
 
 # Scout
