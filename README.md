@@ -61,6 +61,16 @@ Protocol directories should hold executable or reusable protocol material:
 `SKILL.md`, `scripts/`, `tests/`, `references/`, and templates. Do not put
 dated plans or one-off review artifacts in protocol directories.
 
+## Where A Rule Lives
+
+Four layers, one home per rule (approved 2026-10-16;
+`docs/agent_plans/2026-10-16_repo_restructure_decision.md`, section 3): this
+repo (rules true for any project and any coding agent); each project's
+`.agent-protocols/` overlay (its paths, commands, numbers, business terms,
+settled decisions and authority ledger); the human's user-level preferences
+(outside every repo); and the master's state files (no rules). A program that
+spans several repos keeps its master-level overlay files in one home repo.
+
 ## Local Overlays
 
 Protocols are reusable. Project-specific policy belongs in the repo being worked

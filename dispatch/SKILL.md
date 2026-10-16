@@ -55,13 +55,18 @@ file.
 ## After Dispatching
 
 - In the same turn, start a watchdog (`references/watchdog.md`).
-- Record the line on the board with a link to its `STATUS.md`.
+- Record the line on the board with a link to its `STATUS.md` (master). A
+  coordinator reports the new line to the master instead; only the master
+  writes the board.
 - A verbal "someone will do it in parallel" becomes a tracked task now, or it
   does not exist.
 - A discovered improvement to a design or plan is written into that document
   now, by a cheap agent if needed, with its date and source.
 
 ## When An Agent Reports
+
+A coordinator does the same checks but relays to the master, never to the
+human; denials and anything the human must hear go to the master.
 
 - Done: read its result against the brief before relaying; check claims that
   matter (PR exists, tests ran, files changed). Relay to the human in the

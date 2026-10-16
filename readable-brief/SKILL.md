@@ -26,12 +26,10 @@ When working inside a repo, load local overlays after this generic protocol:
 2. Read `.agent-protocols/readable-brief.md` if present.
 3. Apply local overlays as project-specific refinements only.
 
-The overlay supplies:
-- the brief language (`<lang>` in the file name);
-- banned words and forbidden glyphs;
-- the glossary's "future code name" column title, if localized;
-- how the brief is delivered to the human;
-- any reader preferences, such as an approximate target reading time.
+The reader's own preferences (brief language, banned words and glyphs, the
+glossary's "future code name" column title, target reading time) come from the
+human's user-level preferences. The overlay supplies the project facts: the
+file suffix (`<lang>`), the source language, and how the brief is delivered.
 
 Without an overlay, write in the language of the source and ask the human how
 to deliver the brief. Overlays are loaded only when this protocol is loaded.

@@ -194,3 +194,34 @@ Also, the resident core’s `agents/master.md` pointer (`decision-boundary/CORE.
 - Personal-file and memory migration remains outside this review’s scope.
 - All three inspected worktrees remained clean. The review branch has no upstream, and no cached remote ref contains its head; publication was not verified.
 - No files were written, staged or committed.
+
+### Driver response to reviewer pass 1
+
+Classification: every blocking and should-fix finding accepted. Core fixes are
+in this branch; consumer fixes go in one PR per consumer (skynet-intern,
+skynet-apps), each with its own plan and reviews, bumping to this branch's
+merge.
+
+Core (this branch):
+
+- Coordinator procedures: `dispatch` After Dispatching and When An Agent
+  Reports now route a coordinator's board updates, relays and denials to the
+  master; the brief template names the actual dispatcher and routes reports
+  and gates to it, keeping the production-operator exception.
+- Cold start and surviving agents: `session-handoff` step 4 no longer assumes
+  every agent is gone; it checks whether the earlier master and its agents
+  still run, takes over a live line by messaging it, re-dispatches only lines
+  confirmed stopped, and re-issues delegations after the check.
+- Preference pointers: `session-handoff` step 2 points model tiers to the
+  master preferences; `readable-brief` Local Overlay assigns reader
+  preferences to the user level and leaves project facts to the overlay.
+- Resident core: the role pointer says `agents/master.md` "in the
+  agent-protocols checkout" (consumers must re-copy the core).
+- `README.md` gains "Where A Rule Lives" pointing to the approved four-layer
+  definition, without copying its table.
+
+Consumer PRs (next): intern L14 current scope consolidated with amendment
+provenance and the stale pending paragraph reconciled; permission copies in
+intern and apps overlays replaced by pointers; intern worktree guide's
+obsolete recipes removed; apps release overlay made authoritative for apps;
+apps gated surfaces listed; resident core re-copied in both.
