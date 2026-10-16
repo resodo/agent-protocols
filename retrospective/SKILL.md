@@ -39,8 +39,9 @@ Prefer primary evidence over memory:
 4. agent memory only when primary evidence is unavailable.
 
 Where each coding agent keeps its transcripts is in
-`agent-readiness/capabilities.md` ("transcript location"). If no transcript
-location is known for the current agent, proceed only with explicit
+`agent-readiness/capabilities.md` ("transcript location"). Filter a transcript for the
+time window and the user messages relevant to the retrospective. If no
+transcript location is known for the current agent, proceed only with explicit
 memory-sourced labels. If transcript files are expected but missing or
 unreadable, pause and ask the operator to locate them before making
 transcript-backed claims.
