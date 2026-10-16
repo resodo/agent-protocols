@@ -196,3 +196,30 @@ This was a read-only review of the plan, approved decision, and relevant current
 - Index changes: accepted; README grouped by reader, CURRENT lists the new
   reference, recovery stays in `recovery.md`.
 - Deletion check: accepted; existence check added.
+
+### Reviewer pass 2 (impl-plan, codex reviewer)
+
+The human wants general rules to have one clear home, consumer assumptions removed from the core, and driver-only runner instructions kept out of reviewer prompts.
+
+#### Blocking issues
+
+None.
+
+#### Thread resolutions
+
+- **Generated reviewer prompt: Resolved.** Section D removes the driver-only tier instruction and requires a generated-prompt check that retains reviewer guidance.
+- **Principles file: Resolved.** Section B accounts for the previously omitted principles and gives a home or deletion reason for each line.
+- **Indexes: Resolved.** Section C specifies the reader grouping and reference-map update; section D keeps detailed recovery in `references/recovery.md`.
+- **Deletion check: Resolved.** Validation now checks that the file is absent as well as searching for remaining references.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**No blocking issues remain.** The plan is ready for implementation.
+
+#### Residual risks or validation gaps
+
+This was a read-only plan review. The worktree was clean; the planned prompt and test checks have not yet been run.
