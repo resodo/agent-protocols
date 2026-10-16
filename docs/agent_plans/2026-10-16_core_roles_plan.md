@@ -203,3 +203,37 @@ This was a read-only review of the plan, decision, and relevant current protocol
 - Production operator protocol: accepted; scope item 12.
 - Ledger transcription versus prohibitions: accepted; scope item 13.
 - Permission-copy inventory: accepted; scope item 14 and the copy check.
+
+### Reviewer pass 2 (impl-plan, codex reviewer)
+
+The human’s concern is that each role, especially the master, has one clear definition and permission rules have one home.
+
+#### Blocking issues
+
+##### Thread: Complete the role definitions and reporting routes
+
+Scope item 11 says the production operator reports to the master. The approved decision also permits reporting check results to a coordinator (`2026-10-16_repo_restructure_decision.md`, section 4). State that route in the plan so implementation preserves the approved boundary. This pass 1 thread remains open.
+
+##### Thread: Reconcile delegated ledger transcription with existing prohibitions
+
+Scope item 13 proposes “Only the master uses the ledger for permission” in `CORE.md`, while items 6 and 14 require a dispatched agent to verify its cited entry. Specify that the master selects authority and the dispatched agent verifies only the entry cited in its brief. The proposed wording otherwise leaves the resident core ambiguous. This pass 1 thread remains open.
+
+##### Thread: Finish the permission-copy inventory
+
+Scope item 14 says the `closeout/SKILL.md` phrasing bullet stays. That bullet currently also restates both complete merge-permission conditions. Keep the distinction between “ready to merge” and permission, but replace the condition list with a pointer to `decision-boundary`. Otherwise the plan’s one-home goal and copy check cannot both pass. This pass 1 thread remains open.
+
+#### Prior-thread resolution
+
+Resolved: scope item 12 specifies how `release/SKILL.md` applies to a named production change, including commands, receipts, baseline, rollback, and checks.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Blocking issues remain.** The three wording changes above are needed before implementation; none requires a new mechanism.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the plan, decision, and relevant current protocols. No validation commands were run or files changed. The worktree was clean.
