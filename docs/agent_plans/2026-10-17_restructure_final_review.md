@@ -225,3 +225,33 @@ provenance and the stale pending paragraph reconciled; permission copies in
 intern and apps overlays replaced by pointers; intern worktree guide's
 obsolete recipes removed; apps release overlay made authoritative for apps;
 apps gated surfaces listed; resident core re-copied in both.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+The human’s concern is that the restructured protocols give each role clear instructions and keep each rule in one authoritative home. I reviewed `HEAD~1..HEAD` against the pass-1 findings, limited to the shared core fixes. The worktree was clean.
+
+#### Blocking issues
+
+##### Thread: Cold-start takeover assumes cross-session messaging works
+
+`session-handoff/SKILL.md:48` tells a new master to take over a surviving agent by messaging it. The capability map documents Codex follow-up messaging through the agent’s **parent** thread (`agent-readiness/capabilities.md:53`); it does not establish that a new master session can reach an agent owned by the earlier session. The instruction gives no path when the agent is known to be running but cannot be reached. That leaves the claimed takeover and delegation check incomplete.
+
+**Smallest fix:** say to park the line until the running agent can be reached and acknowledges the handoff, using an available documented route. Do not redispatch or reissue that line’s gated delegation in the meantime. No new mechanism is needed.
+
+##### Thread: Brief-language fallback overrides the reader’s preference
+
+`readable-brief/SKILL.md:29-32` correctly puts the reader’s language preference in user-level instructions. Line 34 then says that, without a project overlay, the brief must use the source document’s language. For an English decision document and a reader whose user-level preference is Chinese, the fallback produces the wrong brief.
+
+**Smallest fix:** use the reader’s user-level preference when present; fall back to the source language only when no reader preference is recorded.
+
+#### Non-blocking issues
+
+None in the scoped core fixes.
+
+#### Overall judgment
+
+The coordinator routing, dispatch brief, master-preference pointer, resident-core pointer, and README source-map pointer address their pass-1 findings by direct inspection. Cold-start handling and readable-brief preference routing remain **Partial** for the reasons above. The core fixes are **not yet ready for closeout**. This judgment does not assess the deferred consumer PR fixes or declare the full restructure converged.
+
+#### Residual risks and validation gaps
+
+This documentation-only pass used the changed diff, current instructions, and concrete reading scenarios. No scripts or tests were run, and no files were written. Cross-session agent messaging was not demonstrated; the capability map is the recorded basis for that finding.
