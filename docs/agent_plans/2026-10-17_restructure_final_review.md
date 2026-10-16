@@ -287,3 +287,9 @@ The brief-language thread is **resolved** by `readable-brief/SKILL.md:34-35`: th
 #### Residual risks and validation gaps
 
 This documentation-only review used the committed diff and direct reading of the instructions. No scripts or tests were run. Cross-session messaging was not demonstrated; the revised procedure parks a line when contact is unavailable.
+
+### Driver response to reviewer pass 3
+
+- Stopped-agent delegation path: accepted; delegations are re-issued for a
+  stopped line when it is re-dispatched, and for a live line after its
+  agent's acknowledgement.

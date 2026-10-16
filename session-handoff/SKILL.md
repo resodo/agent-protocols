@@ -49,8 +49,9 @@ Write it whenever the context is getting full, not only at the very end.
    parked: never start a second agent on it. Take it over only once the agent
    can be reached through a documented route (the "message a running agent"
    capability from a session that owns it, or the earlier master session
-   relaying) and acknowledges the handoff. Re-issue a line's gated delegations
-   only after that.
+   relaying) and acknowledges the handoff. Gated delegations are re-issued
+   only after this check: for a stopped line when it is re-dispatched, for a
+   live line after its agent acknowledged the handoff.
 5. Before resuming any old plan, write "premise then vs state now".
 6. Start the scheduled sweep now, in this turn, with the "scheduled sweep"
    capability (see the capability map; for example a 30-minute timer that runs
