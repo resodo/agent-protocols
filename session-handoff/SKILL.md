@@ -45,10 +45,12 @@ Write it whenever the context is getting full, not only at the very end.
    one production line (read-only), each line's worktree and STATUS, and
    whether the earlier master session and its agents are still running. A
    line whose agent is confirmed stopped is re-dispatched or parked with a
-   trigger; a line whose agent still runs is taken over by messaging it (the
-   "message a running agent" capability), never by starting a second agent on
-   it. If you cannot tell, ask the earlier master session or park the line
-   until you can. Re-issue gated delegations only after this check.
+   trigger. A line whose agent still runs, or whose state you cannot tell, is
+   parked: never start a second agent on it. Take it over only once the agent
+   can be reached through a documented route (the "message a running agent"
+   capability from a session that owns it, or the earlier master session
+   relaying) and acknowledges the handoff. Re-issue a line's gated delegations
+   only after that.
 5. Before resuming any old plan, write "premise then vs state now".
 6. Start the scheduled sweep now, in this turn, with the "scheduled sweep"
    capability (see the capability map; for example a 30-minute timer that runs

@@ -255,3 +255,11 @@ The coordinator routing, dispatch brief, master-preference pointer, resident-cor
 #### Residual risks and validation gaps
 
 This documentation-only pass used the changed diff, current instructions, and concrete reading scenarios. No scripts or tests were run, and no files were written. Cross-session agent messaging was not demonstrated; the capability map is the recorded basis for that finding.
+
+### Driver response to reviewer pass 2
+
+- Cold-start takeover: accepted; a live or unknown line is parked until its
+  agent is reachable through a documented route and acknowledges the
+  handoff; no second agent, no re-issued delegation before that.
+- Brief language: accepted; the reader's user-level preference wins, the
+  source language is only the fallback.
