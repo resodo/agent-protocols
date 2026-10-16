@@ -8,8 +8,9 @@ items 6-11.
 
 ## Human acceptance record
 
-Per master relay (the coordinator line, 2026-10-16), pending record by the
-master session that received it: the human read the brief delivered as a page
+Master-verified (2026-10-16): the session that received it confirmed the
+exact words, written by the human in that session at about 14:5xZ on
+2026-10-16 with the page link. The human read the brief delivered as a page
 (the five core questions with options and recommendations, items 6-11, the
 problems, the target structure, the change table and the plan list, with a
 link to the full brief) and answered, verbatim: "全部同意 继续吧". This
