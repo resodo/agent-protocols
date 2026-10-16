@@ -78,6 +78,54 @@ In:
     `agents/master.md`; `agent-readiness/capabilities.md` role-definition row
     unchanged.
 
+11. Every role file has the same six fields (who, owns, may decide, stops
+    at, reports to, preloads): `agents/line-worker.md`, `researcher.md`,
+    `merge-queue.md`, `release.md`, `visual-qa.md` and the new `master.md`.
+    Reporting routes: a worker or researcher reports to whoever dispatched it
+    (master or coordinator); merge agent and production operator report to the
+    master; visual QA to whoever dispatched it. "Report to the master" in
+    `decision-boundary` (Dispatched Agents) and `line-worker` (intro, While
+    Working, Hand Back) becomes "report to whoever dispatched you".
+12. `release/SKILL.md` becomes the production-change protocol for the
+    production operator, file name kept. Its steps apply to every named change:
+    the brief names the change, the official command and its receipt (from the
+    project overlay); preconditions and a baseline are taken for every change;
+    "pin a commit" and "record the rollback target" apply when a version is
+    switched, and for a configuration or ops change the rollback is the
+    recorded previous value or the command's documented undo; staged checks
+    are those the overlay names for that kind of change, and when the overlay
+    names none for a configuration or ops change, one read-back of the changed
+    value plus the health check the brief names. Failure policy unchanged.
+13. Ledger transcription (answer 3a) is reconciled with the existing
+    prohibitions: typing a `proposed` entry from a text the master gives is
+    not recording an approval and grants nothing; only the session that heard
+    the grant compares it with what it heard and sets it `active` with the
+    date. Wording changes: `CORE.md` ("Only the master reads the ledger"
+    becomes "Only the master uses the ledger for permission"; "never record a
+    human approval yourself" stays and gains "a `proposed` entry the master
+    asked you to type is not an approval"); `decision-boundary` Authority
+    Ledger "Recording" and SAFETY; `line-worker` SAFETY and Hand Back. A
+    scribe never sets an entry `active`.
+14. Permission-copy inventory, each handled individually:
+    - `closeout/SKILL.md` SAFETY bullets 4-6 (merge permission, standing
+      authorization, "ready to merge" phrasing): bullets 4 and 5 become one
+      pointer to `decision-boundary` Delegated Execution plus the stop rule
+      "without that permission closeout stops at `ready for human merge`";
+      bullet 6 (phrasing) stays. Section 6 "Git and Process Hygiene" merge
+      bullets become the same pointer.
+    - `merge-queue/SKILL.md` Who Merges paragraph 2: pointer; SAFETY "Do not
+      merge without one of the two permissions above": stays as a short stop
+      rule pointing to `decision-boundary`.
+    - `release/SKILL.md` Before step 1: pointer plus "irreversible steps are
+      named separately"; SAFETY: unchanged short stop rules.
+    - `structured-review/SKILL.md` SAFETY ledger and approval-recording
+      bullets: pointer.
+    - `readable-brief/SKILL.md` Delivery recording sentence: pointer.
+    - `planning/SKILL.md` ledger exemption bullet: pointer.
+    - `CORE.md` dispatched-agent bullet: short form only (cite, look up only
+      that entry, stop if inactive); the full procedure stays in
+      `decision-boundary` Delegated Execution.
+
 Out (plan 2): new rules from recent lessons, consumer assumptions moved out
 of the core, README/CURRENT reduced to maps, runner driver-only text, reader
 tags for lifecycle protocols, the unreferenced `fix-triage` principles file.
@@ -105,8 +153,11 @@ role, not a dispatched specialist.
   4. "A researcher was told to read production; may it?"
   5. "A worker's brief cites the human's approval of a new response field."
   6. "Another agent typed a ledger entry the master heard."
-- `git grep` that the line-level lookup procedure and merge-permission
-  conditions appear in full only in `decision-boundary/SKILL.md`.
+- Copy check, file by file for the list in scope item 14: each named passage
+  is now a pointer or a short stop rule, and the phrases "line-level search",
+  "current-turn instruction" with merge, and "standing authorization" appear
+  with full conditions only in `decision-boundary/SKILL.md` (positive control:
+  the grep finds them there).
 
 ## Review Threads
 
@@ -145,3 +196,10 @@ None.
 #### Residual risks or validation gaps
 
 This was a read-only review of the plan, decision, and relevant current protocols. No validation commands were run and no files were changed; the worktree was clean.
+
+### Driver response to reviewer pass 1
+
+- Role fields and reporting routes: accepted; scope item 11.
+- Production operator protocol: accepted; scope item 12.
+- Ledger transcription versus prohibitions: accepted; scope item 13.
+- Permission-copy inventory: accepted; scope item 14 and the copy check.
