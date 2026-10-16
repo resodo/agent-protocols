@@ -376,3 +376,32 @@ The decision document is absent from `origin/main`, and its human-acceptance rec
 - Coordinator and production-operator reporting: accepted; the coordinator
   definition states the exception.
 - Tests rerun after the fixes: `tests` 30 OK.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+The human wants one clear definition for each role, especially the master, and one home for permission rules.
+
+#### Blocking issues
+
+None. The four blocking issues from implementation pass 1 are resolved.
+
+#### Prior-thread resolutions
+
+- **Inactive ledger entry: Resolved.** `decision-boundary/CORE.md` now requires the cited entry to be `active` and to cover the action.
+- **Permission coverage: Resolved.** `decision-boundary/SKILL.md` now defines permission for merging, closing a PR, deleting a remote branch, and named production changes. It treats approved `away-mode` pre-authorizations as temporary ledger entries.
+- **Production brief: Resolved.** `release/SKILL.md` now requires the brief to name the official command and expected receipt.
+- **Reporting route: Resolved.** `agents/README.md` now states the production operator’s reporting exception.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**No blocking implementation issues remain. The implementation is ready for closeout.** Scope items 2, 6, 7, 8, 11, 12, and 14 move from `Partial` to `Done` based on the cited edits. Items 1, 3–5, 9–10, and 13 remain `Done` from pass 1; the latest diff does not change them.
+
+#### Residual risks or validation gaps
+
+This was a read-only review. The driver reports 30 tests passing after the fixes; I did not rerun them. The worktree is clean.
+
+The approved decision document is still absent from `origin/main`, and its human-acceptance record still awaits the direct recipient’s record. The master owns those delivery prerequisites during closeout.
