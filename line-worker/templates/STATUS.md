@@ -1,5 +1,7 @@
 # <line> STATUS (<date>)
 
+Agent: <agent id> - model tier: <strong | cheap> (<model name>) - dispatched by: <master | coordinator NAME>
+
 ## Decisions already made
 - <decision> - <source>
 
