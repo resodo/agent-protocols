@@ -306,3 +306,60 @@ None.
 #### Residual risks or validation gaps
 
 This was a read-only review; no validation commands were run, and the worktree was clean. The decision document’s acceptance record still says the master session must record the approval directly, and its commit is not in this checkout’s current `origin/main` reference. Those process steps remain prerequisites to dependent implementation.
+
+### Reviewer pass 1 (impl, codex reviewer)
+
+The human wants one clear definition for each role, especially the master, and one home for permission rules.
+
+#### Blocking issues
+
+##### Thread: Restore the inactive-entry stop rule in the resident core
+
+`docs/agent_plans/2026-10-16_core_roles_plan.md:129–131` requires a dispatched agent to stop if its cited ledger entry is inactive. `decision-boundary/CORE.md:19` now says only to stop if the entry no longer covers the action. A `proposed` entry can still name and cover that action while granting no permission. Restore the explicit `active` check in the resident core; the long form already requires it.
+
+##### Thread: Define permission for every action redirected to Delegated Execution
+
+`closeout/SKILL.md:92–97` sends merge, PR closure, and remote-branch deletion to `decision-boundary/SKILL.md`, Delegated Execution. That section defines permission only for a merge or release (`decision-boundary/SKILL.md:170–177`). The previous closeout text required permission naming the exact action and PR or branch for all three. Extend the central rule to cover closure and deletion, or keep their existing exact-action requirement in closeout with a valid pointer. The current pointer leaves those actions without the rule it claims to reference.
+
+The production-change expansion has the same gap: `release/SKILL.md:22–26` points configuration and ops changes to a rule worded for a “release.” It also presents an `away-mode` pre-authorization as a separate route, although `away-mode/SKILL.md` records approved pre-authorizations as temporary ledger entries. State the authorization path for every named production change in the central rule.
+
+##### Thread: Name the production command and receipt in the brief
+
+Scope item 12 requires the brief to name the change, official command, and receipt. `release/SKILL.md:22–26` requires only the change and permission in the brief; lines 15–18 put commands and receipts in the overlay. Require the brief to identify the selected official command and expected receipt so an operator cannot choose among overlay commands for itself.
+
+##### Thread: Reconcile coordinator and production-operator reporting
+
+`agents/README.md:42–43` says a coordinator’s workers report to it and never to the master. `agents/release.md:11–12` and `release/SKILL.md:62–64` say a production operator reports to the master while sending check results to a coordinator that dispatched those checks. State that exception in the coordinator definition so the reporting route is unambiguous.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Blocking issues remain; the implementation is not ready for closeout.** The item-by-item trace is:
+
+| Scope item | Status | Evidence |
+|---|---|---|
+| 1 | Done | `agents/master.md` defines appointment, ownership, limits, handover, and preloads. |
+| 2 | Partial | `agents/README.md` defines role composition and coordinator, with the reporting conflict above. |
+| 3 | Done | `agents/release.md` defines the production operator. |
+| 4 | Done | `agents/line-worker.md` and `agents/researcher.md` cover the scoped exceptions and reads. |
+| 5 | Done | `line-worker/SKILL.md` separates common rules from implementation-worker limits. |
+| 6 | Partial | `decision-boundary/CORE.md` retains all ten gates but omits the inactive-entry stop. |
+| 7 | Partial | `decision-boundary/SKILL.md` centralizes permission, but its action list is incomplete. |
+| 8 | Partial | Pointers were added; the closeout pointer has no matching rule for two actions. |
+| 9 | Done | Master-procedure descriptions, dispatch, handoff, and release reporting changed as planned. |
+| 10 | Done | `README.md` and `docs/CURRENT.md` index the master definition. |
+| 11 | Partial | All six role fields appear; coordinator/operator reporting conflicts. |
+| 12 | Partial | Production-change steps are present; the brief omits the command and receipt. |
+| 13 | Done | Ledger transcription stays `proposed` until the direct recipient activates it. |
+| 14 | Partial | Listed copies were shortened, but the resident-core stop and closeout permission coverage need correction. |
+
+The full `HEAD~1` diff contains no identified change outside items 1–14. The copy search found the detailed line-level lookup and standing-authorization conditions in `decision-boundary/SKILL.md`, as intended.
+
+#### Residual risks or validation gaps
+
+This was a read-only document and diff review. Tests and the six scenario results are driver-reported; I did not rerun protocol scripts. The worktree is clean.
+
+The decision document is absent from `origin/main`, and its human-acceptance record still says the master session must record the approval directly. The master owns those prerequisites before dependent work can be delivered.
