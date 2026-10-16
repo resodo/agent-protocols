@@ -293,3 +293,23 @@ This documentation-only review used the committed diff and direct reading of the
 - Stopped-agent delegation path: accepted; delegations are re-issued for a
   stopped line when it is re-dispatched, and for a live line after its
   agent's acknowledgement.
+
+### Reviewer pass 4 (impl, codex reviewer)
+
+The human wants the restructured protocols to give each role clear instructions and keep each rule in one authoritative home. I reviewed `HEAD~1..HEAD` against the pass 3 response. The worktree is clean.
+
+#### Blocking issues
+
+None. **The stopped-agent delegation thread is resolved.** `session-handoff/SKILL.md:47-54` now separates the two paths: a confirmed stopped line can receive a new delegation when re-dispatched; a live line waits for its agent to acknowledge handoff. `decision-boundary/SKILL.md:221-222` requires the new master to recheck the ledger before either delegation.
+
+#### Non-blocking issues
+
+The pass 3 wording issue remains: `session-handoff/SKILL.md:8` says subagents die with the session, while the cold-start procedure checks for surviving agents. Remove the blanket claim. The explicit live-state check prevents this wording issue from blocking the scoped fix.
+
+#### Overall judgment
+
+The pass 3 blocking finding is resolved. **The scoped core fix is ready for closeout.** This judgment does not cover the consumer findings or declare the full restructure converged.
+
+#### Residual risks and validation gaps
+
+This documentation-only pass used the committed diff and direct inspection. No scripts or tests were run. Cross-session messaging was not demonstrated; the procedure parks a live line when its agent cannot be reached.
