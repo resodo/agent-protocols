@@ -482,6 +482,31 @@ from a record).
 | A39 | Consumers skynet-agent-kit, skynet-ingest, skynet-twitter pinned 49 commits behind, no resident core | rollout gap | question 2 |
 | A40 | Memory rule entries added since 10-11 (ask-only-nontrivial, self-check, plan-ahead, survey-before-asking) | duplicates after this work | archive and delete |
 
+## Closeout (2026-10-17)
+
+The restructure is done and the full state converged: the second hard
+(Codex Astra) review of the whole repo plus both consumer overlays found no
+blocking issues (`2026-10-17_restructure_convergence_review.md`, pass 2,
+merged in #51). Delivered: the role files with one master definition
+(`agents/master.md`) and the coordinator, permission rules with one home in
+`decision-boundary` Delegated Execution, the lessons since 10-11 in their
+owning protocols, consumer assumptions moved out of the core, indexes as maps
+and driver-only runner text out of reviewer prompts (#45-#50); skynet-intern
+#1712, #1715, #1717 and skynet-apps #44, #45, #48 (overlays hold project facts
+only, ledger L14a/L14b/L15/L16 active and L14 consolidated, guard modes,
+release overlay and gated surfaces for apps); the human's master preferences
+in `~/.config/agent-prefs/MASTER.md` and reader preferences in
+`PREFERENCES.md`; the lines' shared notes reduced to pointers and the moved
+memories archived with an index of where each went. A read-only cold-start
+master answered "what is running, what is next, who owns what" from files
+only; its gaps in the master's state files (handoff, board lines table, queue
+cleanup, queue-only grants) are owned by the master, and the STATUS template
+now records agent, model tier and dispatcher (#49). The last non-blocking
+duplicate (the lease rule in both merge-queue overlays) is removed in
+skynet-intern #1721 and skynet-apps #50, handed to the merge queue. Validation
+throughout is driver-reported local checks plus reviewer inspection; no
+production action was taken by this work.
+
 ## Review Threads
 
 ### Reviewer pass 1 (other-plan, codex reviewer)
