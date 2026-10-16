@@ -323,3 +323,27 @@ This was a read-only inspection of `git diff HEAD~1` and the relevant artifacts.
 
 - "Still needed" question: accepted; closeout asks it for each added or
   changed mechanism before the lifecycle-record check.
+
+### Reviewer pass 3 (impl, codex reviewer)
+
+The human wants the core rules to have clear owners while closeout retains the check that added mechanisms are still needed.
+
+#### Blocking issues
+
+None.
+
+#### Thread resolution
+
+- **Mechanism necessity: Resolved.** `closeout/SKILL.md` now asks whether each added or changed mechanism is still needed before checking the lifecycle record for retained mechanisms. This satisfies the remaining item in section E of the accepted plan.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Ready for closeout.** The blocking issue from implementation review pass 2 is resolved.
+
+#### Residual risks or validation gaps
+
+This was a read-only inspection of the current artifacts and `git diff HEAD~1`. The worktree was clean and `git diff --check HEAD~1` passed. I did not rerun the previously driver-reported tests; this revision changes protocol wording only.
