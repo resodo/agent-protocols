@@ -109,3 +109,39 @@ role, not a dispatched specialist.
   conditions appear in full only in `decision-boundary/SKILL.md`.
 
 ## Review Threads
+
+审查发现四处会让实施者猜测权限或职责边界；以下是供 runner 记录的完整审查线程。
+
+### Reviewer pass 1 (impl-plan, codex reviewer)
+
+The human’s concern is that each role, especially the master, should have one clear definition, and permission rules should have one home.
+
+#### Blocking issues
+
+##### Thread: Complete the role definitions and reporting routes
+
+The approved decision requires each role file to state who the role is, what it owns, what it may decide, where it stops, whom it reports to, and what it preloads. The plan updates `agents/line-worker.md`, `agents/researcher.md`, and `agents/release.md`, but omits `agents/merge-queue.md` and `agents/visual-qa.md`, which currently lack explicit ownership and reporting fields. It also leaves “report to the master” in `decision-boundary/SKILL.md` and `line-worker/SKILL.md`, although the approved coordinator’s workers report to the coordinator. Add these existing files and reporting instructions to the plan’s edit list. This needs wording changes, not a new mechanism.
+
+##### Thread: Make the production operator’s protocol usable beyond releases
+
+The plan widens `agents/release.md` to cover configuration changes and operations, but its only specified edits to `release/SKILL.md` are permission and board-update text. That protocol still describes shipping a release, switching versions, and release-specific checks. Specify how its existing steps apply to each named production change, including where the official command, applicable checks, and rollback behavior come from. Otherwise an operator handling a configuration or operations action must guess which release steps apply.
+
+##### Thread: Reconcile delegated ledger transcription with existing prohibitions
+
+Answer 3a allows another agent to type a ledger entry before the session that heard the grant verifies and activates it. The plan changes `decision-boundary/SKILL.md`, but does not say how this fits the resident core’s “only the master reads the ledger” and “never record a human approval yourself,” or `line-worker/SKILL.md`’s approval-recording prohibition. State the narrow difference between preparing an inactive entry and attesting to an authorization, and identify the wording that must change. A scribe must not be able to make its own transcription authoritative.
+
+##### Thread: Finish the permission-copy inventory
+
+The goal says merge, release, and ledger permission rules have one home. The pointer list names `closeout` SAFETY, `merge-queue` Who Merges, and `release` Before step 1, but permission conditions also appear later in `closeout/SKILL.md`, in `merge-queue/SKILL.md` SAFETY, and in `release/SKILL.md` SAFETY. Specify which of those become pointers and which remain short role-specific stop rules. Validate the known copies individually; an unspecified `git grep` does not establish that the full conditions have only one home.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Blocking issues remain.** The plan covers the approved direction, but the role, production-operation, and permission edits need enough detail to implement without guessing. It is not yet ready for implementation.
+
+#### Residual risks or validation gaps
+
+This was a read-only review of the plan, decision, and relevant current protocols. No validation commands were run and no files were changed; the worktree was clean.
