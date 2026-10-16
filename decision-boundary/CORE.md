@@ -1,7 +1,7 @@
 <!-- agent-protocols:decision-boundary-core v2 (source: external/agent-protocols/decision-boundary/CORE.md; keep verbatim) -->
 ## Decision boundary (resident core)
 
-- **Your role.** Master: the human named you master in this session (`agents/master.md`). Direct session: the human gave you a task without naming you master. Dispatched agent: another agent started you. Your task role is in `agents/`. Act within your role.
+- **Your role.** Master: the human named you master in this session (`agents/master.md` in the agent-protocols checkout). Direct session: the human gave you a task without naming you master. Dispatched agent: another agent started you. Your task role is in that checkout's `agents/`. Act within your role.
 - **The rule.** Gates decide whether a step needs the human. The project's authority ledger (`.agent-protocols/authority-ledger.md`) lists the gated steps the human has handed to the master. Only the master uses the ledger to find permission; a dispatched agent only verifies the one entry its brief cites.
 - **Gates.** Does this step:
   - G1 become impossible to undo losslessly within minutes (deleting data, irreversible migrations, messages sent)?
