@@ -293,3 +293,28 @@ This was a read-only review of `git diff HEAD~1` and the reviewed artifacts. The
   its tests and itself, and indexes only when routes change.
 - Transcript filtering: accepted; kept in `retrospective`.
 - Tests rerun: `tests` and `structured-review/tests` OK.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+The human wants general rules to have one home, consumer assumptions removed from the core, and closeout checks to retain their purpose without duplicating review criteria.
+
+#### Blocking issue
+
+##### Thread: Keep the closeout question about whether mechanisms are still needed
+
+The accepted plan says `closeout` must ask whether each added mechanism is **owned and still needed**. `closeout/SKILL.md` now checks that a review happened and recorded lifecycle details, but it does not ask whether the mechanism is still needed at closeout. Restore that question without copying the lifecycle checklist back from `structured-review/references/review-lenses.md`.
+
+#### Resolutions from pass 1
+
+- **B, output manifests: Resolved.** The manifest block now applies only when the repo’s documentation contract calls for output folders with manifests.
+- **C, index maintenance: Resolved.** `structured-review/references/runner-operations.md` names the runner, tests, and reference as the update targets; indexes change only when their routes change.
+- **E, single checklist: Partial.** The duplicated lifecycle and UI criteria were reduced, but the planned “still needed” closeout question is missing.
+- **Transcript filtering: Resolved.** `retrospective/SKILL.md` retains the instruction.
+
+#### Overall judgment
+
+**One blocking issue remains.** B and C are Done; E is Partial. The implementation is not yet ready for closeout.
+
+#### Residual risks or validation gaps
+
+This was a read-only inspection of `git diff HEAD~1` and the relevant artifacts. The worktree was clean and `git diff --check HEAD~1` passed. The driver reports that `tests` and `structured-review/tests` passed; I did not rerun them.
