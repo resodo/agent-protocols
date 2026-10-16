@@ -167,14 +167,17 @@ preferences in the user-level instructions.
 
 ## Delegated Execution
 
-This section is the single home of merge and release permission; other
-protocols point here.
+This section is the single home of permission for merging, closing a PR,
+deleting a remote branch, and any named production change (a release, a
+configuration change, an ops action); other protocols point here.
 
-Permission for a merge or a release is one of: the human's current-turn
-instruction naming the PR or release and the action ("current-turn" means the
-human's most recent message), or an `active` ledger entry whose scope covers
-this exact action (and this PR, for merges). Before relying on an entry, check
-that it is not revoked and covers the action, and cite it in the receipt.
+Permission for one of these actions is one of: the human's current-turn
+instruction naming the action and its target (the PR, branch, release or
+change; "current-turn" means the human's most recent message), or an `active`
+ledger entry whose scope covers this exact action and target. An approved
+`away-mode` pre-authorization is such a ledger entry (a dated temporary one).
+Before relying on an entry, check that it is not revoked and covers the
+action, and cite it in the receipt.
 "Ready to merge" from the human is a request for the final recheck, not
 permission.
 
