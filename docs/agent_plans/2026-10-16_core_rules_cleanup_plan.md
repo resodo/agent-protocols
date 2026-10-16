@@ -51,8 +51,24 @@ agent's point of view) goes to `closeout` section 4 as one bullet.
   its general lines move into `fix-triage` step 4 (observation must never be
   able to kill what it observes; one name per thing; future needs decide where
   to leave an opening; a diff between two runs is not a verdict); the rest is
-  dropped (enum `other`, "explain with running designs", tool definition SSOT
-  and principle sweeps are project or personal and already live there).
+  dropped or moved as follows:
+  - "measure after narrowing scope before proposing a new mechanism": moves
+    into step 4 with the others (general).
+  - "fast process, correct product" ("the human finds it slow" is never
+    permission to cut corners): moves into step 7 (efficiency), as its
+    counterweight (general).
+  - "deletion first and premise before fix: see structured-review": already
+    the pointer in step 4; dropped as a duplicate.
+  - enum `other` bucket: dropped from the core (a schema choice, not a general
+    fix rule; the audit's finding); it remains in the human's memory note
+    `categorical-fields-carry-other`, a project design principle.
+  - "tool behavior is defined once, in the tool definition" and "when a
+    principle is overturned, sweep every document that repeats it": dropped
+    from the core; they remain in the memory note `ssot-and-rule-sources`
+    (project design principles the human kept in memory on 10-11).
+  - "explain with designs that are running or planned, not with dead code":
+    dropped; it is a communication preference already in the memory note
+    `design-method-research-first`.
 - `closeout` manifest and phase-output bullets: conditional on the repo's own
   documentation contract ("when the repo uses output manifests").
 - `retrospective` Codex transcript discovery moves to
@@ -66,8 +82,13 @@ agent's point of view) goes to `closeout` section 4 as one bullet.
   example (with `--coding-agent` and `--review-tier`) and a pointer to
   `structured-review`; Canonical Source item 2 states the one deliberate copy
   (the resident core, checked by `scripts/check_resident_core.py`).
+- `README.md` "Protocols" is grouped by reader (every role; master;
+  dispatched agents; authors, drivers and reviewers; repo maintainers), one
+  line per protocol.
 - `docs/CURRENT.md`: each protocol entry becomes one line of what it owns and
-  who reads it; the structured-review paragraph keeps no policy.
+  who reads it; the structured-review paragraph keeps no policy; the reference
+  map lists `structured-review/references/runner-operations.md` (driver-only,
+  not runner-loaded).
 - `docs/agent_plans/README.md`: "Current Records" renamed "Selected
   historical records".
 - Reader tags: every lifecycle protocol description starts with its reader
@@ -86,7 +107,13 @@ profile matrix, Runner Modes, Timeout Discipline and Recovery move to a new
 `structured-review/references/runner-operations.md`, which the runner does
 not load into reviewer prompts. Tests that pin that text read the new file
 (`test_claude_structured_review.py`, the four `SKILL.md` policy tests). The
-`closeout` tier paragraph keeps only "the driver owns tier selection; the
+prompt builder in `structured-review/scripts/claude_structured_review.py`
+drops the line telling the driver when to choose hard ("Normal is the
+default. Reserve hard for roughly the hardest 20% ...") and keeps the
+reviewer line ("Apply the same readiness standard at both tiers ..."). The
+skill points drivers to `references/runner-operations.md`; detailed recovery
+stays in the existing `references/recovery.md` (runner-operations links to it,
+no second copy). The `closeout` tier paragraph keeps only "the driver owns tier selection; the
 runner does not select hard merely because its type is `closeout-review`; see
 structured-review" (still pinned by the existing test).
 
@@ -120,8 +147,11 @@ Out: consumer overlays, consumer `AGENTS.md`, personal files and memory
 - Runner prompt size before and after on this plan file (`print-review` prompt
   in the run directory, `wc -w`), recorded in the Implementation Record.
 - For each N rule: `git grep` shows it in its home and nowhere else in full.
-- Positive control for the deleted principles file: `git grep principles.md`
-  finds no reference.
+- Deleted principles file: `test ! -e fix-triage/references/principles.md`
+  and `git grep -n "principles.md"` outside `docs/agent_plans` finds nothing.
+- Generated reviewer prompt (a `print-review` run on this plan): contains
+  "Apply the same readiness standard at both tiers" and does not contain
+  "Reserve hard for roughly the hardest 20%"; a unit test pins both.
 
 ## Review Threads
 
@@ -156,3 +186,13 @@ The proposed `git grep principles.md` check already finds no reference before th
 #### Residual risks or validation gaps
 
 This was a read-only review of the plan, approved decision, and relevant current files. The worktree was clean; no validation commands were run.
+
+### Driver response to reviewer pass 1
+
+- Driver-only tier line in the prompt: accepted; section D removes it from the
+  prompt builder, with a test and a check of a generated prompt.
+- Principles file disposition: accepted; section B lists every line's home or
+  reason.
+- Index changes: accepted; README grouped by reader, CURRENT lists the new
+  reference, recovery stays in `recovery.md`.
+- Deletion check: accepted; existence check added.
