@@ -5,9 +5,9 @@ description: "[master] A master procedure (role: agents/master.md). Use when thi
 
 # Session Handoff
 
-Subagents, timers and in-session promises die with the session. The board,
-the queue and line STATUS files survive. The handoff file carries only what
-would otherwise die.
+Timers and in-session promises die with the session; subagents may or may
+not (the cold start checks). The board, the queue and line STATUS files
+survive. The handoff file carries only what would otherwise be lost.
 
 ## Local Overlay
 

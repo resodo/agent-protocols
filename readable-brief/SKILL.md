@@ -112,8 +112,9 @@ Check each item and fix before review:
 1. Fidelity: walk the source's conclusions, boundaries, and items awaiting the
    human one by one; each is present and unchanged in the brief.
 2. Readability: conclusion first, short sentences, no process detail, reading
-   time near the overlay's target.
-3. The overlay's banned words and forbidden glyphs do not appear.
+   time near the reader's target (user-level preferences).
+3. The reader's banned words and forbidden glyphs (user-level preferences) do
+   not appear.
 4. No undefined term, including in diagrams, tables, and the confirm list.
 5. No bare-ID explanation; every reference is a working link with the intended
    anchor; each core question opens with its background.
