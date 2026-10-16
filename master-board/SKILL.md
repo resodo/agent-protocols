@@ -35,6 +35,9 @@ The master keeps two local markdown files. They are the source of truth for
 - Size rule: if the queue no longer fits on one screen or the board's current
   section no longer fits on two, archive before adding.
 - Record rejections as carefully as approvals.
+- The board holds state only. Sweep results go to a sweep log next to the
+  board, not into the board. The settled list is kept current: every answer
+  the human gives lands there the same turn.
 
 ## Reports
 

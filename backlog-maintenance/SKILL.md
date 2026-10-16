@@ -1,6 +1,6 @@
 ---
 name: backlog-maintenance
-description: Use when adding, updating, closing, querying, migrating, or defining backlog items in a repo that uses docs/backlog.yml as its source of truth. This protocol keeps deferred work separate from active work, standardizes backlog IDs and lifecycle states, and defines the minimum YAML schema and CI checks agents must follow.
+description: "[any author] Use when adding, updating, closing, querying, migrating, or defining backlog items in a repo that uses docs/backlog.yml as its source of truth. This protocol keeps deferred work separate from active work, standardizes backlog IDs and lifecycle states, and defines the minimum YAML schema and CI checks agents must follow."
 ---
 
 # Backlog Maintenance

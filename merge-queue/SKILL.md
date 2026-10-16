@@ -28,6 +28,8 @@ merges collide. So exactly one merger merges, one PR at a time.
   when it queues a PR; the merge agent merges only PRs whose line names it,
   verifies a cited ledger entry right before merging as that section says, and
   never uses the ledger to find permission.
+- Once a PR is in the queue its author does not push to it; the author sends
+  rebase, fix and follow-up requests to the merger.
 
 ## Queue File
 
@@ -50,11 +52,12 @@ line after checking the gated surfaces. Archive merged lines daily.
 4. Run the related tests and light checks locally; read the full result
    (count, failures, exit code), never only the tail.
 5. Run the expensive CI once, right before merging, with the overlay's
-   pre-merge command. Push alone triggers nothing.
+   pre-merge command. The overlay's CI and merge contract says what a push
+   triggers and which merge method is used.
 6. A failure: one rerun only if it is judged flaky; otherwise mark `[!]` and
    send the reason to the author line. The merger never edits business code.
-7. Merge; record the merge. Cite commits as `<sha> (PR #N)` because rebase
-   merges rewrite hashes and the branch is deleted.
+7. Merge; record the merge. When the merge method rewrites hashes (rebase or
+   squash), cite commits as `<sha> (PR #N)`.
 
 ## SAFETY Rules
 

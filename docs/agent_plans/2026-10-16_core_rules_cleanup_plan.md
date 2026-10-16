@@ -153,6 +153,31 @@ Out: consumer overlays, consumer `AGENTS.md`, personal files and memory
   "Apply the same readiness standard at both tiers" and does not contain
   "Reserve hard for roughly the hardest 20%"; a unit test pins both.
 
+## Implementation Record
+
+Done as scoped (A-F). Validation (driver-reported):
+
+- `tests`: 30 OK; `structured-review/tests`: 124 OK (one new test pins that
+  the generated prompt keeps "Apply the same readiness standard at both
+  tiers" and drops "Reserve hard for roughly the hardest 20%"); `scout/tests`:
+  OK; `scripts/check_backlog.py`: exit 0; `compileall`: exit 0.
+- Runner-loaded protocol text (skill plus the two required references):
+  7,341 words before, 5,856 after (`structured-review/SKILL.md` 4,473 to
+  2,988); the moved text is in `references/runner-operations.md`.
+- `fix-triage/references/principles.md` does not exist; no reference to it
+  outside `docs/agent_plans`.
+- Each N rule found in its planned home only (`git grep -l` per key phrase):
+  N1 `decision-boundary`; N2 `decision-boundary`; N3 `dispatch`; N4
+  `sweep.md`; N5 `line-worker`, `merge-queue`; N6 `line-worker`, `release`;
+  N7 `dispatch` (with pointers in `line-worker` and the indexes); N8
+  `release`; N9, N10 `line-worker`; N11 `dispatch`; N12 `fix-triage`; N13
+  `visual-qa`; N14 `master-board` and the board template.
+- Skill mounts: 17 under `.claude/skills/` and `.agents/skills/`.
+- Guard: prose and sketch check base containment only in `start` and
+  `handoff` modes. Consumer guard scripts are not changed here (plan 3 for
+  skynet-intern).
+
+
 ## Review Threads
 
 ### Reviewer pass 1 (impl-plan, codex reviewer)

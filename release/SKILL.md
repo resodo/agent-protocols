@@ -51,6 +51,16 @@ brief names. Read content, not only plumbing: for model-facing changes, read
 the first outputs. When a long window blocks a dependent, only the short check
 gates it unless the approved schedule says otherwise.
 
+Gate measurements (for example a latency gate against a baseline):
+
+- the baseline is a measurement of the live release in the same time window,
+  taken just before the switch, not an older number;
+- measurements run in a quiet window announced in advance with its exact
+  times, during which other lines run no heavy production queries;
+- record the host load with each measurement; a run taken under abnormal load
+  (the overlay sets the threshold) is void and retaken, not counted as a
+  failure; if retakes stay void, measure in the next quiet slot.
+
 ## Failure Policy
 
 - Reversible part failed: roll back first, then diagnose.
@@ -68,3 +78,4 @@ result with numbers, anything skipped and why. The master updates the board.
 
 - No production change without the official command, flags and receipt.
 - No irreversible step without its own approval.
+- Never run a production write command to look something up.

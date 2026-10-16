@@ -1,7 +1,7 @@
 # <project> board (local source of truth)
 
 > Any delivery page is a copy of this file. Items waiting on the human live in
-> QUEUE.md, not here.
+> QUEUE.md, not here. Sweep results go to the sweep log next to this file.
 
 ## Goal
 

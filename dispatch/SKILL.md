@@ -75,15 +75,33 @@ file.
 
 ## Keeping Lines Moving
 
+Keep a rolling pipeline: at any time each line has its next few PRs moving
+(plans written ahead, reviews running, implementation underway), so a merge
+never leaves a gap. Run few implementers at a time per line and do not burst
+many agents at once: far-ahead steps get reworked once upstream reality shows
+up, so before starting a step that depends on unmerged work, write down its
+upstream uncertainties. The project overlay sets the numbers.
+
 Every approval gets its next step dispatched in the same turn. A line that
 stops is either moved forward or written down with the real blocker, who owns
 it, and the condition that restarts it. A blocker that is the human's decision
 is stated as such in the queue.
 
+## Blocking Requests
+
+A request that blocks a window or a dependent (a GO, a plan approval, a point
+of no return) is sent as a message to the agent that decides it, not only
+written into a status file. The receiver acknowledges it. Without an
+acknowledgement within a few minutes the sender re-sends; it never waits
+silently. The same holds in both directions between the master, a coordinator
+and a worker.
+
 ## Relaying To The Human
 
-Text meant for the human to copy to someone else goes between clear separator
-lines. Outside the separators, talk to the human.
+Text meant for the human to copy to someone else is printed in full in the
+message, self-contained with the context the reader needs, between clear
+separator lines; never only a file path. Outside the separators, talk to the
+human.
 
 ## SAFETY Rules
 

@@ -241,6 +241,16 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertIn("- docs/plan.md", prompt)
         self.assertIn("- docs/other.md", prompt)
 
+    def test_prompt_keeps_reviewer_tier_rule_and_drops_driver_tier_choice(self) -> None:
+        repo = self.init_target_repo()
+        protocol = self.init_protocol_dir()
+        config = self.config_for(repo, protocol)
+
+        prompt = csr.build_prompt(config)
+
+        self.assertIn("Apply the same readiness standard at both tiers", prompt)
+        self.assertNotIn("Reserve hard for roughly the hardest 20%", prompt)
+
     def test_prompt_excludes_real_worktree_root(self) -> None:
         repo = self.init_target_repo()
         protocol = self.init_protocol_dir()
@@ -682,7 +692,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertNotIn("ready for human merge", skill)
 
     def test_skill_requires_outer_wait_budget_to_cover_runner_timeout(self) -> None:
-        skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
+        skill = (SCRIPT.parents[1] / "references" / "runner-operations.md").read_text(encoding="utf-8")
 
         self.assertIn("Timeout Discipline", skill)
         self.assertIn("1800 seconds", skill)
@@ -691,7 +701,7 @@ class ClaudeStructuredReviewTests(unittest.TestCase):
         self.assertIn("polling must not kill the process", skill)
 
     def test_skill_and_closeout_pin_central_reviewer_selection_policy(self) -> None:
-        skill = (SCRIPT.parents[1] / "SKILL.md").read_text(encoding="utf-8")
+        skill = (SCRIPT.parents[1] / "references" / "runner-operations.md").read_text(encoding="utf-8")
         closeout = (SCRIPT.parents[2] / "closeout/SKILL.md").read_text(encoding="utf-8")
 
         for value in (

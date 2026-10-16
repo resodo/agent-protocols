@@ -1,6 +1,6 @@
 ---
 name: planning
-description: Use before implementation when a discussion needs to become an executable plan, especially for production, deploy, runtime, architecture, paid-provider, or multi-agent work. This protocol keeps context, scope, options, review path, and acceptance explicit before code changes start.
+description: "[any author] Use before implementation when a discussion needs to become an executable plan, especially for production, deploy, runtime, architecture, paid-provider, or multi-agent work. This protocol keeps context, scope, options, review path, and acceptance explicit before code changes start."
 ---
 
 # Planning

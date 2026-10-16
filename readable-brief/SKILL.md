@@ -1,6 +1,6 @@
 ---
 name: readable-brief
-description: Use after a technical document is final and reviewed, to write a readable brief of it that the human decision-maker reads in full and approves. Required for decision docs; optional for closeout reports, experiment results, status reports, and other documents a human must read. Keeps every conclusion and every open question, drops process detail, and gets a narrow fidelity-plus-readability review.
+description: "[author of a human-read document] Use after a technical document is final and reviewed, to write a readable brief of it that the human decision-maker reads in full and approves. Required for decision docs; optional for closeout reports, experiment results, status reports, and other documents a human must read. Keeps every conclusion and every open question, drops process detail, and gets a narrow fidelity-plus-readability review."
 ---
 
 # Readable Brief

@@ -16,7 +16,7 @@ responses, and closeout evidence for changes to this repo's protocols.
 - Review these rules during closeout documentation-consistency checks when
   plan or artifact handling changes.
 
-## Current Records
+## Selected Historical Records
 
 - `2026-09-24_reviewer_model_refresh_plan.md` - implementation and review
   record for the accepted Claude Code, Codex, and Grok normal/hard model and

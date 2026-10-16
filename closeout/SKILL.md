@@ -1,6 +1,6 @@
 ---
 name: closeout
-description: "Use at the end of an implementation, documentation, review, or phase task to make sure the work is actually finished: tests pass, human-facing behavior is checked, docs are consistent, git state is clean, and the next step is clear."
+description: "[any author] Use at the end of an implementation, documentation, review, or phase task to make sure the work is actually finished: tests pass, human-facing behavior is checked, docs are consistent, git state is clean, and the next step is clear."
 ---
 
 # Closeout
@@ -53,15 +53,9 @@ reviewer model in the closeout prompt.
 
 The structured-review runner owns backend/profile enforcement and
 recommendation provenance; the driver owns tier selection. The runner does not
-select `hard` merely because its type is `closeout-review`. Pass
-`--review-tier normal` for a routine Closeout Review. Pass `--review-tier hard`
-with a specific `--tier-reason` only when the task is judged among roughly the
-hardest 20% the agent handles, such as major design/architecture or an unusually
-difficult bug. This is a judgment aid, not a numerical quota; routine closeout,
-protocol changes, and mechanical recommendations alone do not qualify. Use
-normal when in doubt. Keep the matrix, compatibility
-behavior, and rationale rules single-sourced in structured-review rather than
-maintaining a competing closeout policy.
+select `hard` merely because its type is `closeout-review`; a routine Closeout
+Review is `normal`. The tier policy is in
+`structured-review/references/runner-operations.md`.
 
 Closeout Review checks whether the closeout evidence or report is accurate and
 complete. It returns to closeout with `ready to resume closeout` or named
@@ -135,7 +129,10 @@ Check for:
 ### 2.1 Mechanism Lifecycle
 
 If the work introduced or changed a durable mechanism, do a lifecycle pass
-before closeout.
+before closeout. Whether the mechanism should exist at all is judged in review
+(`structured-review/references/review-lenses.md`, "Mechanism Lifecycle");
+closeout checks that the review happened and that each retained mechanism has
+the lifecycle below.
 
 Durable mechanisms include hard-coded lists, allowlists, denylists, path globs,
 status/config tables, CI required-check lists, hooks, scripts, cleanup rules,
@@ -187,7 +184,10 @@ may perform it, in which case the label is `human acceptance`. If the deployed
 path is unreachable from the agent's environment, record the item `Partial` with
 a named owner rather than accepting it.
 
-For human-facing UI, dashboards, reports, notifications, CLI tables, or rendered docs:
+For human-facing UI, dashboards, reports, notifications, CLI tables, or rendered docs
+(quality criteria: `structured-review/references/ui-review.md` and the
+"Human-Facing Output" lens; the independent pre-human review: `visual-qa`;
+this section accounts for the evidence):
 
 - open or render the output;
 - exercise visible controls, not just page load;
@@ -225,9 +225,13 @@ For repos with a docs index:
 - read `docs/README.md`;
 - confirm new docs are in the right folder;
 - confirm dated docs use `YYYY-MM-DD_topic.md`;
-- confirm phase outputs are under the matching `phase*_outputs/` folder;
+- when the repo keeps phase output folders, confirm phase outputs are in the
+  matching one;
 - update phase status, next expected output, and acceptance notes;
-- search for stale references after renames.
+- search for stale references after renames;
+- for guidance written for other agents (a skill, a protocol, onboarding
+  instructions), read it once from the point of view of a fresh agent with no
+  context and fix what that agent would have to guess.
 
 ### 4.1 Doc Lifecycle Check
 
