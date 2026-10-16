@@ -82,8 +82,9 @@ In:
     at, reports to, preloads): `agents/line-worker.md`, `researcher.md`,
     `merge-queue.md`, `release.md`, `visual-qa.md` and the new `master.md`.
     Reporting routes: a worker or researcher reports to whoever dispatched it
-    (master or coordinator); merge agent and production operator report to the
-    master; visual QA to whoever dispatched it. "Report to the master" in
+    (master or coordinator); merge agent reports to the master; the production
+    operator reports to the master, and reports check results to the
+    coordinator when a coordinator dispatched the checks; visual QA to whoever dispatched it. "Report to the master" in
     `decision-boundary` (Dispatched Agents) and `line-worker` (intro, While
     Working, Hand Back) becomes "report to whoever dispatched you".
 12. `release/SKILL.md` becomes the production-change protocol for the
@@ -101,7 +102,8 @@ In:
     not recording an approval and grants nothing; only the session that heard
     the grant compares it with what it heard and sets it `active` with the
     date. Wording changes: `CORE.md` ("Only the master reads the ledger"
-    becomes "Only the master uses the ledger for permission"; "never record a
+    becomes "Only the master uses the ledger to find permission; a dispatched
+    agent only verifies the one entry its brief cites"; "never record a
     human approval yourself" stays and gains "a `proposed` entry the master
     asked you to type is not an approval"); `decision-boundary` Authority
     Ledger "Recording" and SAFETY; `line-worker` SAFETY and Hand Back. A
@@ -111,7 +113,9 @@ In:
       authorization, "ready to merge" phrasing): bullets 4 and 5 become one
       pointer to `decision-boundary` Delegated Execution plus the stop rule
       "without that permission closeout stops at `ready for human merge`";
-      bullet 6 (phrasing) stays. Section 6 "Git and Process Hygiene" merge
+      bullet 6 keeps the distinction between "ready to merge" (a request for the
+      final recheck) and permission, with the condition list replaced by the
+      same pointer. Section 6 "Git and Process Hygiene" merge
       bullets become the same pointer.
     - `merge-queue/SKILL.md` Who Merges paragraph 2: pointer; SAFETY "Do not
       merge without one of the two permissions above": stays as a short stop
@@ -237,3 +241,11 @@ None.
 #### Residual risks or validation gaps
 
 This was a read-only review of the plan, decision, and relevant current protocols. No validation commands were run or files changed. The worktree was clean.
+
+### Driver response to reviewer pass 2
+
+- Production operator reporting: accepted; item 11 adds the coordinator route
+  for check results.
+- Ledger wording in the core: accepted; item 13 now separates finding
+  permission (master) from verifying the cited entry (dispatched agent).
+- Closeout phrasing bullet: accepted; its condition list becomes the pointer.
