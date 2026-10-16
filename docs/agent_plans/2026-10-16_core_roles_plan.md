@@ -249,3 +249,29 @@ This was a read-only review of the plan, decision, and relevant current protocol
 - Ledger wording in the core: accepted; item 13 now separates finding
   permission (master) from verifying the cited entry (dispatched agent).
 - Closeout phrasing bullet: accepted; its condition list becomes the pointer.
+
+### Reviewer pass 3 (impl-plan, codex reviewer)
+
+The human wants clear role definitions, especially for the master, and one home for permission rules.
+
+#### Blocking issues
+
+None in the plan.
+
+#### Prior-thread resolutions
+
+- **Role reporting: Resolved.** Scope item 11 includes the production operator’s check-results route to a coordinator.
+- **Ledger wording: Resolved.** Scope item 13 separates the master’s authority lookup from a dispatched agent’s check of the entry cited in its brief.
+- **Permission-copy inventory: Resolved.** Scope item 14 keeps the distinction between “ready to merge” and merge permission while replacing the repeated conditions with a pointer.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**The plan is ready for implementation after the approved decision document is merged.** The three pass 2 blockers are resolved without a new mechanism.
+
+#### Residual risks or validation gaps
+
+This was a read-only review; no validation commands were run, and the worktree was clean. The decision document’s acceptance record still says the master session must record the approval directly, and its commit is not in this checkout’s current `origin/main` reference. Those process steps remain prerequisites to dependent implementation.
