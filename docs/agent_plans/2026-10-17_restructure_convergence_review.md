@@ -146,3 +146,13 @@ The requested role scenarios now read as follows:
 - Brief-review preference source: accepted; `readable-brief` self-review and
   the review lens read the reader's user-level preferences.
 - Handoff introduction: accepted; the blanket "subagents die" claim is gone.
+
+### Driver note before pass 2
+
+Merged since pass 1: skynet-apps #48 (release overlay points to the current
+runbooks), agent-protocols #50 (brief-review preference source, handoff
+intro), #49 (STATUS records agent, tier, dispatcher), skynet-intern #1717
+(`docs/CURRENT.md` is a short map). Both consumers still pin `194d1fd`; the
+bump to the current `main` is queued. The differences between `194d1fd` and
+this checkout are #49 and #50 only (no resident-core change). Pass 2 reviews
+the full state again and says whether it has converged.
