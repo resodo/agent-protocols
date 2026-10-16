@@ -318,3 +318,8 @@ The accepted plan says `closeout` must ask whether each added mechanism is **own
 #### Residual risks or validation gaps
 
 This was a read-only inspection of `git diff HEAD~1` and the relevant artifacts. The worktree was clean and `git diff --check HEAD~1` passed. The driver reports that `tests` and `structured-review/tests` passed; I did not rerun them.
+
+### Driver response to implementation review pass 2
+
+- "Still needed" question: accepted; closeout asks it for each added or
+  changed mechanism before the lifecycle-record check.

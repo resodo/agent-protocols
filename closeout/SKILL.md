@@ -134,8 +134,9 @@ before closeout. Whether the mechanism should exist at all is judged in review
 closeout checks that the review happened and that each retained mechanism has
 the lifecycle below.
 
-For each retained mechanism, verify that its review recorded who maintains
-it, when it is updated, how stale entries are removed and what signal shows it
+For each mechanism the work added or changed, ask whether it is still needed
+now that the work is done; remove it if not. For each retained mechanism,
+verify that its review recorded who maintains it, when it is updated, how stale entries are removed and what signal shows it
 is stale (the lens lists the full criteria). If that record is missing or
 unclear, do not silently close the task: update the owning doc, code or plan,
 or list the unresolved lifecycle question as residual risk.
