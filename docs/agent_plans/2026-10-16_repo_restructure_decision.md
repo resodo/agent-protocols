@@ -3,7 +3,17 @@
 Document level: decision doc. Its reader is the human who decides. It maps to
 no single PR; after approval it is split into the plans listed in section 7.
 
-Status: under review (2026-10-16). Source of the request: the human on
+Status: approved (2026-10-16), all recommendations: 1a, 2a, 3a, 4a, 5a and
+items 6-11.
+
+## Human acceptance record
+
+Per master relay (the coordinator line, 2026-10-16), pending record by the
+master session that received it: the human read the brief delivered as a page
+(the five core questions with options and recommendations, items 6-11, the
+problems, the target structure, the change table and the plan list, with a
+link to the full brief) and answered, verbatim: "全部同意 继续吧". This
+approves every recommended option. Source of the request: the human on
 2026-10-16 (per master relay, pending record): "the whole repo is still one
 big tangle: who is which role, how the master role is defined, what each
 scope is." Inputs: the whole-repo audit
