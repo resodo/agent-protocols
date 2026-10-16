@@ -40,7 +40,9 @@ dispatch its own workers (`dispatch`).
 - Cannot pass on a delegated execution it received; the master delegates
   each gated action to the agent that performs it.
 - Reports to: the master. Its workers report to it, never to the master or
-  the human directly.
+  the human directly. The one exception: a production operator always reports
+  to the master and sends only the results of checks the coordinator
+  dispatched to the coordinator as well.
 - Preloads: `line-worker`, `dispatch`.
 
 ## Wrappers

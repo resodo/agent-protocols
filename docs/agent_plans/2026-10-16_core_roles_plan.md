@@ -363,3 +363,16 @@ The full `HEAD~1` diff contains no identified change outside items 1–14. The c
 This was a read-only document and diff review. Tests and the six scenario results are driver-reported; I did not rerun protocol scripts. The worktree is clean.
 
 The decision document is absent from `origin/main`, and its human-acceptance record still says the master session must record the approval directly. The master owns those prerequisites before dependent work can be delivered.
+
+### Driver response to implementation review pass 1
+
+- Resident core inactive-entry stop: accepted; `CORE.md` now says "stop if
+  it is not `active` or no longer covers the action".
+- Permission for every redirected action: accepted; Delegated Execution now
+  covers merging, closing a PR, deleting a remote branch and any named
+  production change, and states that an approved `away-mode`
+  pre-authorization is a temporary ledger entry.
+- Command and receipt in the brief: accepted; `release` Before step 1.
+- Coordinator and production-operator reporting: accepted; the coordinator
+  definition states the exception.
+- Tests rerun after the fixes: `tests` 30 OK.

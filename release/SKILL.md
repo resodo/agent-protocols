@@ -19,9 +19,10 @@ says so.
 
 ## Before
 
-1. Permission: the brief names the change and cites its permission
-   (`decision-boundary/SKILL.md`, Delegated Execution; or a pre-authorization
-   from `away-mode`). Irreversible steps (for example a migration without a
+1. Permission: the brief names the change, the official command to use and
+   the receipt it must leave, and cites its permission
+   (`decision-boundary/SKILL.md`, Delegated Execution). The operator does not
+   choose among overlay commands itself. Irreversible steps (for example a migration without a
    downgrade) are named separately with their own approval. Anything the
    brief does not name stops the production operator.
 2. Observation windows: use the windows the human approved for this kind of
