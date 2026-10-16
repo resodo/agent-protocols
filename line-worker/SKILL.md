@@ -58,7 +58,8 @@ is in `agents/`.
 
 ### STATUS.md
 
-Keep `templates/STATUS.md` current from the first hour: decisions already made
+Keep `templates/STATUS.md` current from the first hour: your agent id, model
+tier and dispatcher (a new master re-dispatches from this), decisions already made
 (with sources), what is left before done, what you are doing now, what you are
 waiting on and on whom. One screen. Put long logs in a separate `LOG.md`.
 
