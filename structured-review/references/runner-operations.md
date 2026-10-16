@@ -146,9 +146,9 @@ warns that the flag is ignored.
 
 The matrix, recommendation signal table, and legacy-auto compatibility path
 are durable protocol mechanisms. When a provider model or signal changes, or
-when known consumers have migrated enough to remove auto, update runner
-constants, tests, this skill, the root runner summary, and `docs/CURRENT.md` in
-one reviewed change. Do not silently replace a pinned profile through a mutable
+when known consumers have migrated enough to remove auto, update the runner
+constants, its tests and this reference in one reviewed change; update
+`README.md` or `docs/CURRENT.md` only if their routes change. Do not silently replace a pinned profile through a mutable
 alias.
 
 Use `--protocol-dir` only when testing or intentionally running against a

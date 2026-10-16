@@ -134,21 +134,11 @@ before closeout. Whether the mechanism should exist at all is judged in review
 closeout checks that the review happened and that each retained mechanism has
 the lifecycle below.
 
-Durable mechanisms include hard-coded lists, allowlists, denylists, path globs,
-status/config tables, CI required-check lists, hooks, scripts, cleanup rules,
-protocol checklists, caches, archives, and retention policies.
-
-For each retained mechanism, record or verify:
-
-- who maintains it;
-- when it should be updated;
-- how stale entries, temporary exceptions, or obsolete rules are removed;
-- whether human participation is required;
-- what validation or operational signal shows it is stale;
-- whether a simpler default rule would avoid manual maintenance.
-
-If the lifecycle is unclear, do not silently close the task. Either update the
-owning doc/code/plan or list the unresolved lifecycle question as residual risk.
+For each retained mechanism, verify that its review recorded who maintains
+it, when it is updated, how stale entries are removed and what signal shows it
+is stale (the lens lists the full criteria). If that record is missing or
+unclear, do not silently close the task: update the owning doc, code or plan,
+or list the unresolved lifecycle question as residual risk.
 
 ### 3. Validation
 
@@ -189,12 +179,10 @@ For human-facing UI, dashboards, reports, notifications, CLI tables, or rendered
 "Human-Facing Output" lens; the independent pre-human review: `visual-qa`;
 this section accounts for the evidence):
 
-- open or render the output;
-- exercise visible controls, not just page load;
-- do not validate only the happy path; cover at least one normal path, one empty/no-match path, and one recovery/reset path when the surface has controls;
-- check empty states and placeholder states;
-- verify the artifact answers the reader's actual question;
-- save or describe the screenshot/rendered evidence.
+- record evidence that the output was rendered and its controls exercised
+  (a normal, an empty and a recovery path when it has controls), per the
+  criteria referenced above;
+- save or describe the screenshot or rendered evidence.
 
 For large frontend/backend refactors in apps with an available full-stack smoke:
 
@@ -292,7 +280,7 @@ For parent repos that update submodule pointers:
 - if the human explicitly wants to pin a non-default submodule commit, record
   that decision and its owner before closeout.
 
-For repos that use worktree/PR output folders:
+For repos whose documentation contract uses output folders with manifests:
 
 - keep branch/worktree artifacts under the repo's agreed output folder, such as
   `docs/agent_plans/outputs/<YYYY-MM-DD_feature_slug>/`;

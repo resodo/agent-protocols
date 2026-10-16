@@ -280,3 +280,16 @@ The Codex transcript paths moved to `agent-readiness/capabilities.md:59`, but th
 #### Residual risks or validation gaps
 
 This was a read-only review of `git diff HEAD~1` and the reviewed artifacts. The worktree was clean and `git diff --check HEAD~1` found no whitespace errors. The current reviewer prompt contains the shared readiness rule and omits the removed driver tier instruction. Test results and prompt word counts in the Implementation Record are driver-reported; I did not rerun them.
+
+### Driver response to implementation review pass 1
+
+- Manifests conditional on the repo contract: accepted; the closeout block now
+  applies only "for repos whose documentation contract uses output folders
+  with manifests".
+- Single checklist: accepted; closeout keeps only the evidence accounting for
+  UI and the lifecycle-record check for mechanisms, with the criteria in the
+  review references.
+- Stale maintenance instruction: accepted; runner-operations names the runner,
+  its tests and itself, and indexes only when routes change.
+- Transcript filtering: accepted; kept in `retrospective`.
+- Tests rerun: `tests` and `structured-review/tests` OK.
