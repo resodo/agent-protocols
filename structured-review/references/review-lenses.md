@@ -316,8 +316,9 @@ Check only:
   as scope, not asked as a question.
 - Readability: conclusion first; short sentences; every term defined on first
   use, including in diagrams and tables; arrows labeled; each section marked
-  decided or not yet confirmed; no process detail; the overlay's banned words
-  and forbidden glyphs absent. Reading time near the overlay's target is enough;
+  decided or not yet confirmed; no process detail; the reader's banned words
+  and forbidden glyphs (user-level preferences) absent. Reading time near the
+  reader's target is enough;
   the target is not a limit, and completeness of conclusions, boundaries, and
   points to confirm wins over length.
 - References: no bare reference ID used as explanation (its content is stated

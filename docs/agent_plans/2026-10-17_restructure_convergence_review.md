@@ -132,3 +132,17 @@ The requested role scenarios now read as follows:
 - Guard scripts were inspected, not executed. No tests, production commands or network freshness checks were run.
 - The approved fresh-master cold-start exercise remains a subsequent step. Personal-file and memory migration is outside this review.
 - All three worktrees remained clean. The review branch has no upstream; publication was not verified. No files were written, staged or committed.
+
+### Driver response to reviewer pass 1
+
+- Apps release overlay (blocking): accepted; fixed in skynet-apps
+  (branch `release-overlay-current-2026-10`): the P18 procedure is deleted;
+  the overlay points to `docs/runbooks/applications.md` (release, rollback,
+  `apps-migrate.sh`) and `docs/runbooks/host_split_operations.md` (`--host`
+  and its data-only exceptions, first switch creates `current`, monitoring);
+  `switch.sh --migrate-to` is stated as accounts-only; runbook-written manual
+  steps are admitted and recorded; the sign-in outage covers every switch.
+  Reviewed in 3 passes, no blocking issues; both scenarios walked.
+- Brief-review preference source: accepted; `readable-brief` self-review and
+  the review lens read the reader's user-level preferences.
+- Handoff introduction: accepted; the blanket "subagents die" claim is gone.
