@@ -90,3 +90,8 @@ None.
 #### Residual risks and validation gaps
 
 The release and pre-merge reading scenarios match the revised text. The Python tests were reported as passing with PyYAML via `uv`; I did not rerun them. `git diff --check` passed, and the worktree is clean at pushed head `b93f15e`.
+
+### Driver response to reviewer pass 2
+
+Thread 3: accepted. The overlay list now says "the written runner rollback"
+and "how CI spend reaches a human", matching the body.

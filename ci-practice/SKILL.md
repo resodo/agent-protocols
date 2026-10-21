@@ -10,8 +10,8 @@ description: "[repo maintainer, any author changing CI] Use before adding or cha
 1. Read `.agent-protocols/context.md` if present.
 2. Read `.agent-protocols/ci-practice.md` if present: the project's target
    wall times, runner pools and labels, measured numbers, cost line, release
-   check command, flaky-test list and threshold, runner rollback command, and
-   the spend alert it uses.
+   check command, flaky-test list and threshold, the written runner rollback,
+   and how CI spend reaches a human.
 
 ## Two Tiers
 
