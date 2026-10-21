@@ -10,7 +10,8 @@ description: "[repo maintainer, any author changing CI] Use before adding or cha
 1. Read `.agent-protocols/context.md` if present.
 2. Read `.agent-protocols/ci-practice.md` if present: the project's target
    wall times, runner pools and labels, measured numbers, cost line, release
-   gate command and flaky-test list location.
+   check command, flaky-test list and threshold, runner rollback command, and
+   the spend alert it uses.
 
 ## Two Tiers
 
@@ -21,6 +22,10 @@ description: "[repo maintainer, any author changing CI] Use before adding or cha
 - **Full tier:** the whole suite, run on a manual dispatch for a release
   candidate and on a nightly schedule on the default branch. Full runs are
   never cancelled or replaced by a newer run.
+- **Pre-merge run:** where the project's merge-queue overlay requires an
+  expensive CI run right before each merge (`merge-queue`), that run stays; it
+  runs the full suite on the exact head being merged and is not replaced by
+  the nightly run. Two tiers only take the full suite off ordinary pushes.
 - A default-branch push does not run the full suite: a burst of merges would
   pay for one full run per commit. If the project wants the full suite on
   every merge, it records that decision and its cost in its overlay.
@@ -35,10 +40,13 @@ description: "[repo maintainer, any author changing CI] Use before adding or cha
 
 ## Release Gate
 
-- A release names one exact commit SHA. It needs a successful full-gate check
-  run on that SHA: dispatch the full tier on the candidate, wait, then release.
-- The release check keys on the full gate's check name, not on the workflow's
-  overall conclusion and not on the light gate.
+- A release names one exact commit SHA and one full run dispatched for it
+  (the candidate run). The release check reads that run by its id and requires
+  its head SHA to equal the candidate SHA and its full-gate job to have
+  succeeded. Another run on the same SHA (a green nightly, an earlier attempt)
+  never stands in for a red or missing candidate run.
+- The release check keys on the full gate's result in that run, not on the
+  workflow's overall conclusion and not on the light gate.
 - A red nightly run is fixed forward; it does not block a release whose own
   candidate run is green, but the next candidate includes the fix.
 
@@ -58,8 +66,8 @@ description: "[repo maintainer, any author changing CI] Use before adding or cha
 - Do not run untrusted code (pull requests from forks, unreviewed branches)
   on self-hosted runners that hold credentials. Keep the light tier on hosted
   runners unless the overlay records why not.
-- Every switch to a new runner has a one-command rollback (for example a
-  repository variable that, when deleted, returns the jobs to hosted runners).
+- Every switch to a new runner has a written rollback that returns the jobs
+  to the previous runners; the overlay names it.
 - Third-party runner services get repository access; adding one is a human
   decision recorded in the overlay.
 
@@ -78,10 +86,10 @@ description: "[repo maintainer, any author changing CI] Use before adding or cha
 - A test that fails intermittently on the default branch's full runs is
   recorded in the project's flaky-test list with the test name, date and run
   link the first time it is seen.
-- Two or more intermittent failures within two weeks: the owner fixes the
-  test or removes it from the required set with a written restore date. No
-  automatic retry of failed tests to hide them; a manual re-run of a failed
-  job is allowed once and recorded.
+- When a test reaches the overlay's threshold of intermittent failures, the
+  owner fixes the test or removes it from the required set with a written
+  restore date. No automatic retry of failed tests to hide them; a manual
+  re-run of a failed job is recorded with its reason.
 - Before moving the suite to a new runner or raising parallelism, run it
   there several times and fix what newly fails. Load-sensitive timing in a
   test is a test bug: wait on a condition with a bound, never on a fixed
@@ -89,10 +97,10 @@ description: "[repo maintainer, any author changing CI] Use before adding or cha
 
 ## Cost Tracking
 
-- Tag every self-hosted CI resource so a budget can filter on it, and keep a
-  monthly budget alert that reaches a human.
-- Once a month per repository: full runs, runner minutes per run, and spend.
+- Tag every self-hosted CI resource so its spend can be filtered; the overlay
+  names how spend reaches a human (for example a budget alert).
+- Per repository, keep track of full runs, runner minutes per run, and spend.
   When a repository's CI exceeds the overlay's cost line, revisit triggers and
   runner choice before adding capacity.
-- Experiments get their own tag, a spend cap, and termination of every
-  resource when done.
+- Runner experiments run under a spend limit the human set, with their own
+  tag, and end with every resource removed.
