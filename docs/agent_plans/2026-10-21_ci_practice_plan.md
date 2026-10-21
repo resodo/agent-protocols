@@ -70,3 +70,23 @@ Ruby parsed the frontmatter and `git diff --check` passed. The plan’s specifie
 3. Accepted. The rollback command, flaky threshold, spend alert and
    experiment limit are now named by the overlay or set by the human; the
    protocol keeps only the general expectation.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+复审确认：上一轮两项问题已解决，第三项仍有一处措辞需要修正。
+
+#### Blocking issues
+
+**Thread 3 remains open — remove the implied mandatory alert and command.** `ci-practice/SKILL.md:11-14` still says the overlay names a “runner rollback command” and “the spend alert it uses.” That conflicts with lines 69-70, which require a written rollback, and lines 100-101, which allow the overlay to choose how spend reaches a human. Reword the overlay list to match those general expectations. This needs only a wording change; no new mechanism is needed.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Not yet ready for closeout.** Thread 1 is resolved: the release check identifies the candidate run by ID and verifies its SHA and full-gate result. Thread 2 is resolved: the protocol preserves the pre-merge full run required by `merge-queue`. Thread 3 is partial for the wording above. The protocol and both index entries are present; consumer rollout is outside this plan’s scope.
+
+#### Residual risks and validation gaps
+
+The release and pre-merge reading scenarios match the revised text. The Python tests were reported as passing with PyYAML via `uv`; I did not rerun them. `git diff --check` passed, and the worktree is clean at pushed head `b93f15e`.
