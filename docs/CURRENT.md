@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-10-16
+Last updated: 2026-10-21
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -45,6 +45,8 @@ in its description who reads it.
 - `backlog-maintenance/SKILL.md` - YAML backlog; this repo dogfoods it
   through `docs/backlog.yml`.
 - `scout/SKILL.md` - repository discovery that proposes backlog candidates.
+- `ci-practice/SKILL.md` - CI triggers, release gate, runner choice by
+  measurement, caching, flaky tests, cost tracking (repo maintainers).
 - `agent-readiness/` - worktree guard contract, bootstrap template,
   `capabilities.md`.
 

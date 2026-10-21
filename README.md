@@ -45,6 +45,7 @@ Authors, drivers and reviewers:
 - `retrospective/` - evidence-based learning after an incident or closeout.
 - `backlog-maintenance/` - the YAML backlog of deferred work.
 - `scout/` - judgment-heavy repository discovery that proposes backlog candidates.
+- `ci-practice/` - CI triggers in two tiers, the release gate on the exact SHA, runners chosen by measurement, caching, flaky tests, cost tracking.
 
 Repo maintainers:
 
