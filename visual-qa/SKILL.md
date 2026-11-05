@@ -29,12 +29,14 @@ The default guideline ships with this protocol: the Vercel Web Interface
 Guidelines in `references/web-interface-guidelines/` (`rules.md` for the
 MUST / SHOULD / NEVER list, `guidelines.md` for the reasons; source and
 version in `SOURCE.md`). Read it before every review; an overlay may add a
-guideline, never drop this one.
+guideline, never drop this one. Where the two files disagree, `rules.md`
+wins; their upstream install and integration sections are not steps of this
+protocol.
 
 Check every place the change touches:
 
-- in Chromium and WebKit, at 1440 and 390 wide, plus any viewport the overlay
-  adds;
+- in Chromium and WebKit, at 1440 and 390 wide, an ultra-wide check (2880
+  wide, or 1440 at 50% zoom), and any viewport the overlay adds;
 - in every language the site offers (for example EN and ZH), and every theme
   the overlay lists;
 - element by element: grid and column alignment; consistent sizes, padding
@@ -64,7 +66,7 @@ Save screenshots in your own scratchpad as
 
 ```text
 Guideline: Vercel Web Interface Guidelines, references/web-interface-guidelines (commit 434b7f9), read 2026-11-05
-Checked: chromium + webkit, 1440 + 390, EN + ZH
+Checked: chromium + webkit, 1440 + 390 + 2880, EN + ZH
 
 1. pass  Overview header alignment   /abs/path/chromium-1440-overview-en.png
 2. fail  Overview "Updated" chip      /abs/path/webkit-390-overview-zh.png
@@ -75,16 +77,19 @@ Checked: chromium + webkit, 1440 + 390, EN + ZH
 Non-blocking:
 - SHOULD: loading text "Loading..." should end with an ellipsis character
 
-Verdict: needs changes
+Verdict: fail
 ```
 
 - The report opens with the guideline, its source and the date it was read;
   a report without it does not count.
 - Each item: pass or fail, with the absolute path of its screenshot; each
   failure names the element, what is wrong, and the expected state.
-- The verdict is `ready to merge` or `needs changes`, sent to whoever
-  dispatched the QA and to the merge-queue agent when one handles the PR.
-- After the author fixes and reshoots, a recheck covers only the fixed items.
+- The verdict is `pass` or `fail` for visual QA only; it is not merge
+  approval and does not replace closeout. Send it to whoever dispatched the
+  QA, and also to the merge-queue agent when the brief names one.
+- After the author fixes and reshoots, a recheck covers the fixed items and
+  the states the fix could affect (shared styles, layout); replace or mark
+  superseded screenshots.
 
 ## SAFETY Rules
 

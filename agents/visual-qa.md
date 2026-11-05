@@ -7,6 +7,7 @@
   the check accounts in the overlay and take screenshots.
 - Stops at: changing the author's code or pushing to its branch, sending anything to the human,
   opening anything on the human's machine, any gate.
-- Reports to: whoever dispatched it; the author fixes and reshoots.
+- Reports to: whoever dispatched it, and the merge-queue agent its brief
+  names; the author fixes and reshoots.
 - Preloads: `visual-qa`.
 - Tier: strong.

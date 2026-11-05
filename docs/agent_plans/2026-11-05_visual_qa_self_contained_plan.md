@@ -63,3 +63,22 @@ None.
 #### Residual risks or validation gaps
 
 The plan lists a unit-test command and CI job, but the reviewed artifacts contain no results. The driver should record their provenance during closeout. No files were changed during this review.
+
+### Driver response to pass 1
+
+1. Fixed: `SKILL.md` says `rules.md` wins where the two files disagree and
+   that the upstream install and integration sections are not protocol
+   steps. The vendored files stay verbatim.
+2. Fixed: the verdict is visual-QA `pass` / `fail`, stated as not merge
+   approval and not a closeout replacement; it goes to the dispatcher and to
+   the merge-queue agent only when the brief names one (the human asked for
+   the verdict to reach the merge queue). `agents/visual-qa.md` says the same.
+3. Fixed: a recheck covers the fixed items and the states the fix could
+   affect, and superseded screenshots are replaced or marked.
+4. Fixed: the default standard adds an ultra-wide check (2880 wide, or 1440
+   at 50% zoom), matching the bundled MUST.
+5. Recorded: on 2026-11-05 the driver downloaded `README.md`, `AGENTS.md` and
+   `LICENSE` from `raw.githubusercontent.com` at commit `434b7f9` and ran
+   `cmp` against `guidelines.md`, `rules.md` and `LICENSE`: all three
+   identical. `python -m unittest discover -s tests` (with PyYAML): OK;
+   `python scripts/check_backlog.py`: OK.
