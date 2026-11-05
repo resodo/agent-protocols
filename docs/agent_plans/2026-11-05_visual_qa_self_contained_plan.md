@@ -35,3 +35,31 @@ per AGENTS.md "Rollout To Consumers").
   commit (`curl` the three raw files at that SHA and `cmp`).
 
 ## Review Threads
+
+### Reviewer pass 1 (impl, codex reviewer)
+
+The requested outcome is a visual QA protocol that an agent can use from the checkout, with project specifics left to overlays.
+
+#### Blocking issues
+
+1. **The vendored guide still directs agents to install another skill.** `visual-qa/references/web-interface-guidelines/guidelines.md:178-189` contains an installation command, while `visual-qa/SKILL.md:28-32` tells agents to read that file before every review. Keep the upstream copy verbatim, but state in `visual-qa/SKILL.md` that its upstream integration instructions are not steps in this protocol. Also make `rules.md` authoritative where the two vendored files disagree: `guidelines.md:11` offers `maximum-scale=1`, which `rules.md:16` forbids.
+
+2. **The QA verdict claims merge readiness.** `visual-qa/SKILL.md:85-86` prescribes `ready to merge` and direct delivery to a merge agent. Visual QA owns a findings report; closeout owns merge readiness, and `agents/visual-qa.md:8-10` routes the agent through its dispatcher. Use a visual QA pass/fail verdict and report it to the dispatcher for onward routing.
+
+3. **The prescribed recheck can miss regressions.** `visual-qa/SKILL.md:87` limits rechecks to fixed items. A shared CSS or layout fix can change previously passing states, and `structured-review/references/ui-review.md` requires current screenshot evidence. Recheck the fixed items **and any states affected by the fix**, and replace or mark superseded screenshots.
+
+4. **The default viewport list omits a bundled MUST.** `visual-qa/SKILL.md:36-37` names 1440 and 390 pixels plus overlay additions; `visual-qa/references/web-interface-guidelines/rules.md:85` also requires an ultra-wide check. Include that check in the default standard or clarify that the listed widths are a minimum and the bundled MUST also applies.
+
+5. **The pinned-copy acceptance check has no recorded result.** The plan requires a byte comparison of all three vendored files with the pinned upstream commit. The files and MIT notice are present, and the [pinned upstream license](https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/434b7f91364665f2f733b310ec54809bf8f37937/LICENSE) supports the attribution, but no comparison result appears in the reviewed artifacts. Network access prevented an independent `cmp` in this review environment. The driver should record the three comparison results before marking vendoring complete.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Partial; not ready for closeout.** Direct inspection supports the role-file and index updates. The protocol and vendoring items remain partial for the reasons above.
+
+#### Residual risks or validation gaps
+
+The plan lists a unit-test command and CI job, but the reviewed artifacts contain no results. The driver should record their provenance during closeout. No files were changed during this review.
