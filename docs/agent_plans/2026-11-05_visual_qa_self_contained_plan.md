@@ -82,3 +82,29 @@ The plan lists a unit-test command and CI job, but the reviewed artifacts contai
    `cmp` against `guidelines.md`, `rules.md` and `LICENSE`: all three
    identical. `python -m unittest discover -s tests` (with PyYAML): OK;
    `python scripts/check_backlog.py`: OK.
+
+### Reviewer pass 2 (impl, codex reviewer)
+
+The requested outcome is a visual QA protocol that agents can use from this checkout without a machine-specific guideline skill.
+
+#### Blocking issues
+
+None. The driver’s changes resolve all five blocking issues from pass 1:
+
+1. **Resolved.** `visual-qa/SKILL.md` makes `rules.md` authoritative where the vendored files disagree and excludes upstream installation instructions from this protocol.
+2. **Resolved.** The verdict is now visual QA `pass` or `fail`, explicitly separate from merge approval and closeout. Routing to a named merge-queue agent matches the driver’s recorded human direction.
+3. **Resolved.** Rechecks cover fixed items and other states the fix could affect; superseded screenshots are replaced or marked.
+4. **Resolved.** The default checks now include ultra-wide coverage, consistent with the bundled MUST.
+5. **Resolved on driver-reported evidence.** The driver records successful byte comparisons for all three vendored files against the pinned commit.
+
+#### Non-blocking issues
+
+None.
+
+#### Overall judgment
+
+**Ready for closeout.** The worktree is clean. The four requested artifacts are consistent with the plan and the pass 1 resolutions.
+
+#### Residual risks or validation gaps
+
+The upstream comparisons and local test results are driver-reported; I did not rerun them. CI status remains for closeout to verify.
