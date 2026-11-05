@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-10-21
+Last updated: 2026-11-05
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -34,7 +34,8 @@ in its description who reads it.
   limits.
 - `merge-queue/SKILL.md` - one merger, per-PR steps (merge agent).
 - `release/SKILL.md` - any named production change (production operator).
-- `visual-qa/SKILL.md` - independent review of visible changes.
+- `visual-qa/SKILL.md` - independent review of visible changes; the
+  default guideline is vendored in `visual-qa/references/`.
 - `planning/SKILL.md` - discussion to plan.
 - `structured-review/SKILL.md` - plan and implementation review, document
   levels, decision-doc approval.

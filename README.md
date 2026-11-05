@@ -33,7 +33,7 @@ Dispatched agents:
 - `line-worker/` - how every dispatched agent works and hands back; the extra limits for implementation workers.
 - `merge-queue/` - one merger, one PR at a time.
 - `release/` - production changes (release, configuration, ops action): permission, preconditions, baseline, official command, staged checks, failure policy.
-- `visual-qa/` - independent review of user-visible changes before the human sees them.
+- `visual-qa/` - independent review of user-visible changes before the human sees them; bundles the Vercel Web Interface Guidelines.
 
 Authors, drivers and reviewers:
 
