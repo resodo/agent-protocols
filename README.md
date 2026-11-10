@@ -57,6 +57,9 @@ Repo maintainers:
 - `docs/agent_plans/` - dated plans, review-thread artifacts, and closeout
   evidence for protocol changes.
 - `docs/backlog.yml` - this repo's protocol-development backlog.
+- `docs/shared-development-practice.md` - the development practice shared by
+  the Skynet infra and product teams (agreed 2026-11-10); each consumer repo's
+  `AGENTS.md` points to it in one line.
 
 Protocol directories should hold executable or reusable protocol material:
 `SKILL.md`, `scripts/`, `tests/`, `references/`, and templates. Do not put
