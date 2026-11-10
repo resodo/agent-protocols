@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-11-05
+Last updated: 2026-11-10
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -14,6 +14,8 @@ avoid treating historical plans as current instructions.
 - Documentation rules: `docs/README.md`
 - Protocol change plans and review artifacts: `docs/agent_plans/`
 - Protocol-development backlog: `docs/backlog.yml`
+- Shared development practice of the Skynet infra and product teams:
+  `docs/shared-development-practice.md`
 
 ## Current Protocols
 

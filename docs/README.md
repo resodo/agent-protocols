@@ -14,6 +14,9 @@ placement and naming.
 - `backlog.yml` - this repo's protocol-development backlog. Use
   `backlog-maintenance/SKILL.md` before adding, updating, closing, or querying
   items.
+- `shared-development-practice.md` - the development practice shared by the
+  Skynet infra and product teams; long-lived and changed by PR, read by
+  consumer repos through their `AGENTS.md` pointer.
 
 Protocol packages live at the repo root, such as `structured-review/` and
 `closeout/`. Those directories should contain executable or reusable protocol
@@ -32,6 +35,7 @@ Exceptions:
 - `README.md`;
 - `CURRENT.md`;
 - `backlog.yml`;
+- `shared-development-practice.md`;
 - long-lived protocol files such as `SKILL.md`, `references/*.md`, templates,
   scripts, and tests.
 
