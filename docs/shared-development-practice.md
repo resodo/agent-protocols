@@ -5,9 +5,10 @@ Agreed: 2026-11-10 (resodo; decisions in the last section)
 Applies to: skynet-intern, skynet-thesis-room, skynet-analyst-plugins, and the
 other repos either team works in
 
-This is one document for both teams. Each repo's `AGENTS.md` (or, where a repo
-has none, its collaboration page) points here in one line; the pointers and
-the repo rules for the decisions below land in the repo PRs listed there. Whoever finds a
+This is one document for both teams. The repo PRs listed under "Decisions"
+add a one-line pointer here to each repo's `AGENTS.md` (or, where a repo has
+none, its collaboration page) and put the decisions into the repo rules;
+until they merge, a repo's own rules still say the old thing. Whoever finds a
 better practice changes this file in a PR; the repo-level rules that implement
 a point stay in that repo and are cited here.
 
@@ -337,7 +338,7 @@ is really hard.
 
 ## 6. CI, merge and release
 
-**Now** (with the 2026-11-10 merge decision applied)
+**Now**, as agreed on 2026-11-10 (the Thesis merge column takes effect with skynet-thesis-room#488)
 
 | | Intern (infra) | Thesis (shared) | plugins (product) |
 |---|---|---|---|
@@ -539,7 +540,7 @@ them.
 
 ## 10. Cross-repo requests and issues
 
-**Now** (with the 2026-11-10 decision applied)
+**Now**, as agreed on 2026-11-10 (the plugins wording is corrected by skynet-analyst-plugins#16)
 
 - Thesis has an "Intern request" issue form
   (`.github/ISSUE_TEMPLATE/intern-request.md`): the kind of request, what is
