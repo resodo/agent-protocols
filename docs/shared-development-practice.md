@@ -6,7 +6,8 @@ Applies to: skynet-intern, skynet-thesis-room, skynet-analyst-plugins, and the
 other repos either team works in
 
 This is one document for both teams. Each repo's `AGENTS.md` (or, where a repo
-has none, its collaboration page) points here in one line. Whoever finds a
+has none, its collaboration page) points here in one line; the pointers and
+the repo rules for the decisions below land in the repo PRs listed there. Whoever finds a
 better practice changes this file in a PR; the repo-level rules that implement
 a point stay in that repo and are cited here.
 
@@ -749,25 +750,25 @@ problems are fixed forward.
 
 1. **Cross-repo requests:** the product team opens requests to Intern in the
    Thesis repo ("Intern request" form, as already done, for example Thesis
-   #483). The infra team opens the Intern PR and links it back. Plugins
-   `COLLABORATION.md` is changed to match (skynet-analyst-plugins#16).
+   #483). The infra team opens the Intern PR and links it back. To be applied
+   in plugins `COLLABORATION.md` by skynet-analyst-plugins#16.
 2. **Small changes:** plan and code are reviewed together once (structured
    review type `impl`, plan in the PR description). Small means no API
    contract change, no schema or migration, no CI or release scripts, no
    secrets, and roughly 300 changed lines or fewer. Larger changes keep plan
-   review first. Recorded in intern `.agent-protocols/planning.md` and its
-   authority ledger (skynet-intern#2412).
+   review first. To be recorded in intern `.agent-protocols/planning.md` and
+   its authority ledger by skynet-intern#2412.
 3. **Thesis merges:** ordinary PRs are merged by the product team
    (`Fredi111-bot`, atticcas) themselves, after the infra team's approval on
    the current head with all checks green. Sensitive changes (migrations, CI
    and release/deploy scripts, the pinned Intern contract
    `contracts/intern/`, secrets and credentials) are still merged by the infra
    team. Releases still go through the release bot. GitHub branch protection
-   is not available on the organisation's current plan, so the approval is
-   checked by Thesis's CI territory check instead: `Fredi111-bot` is no
-   longer a core owner, so a product-team PR into `main` fails `checks` until
-   resodo approves its current head, and an approval on an older commit does
-   not count (skynet-thesis-room#488). Who presses merge on a sensitive
+   is not available on the organisation's current plan, so the approval is to
+   be checked by Thesis's CI territory check instead, once
+   skynet-thesis-room#488 removes `Fredi111-bot` from the core owners: from
+   then a product-team PR into `main` fails `checks` until resodo approves its
+   current head, and an approval on an older commit does not count. Who presses merge on a sensitive
    PR is a team rule; GitHub cannot restrict it on this plan.
 
 One historical lesson, not anyone's current position: Thesis #300 (2026-10-26)
