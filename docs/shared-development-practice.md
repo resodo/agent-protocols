@@ -254,8 +254,8 @@ patterns instead of inventing on the spot.
 **Practice** (decided 2026-11-10, see the last section)
 
 1. Where the plan lives, both sides, borrowed from Thesis: a small change
-   carries its plan in the PR description; migrations, interface shapes,
-   cross-repo work and changes across several features get a plan file.
+   (item 2) carries its plan in the PR description; any other change gets a
+   plan file.
 2. **Small changes are reviewed once: plan and code together.** The plan is
    in the PR description, and one implementation review (structured review
    type `impl`) covers both. A change is small when it changes no API
@@ -557,8 +557,7 @@ them.
 
 1. **Requests from the product team to Intern are opened in the Thesis repo**
    with the "Intern request" form, as the product team already does. The
-   infra team opens the Intern PR and links it back on the Thesis issue; the
-   issue is closed when the result can be read through `/intern/v1/`.
+   infra team opens the Intern PR and links it back on the Thesis issue.
 2. One issue covers one concrete problem: "what is, what should be, one
    example". Say what is needed, not how the other side should implement it.
 3. Continue in an existing thread instead of opening a new one; open a new
@@ -751,22 +750,25 @@ problems are fixed forward.
 1. **Cross-repo requests:** the product team opens requests to Intern in the
    Thesis repo ("Intern request" form, as already done, for example Thesis
    #483). The infra team opens the Intern PR and links it back. Plugins
-   `COLLABORATION.md` was changed to match.
+   `COLLABORATION.md` is changed to match (skynet-analyst-plugins#16).
 2. **Small changes:** plan and code are reviewed together once (structured
    review type `impl`, plan in the PR description). Small means no API
    contract change, no schema or migration, no CI or release scripts, no
    secrets, and roughly 300 changed lines or fewer. Larger changes keep plan
    review first. Recorded in intern `.agent-protocols/planning.md` and its
-   authority ledger.
+   authority ledger (skynet-intern#2412).
 3. **Thesis merges:** ordinary PRs are merged by the product team
    (`Fredi111-bot`, atticcas) themselves, after the infra team's approval on
    the current head with all checks green. Sensitive changes (migrations, CI
    and release/deploy scripts, the pinned Intern contract
    `contracts/intern/`, secrets and credentials) are still merged by the infra
-   team. Releases still go through the release bot. The approval requirement
-   is enforced by Thesis's CI territory check (approval on the PR's current
-   head, so a new commit needs a new approval), because GitHub branch
-   protection is not available on the organisation's current plan.
+   team. Releases still go through the release bot. GitHub branch protection
+   is not available on the organisation's current plan, so the approval is
+   checked by Thesis's CI territory check instead: `Fredi111-bot` is no
+   longer a core owner, so a product-team PR into `main` fails `checks` until
+   resodo approves its current head, and an approval on an older commit does
+   not count (skynet-thesis-room#488). Who presses merge on a sensitive
+   PR is a team rule; GitHub cannot restrict it on this plan.
 
 One historical lesson, not anyone's current position: Thesis #300 (2026-10-26)
 once added protection for a hypothetical rollback, later removed in favour of
