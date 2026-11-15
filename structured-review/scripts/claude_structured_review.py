@@ -581,6 +581,7 @@ def build_prompt(config: RunConfig) -> str:
             "- The structured-review protocol below is mandatory. Do not substitute a generic code review style.",
             "- Inspect the requested artifacts before judging readiness.",
             "- The runner has already loaded the shared protocol below. Do not run repository bootstrap or protocol guard scripts; they fetch and write git metadata that a read-only review cannot rely on.",
+            "- Do not run tests, test servers or browsers on this machine (for example pytest, promtool, light checks, Playwright, vite, bun or npm test); local test commands are refused. Judge from the code and the CI or scripts/rx / scripts/ci-run evidence you were given, and name any test that should be run there.",
             f"- If the environment prevents you from reviewing at all, return only a line starting with `{REVIEW_NOT_PERFORMED}` and the reason. The runner records that as an environment failure, not a review pass.",
             f"- You are the {config.backend} reviewer backend. Name the backend in each reviewer pass heading, for example: ### Reviewer pass 1 ({config.review_type}, {config.backend} reviewer).",
         ]
@@ -946,10 +947,11 @@ def codex_argv(config: RunConfig, logs: RunLogs) -> list[str]:
             "-c", 'sandbox_mode="workspace-write"',
             "--output-last-message", str(logs.root / CODEX_LAST_MESSAGE_NAME),
         ]
-    # workspace-write (without any .git --add-dir grant) lets the reviewer run
-    # tests, which need writable temp dirs, while commits stay impossible and
-    # stray worktree writes are rejected by the runner's untouched-worktree
-    # check before any append happens.
+    # workspace-write (without any .git --add-dir grant) keeps commits
+    # impossible; stray worktree writes are rejected by the runner's
+    # untouched-worktree check before any append happens. Reviewers must not
+    # run tests locally: the user-level Codex rules file refuses test commands,
+    # and test evidence comes from scripts/rx (rx host) or scripts/ci-run (CI).
     return [
         config.codex_bin,
         "exec",
