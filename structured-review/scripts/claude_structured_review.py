@@ -538,6 +538,16 @@ def load_protocol_sections(config: RunConfig) -> list[tuple[str, str]]:
     return sections
 
 
+NO_TEST_SHIMS = Path(__file__).resolve().parent / "no-test-shims"
+
+
+def reviewer_env() -> dict[str, str]:
+    """Reviewer env with test-runner shims first on PATH: tests run in CI/rx only."""
+    env = dict(os.environ)
+    env["PATH"] = f"{NO_TEST_SHIMS}{os.pathsep}{env.get('PATH', '')}"
+    return env
+
+
 def build_prompt(config: RunConfig) -> str:
     if str(config.worktree) in config.focus:
         raise RunnerError("focus text contains the real worktree path")
@@ -550,6 +560,7 @@ def build_prompt(config: RunConfig) -> str:
         "All relative paths are relative to <WORKTREE>.",
         "All repo-visible output, review threads, and commit messages must use relative paths only.",
         "Do not write local user-home absolute paths or the real worktree root into repo-visible content.",
+        "Tests run only in CI/rx, never on this machine; do not run any test runner (pytest, uv/npm test, playwright, vite) locally. Cite CI evidence instead.",
         "",
         "Artifacts to review:",
     ]
@@ -1532,7 +1543,7 @@ def run_claude(config: RunConfig, prompt: str, logs: RunLogs, redactor: Redactor
             print(f"{config.backend} review event", file=sys.stderr)
 
         try:
-            proc = subprocess.Popen(argv, cwd=config.worktree, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+            proc = subprocess.Popen(argv, cwd=config.worktree, env=reviewer_env(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
             patch_metadata(logs, outcome="running", phase="launched", reviewer_pid=proc.pid, reviewer_pgid=proc.pid, started_at=started_at, argv=argv, reviewer_version=version)
             assert proc.stdin and proc.stdout and proc.stderr
             pending = memoryview(prompt.encode() if backend.prompt_on_stdin else b"")
