@@ -693,15 +693,16 @@ never take another route.
      `wait-for-run --sha <sha> --repo OWNER/REPO --workflow ci.yml` when you
      only know the commit. One shared poller per machine (later a webhook)
      writes run events to a local file and `wait-for-run` reads that file, so
-     waiting costs no API calls. Start it once with `run_in_background`; it
+     a wait adds no API calls of its own while the poller is healthy (if the
+     poller stalls, it makes one conditional request every 2 minutes). Start
+     it once with `run_in_background`; it
      exits 0 on success, 1 on any other conclusion, 2 on timeout. On a
      machine without it, check the run at most once every 2 minutes.
    - Never `gh run watch`, and never a `while`/`until` or `sleep` loop around
      `gh run view`, `gh run list`, `gh pr checks` or `gh api`. Any other
      ad-hoc GitHub call that repeats (checking a PR, a review, a check) is at
      most one call per 2 minutes.
-   - Kill your own background waits and loops when you are done with them; a
-     forgotten loop keeps calling the API for days.
+   - Stop your own background waits when you no longer need them.
    - Scripts that poll the same URL send `If-None-Match` with the last
      `ETag`; an authorized request answered `304 Not Modified` does not count
      against the limit (GitHub REST docs, "Best practices", conditional
