@@ -688,14 +688,19 @@ never take another route.
    only for hard design and debugging, with the reason stated.
 4. GitHub API budget. Agents that share one GitHub identity share its REST
    limit (5,000 calls an hour for a user token). So:
-   - Wait for CI at most once every 2 minutes: `gh run watch <id>
-     --interval 120` (its default is 3 seconds, about 2 calls each time),
-     started once with `run_in_background`, or the repo's own wait script.
-     One watcher per run; never a `while`/`until` loop around `gh run view`,
-     `gh run list` or `gh pr checks`, and never `sleep N` shorter than 120 in
-     such a loop. If you need to know when a run is done, start one blocking
-     watch and wait for its notification.
-   - Kill your own background watchers when you are done with the run; a
+   - Wait for CI only with `wait-for-run`, where the machine provides it:
+     `wait-for-run <run-id> [--repo OWNER/REPO] [--timeout 2h]`, or
+     `wait-for-run --sha <sha> --repo OWNER/REPO --workflow ci.yml` when you
+     only know the commit. One shared poller per machine (later a webhook)
+     writes run events to a local file and `wait-for-run` reads that file, so
+     waiting costs no API calls. Start it once with `run_in_background`; it
+     exits 0 on success, 1 on any other conclusion, 2 on timeout. On a
+     machine without it, check the run at most once every 2 minutes.
+   - Never `gh run watch`, and never a `while`/`until` or `sleep` loop around
+     `gh run view`, `gh run list`, `gh pr checks` or `gh api`. Any other
+     ad-hoc GitHub call that repeats (checking a PR, a review, a check) is at
+     most one call per 2 minutes.
+   - Kill your own background waits and loops when you are done with them; a
      forgotten loop keeps calling the API for days.
    - Scripts that poll the same URL send `If-None-Match` with the last
      `ETag`; an authorized request answered `304 Not Modified` does not count
