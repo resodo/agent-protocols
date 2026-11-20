@@ -686,10 +686,38 @@ never take another route.
    suites on a dev machine.
 3. Pick the model by difficulty: cheap ones for mechanical work, the strongest
    only for hard design and debugging, with the reason stated.
+4. GitHub API budget. Agents that share one GitHub identity share its REST
+   limit (5,000 calls an hour for a user token). So:
+   - Wait for CI at most once every 2 minutes: `gh run watch <id>
+     --interval 120` (its default is 3 seconds, about 2 calls each time),
+     started once with `run_in_background`, or the repo's own wait script.
+     One watcher per run; never a `while`/`until` loop around `gh run view`,
+     `gh run list` or `gh pr checks`, and never `sleep N` shorter than 120 in
+     such a loop. If you need to know when a run is done, start one blocking
+     watch and wait for its notification.
+   - Kill your own background watchers when you are done with the run; a
+     forgotten loop keeps calling the API for days.
+   - Scripts that poll the same URL send `If-None-Match` with the last
+     `ETag`; an authorized request answered `304 Not Modified` does not count
+     against the limit (GitHub REST docs, "Best practices", conditional
+     requests).
+   - Before a sweep of more than about 50 calls (listing runs over weeks,
+     fetching job logs in bulk, walking every repo), check
+     `gh api rate_limit --jq .resources.core` (that call is free) and stop
+     or wait for the reset when fewer than 500 remain. Narrow the sweep
+     first: a filter or a sample usually answers the question.
+   - When the repo provides a bot or App token for agents, use it; it has its
+     own limit.
 
 **Why:** on 2026-10-27 the Thesis #330 CI fix queued behind an agent already
 holding six tasks, and sat waiting. On 2026-11-04, local browser tests plus a
-VM pushed a 16 GB dev machine into 6 GB of swap.
+VM pushed a 16 GB dev machine into 6 GB of swap. On 2026-11-20 the shared
+GitHub token hit 0 of 5,000 REST calls at about 07:05Z and every agent's `gh`
+failed for 11 minutes. The burners: `gh run watch` left at its 3-second
+default (about 40 calls a minute per watcher, several running back to back),
+a one-off sweep that listed four weeks of workflow runs in 232 windows and
+fetched about 600 job records and logs, and two forgotten loops that had
+called `gh run list` every 20 seconds for 3 to 4 days.
 
 **Cost:** more agents at once means someone has to watch the lines.
 
