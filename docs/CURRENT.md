@@ -13,7 +13,7 @@ avoid treating historical plans as current instructions.
 - Repo overview: `README.md`
 - Documentation rules: `docs/README.md`
 - Protocol change plans and review artifacts: `docs/agent_plans/`
-- Protocol-development backlog: `docs/backlog.yml`
+- Protocol-development todos: this repo's GitHub issues
 - Shared development practice of the Skynet infra and product teams:
   `docs/shared-development-practice.md`
 
@@ -45,9 +45,8 @@ in its description who reads it.
 - `readable-brief/SKILL.md` - the human's brief of a reviewed document.
 - `fix-triage/SKILL.md` - whether something is wrong, attribution, fix.
 - `retrospective/SKILL.md` - learning after an incident or closeout.
-- `backlog-maintenance/SKILL.md` - YAML backlog; this repo dogfoods it
-  through `docs/backlog.yml`.
-- `scout/SKILL.md` - repository discovery that proposes backlog candidates.
+- `scout/SKILL.md` - repository discovery that proposes todo items for the adopting
+  project's tracker.
 - `editing-rules/SKILL.md` - rules in `AGENTS.md`: placement, formats, the
   three questions, refactors, layers, who answers; defines a wired repo.
 - `scope-review/SKILL.md` - scope review before work (scope reviewer).
@@ -89,4 +88,4 @@ required reference set unless a future accepted plan changes runner loading.
 ## Maintenance
 
 Update this map during closeout when protocols, indexes, runner paths,
-reference paths, or backlog ownership change.
+or reference paths change.

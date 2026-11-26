@@ -59,7 +59,7 @@ transcript-backed claims.
 Classify each finding:
 
 - `General`: caused by reusable agent-process weakness. Route to generic skills, agent rules, or review/closeout protocol.
-- `Project-specific`: caused by repo/product/deploy context. Route to repo docs, CI/scripts, backlog, runbook, or code.
+- `Project-specific`: caused by repo/product/deploy context. Route to repo docs, CI/scripts, the project's todo tracker, runbook, or code.
 - `Hybrid`: needs both a generic rule and a project-local overlay or test.
 
 ## Finding Shape
@@ -85,7 +85,7 @@ severity and mechanism value:
 - `P0`: repeated or trust-breaking workflow failures that must change before
   similar work continues.
 - `P1`: important quality failures worth routing to a skill, repo overlay,
-  backlog item, CI check, or runbook.
+  todo-tracker item, CI check, or runbook.
 - `P2`: local mistakes or one-off slips to acknowledge but not necessarily
   mechanize.
 
@@ -105,7 +105,7 @@ Common owners:
 - generic retrospective skill;
 - repo-local `.agent-protocols/` overlay;
 - repo CI/check scripts;
-- project backlog;
+- the project's todo tracker (named in `.agent-protocols/context.md`);
 - production runbook or ops dashboard;
 - code architecture or tests.
 

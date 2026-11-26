@@ -38,10 +38,6 @@ class ScoutRunnerTests(unittest.TestCase):
         (self.root / ".agent-protocols").mkdir()
         (self.root / "docs").mkdir()
         (self.root / "docs/agent_plans").mkdir(parents=True)
-        (self.root / "docs/backlog.yml").write_text(
-            "version: 1\nrepo: example/repo\nid_prefix: EX-BL\nkinds: [debt]\nitems: []\n",
-            encoding="utf-8",
-        )
         self.write_overlay(self.overlay())
         run_git(self.root, "add", ".")
         run_git(self.root, "commit", "-m", "initial")
@@ -56,7 +52,6 @@ class ScoutRunnerTests(unittest.TestCase):
             "report": {"output_root": "docs/agent_plans/outputs"},
             "repo_context": {
                 "entry_files": ["AGENTS.md"],
-                "backlog_path": "docs/backlog.yml",
                 "active_docs": ["README.md"],
                 "archive_paths": ["docs/agent_plans/outputs"],
             },
@@ -135,15 +130,12 @@ class ScoutRunnerTests(unittest.TestCase):
         run_dir: Path,
         *,
         mode: str = "dry-run",
-        include_backlog_check: bool = False,
     ) -> None:
         relative_run_dir = run_dir.relative_to(self.root).as_posix()
         validation_lines = [
             "- `python external/agent-protocols/scout/scripts/scout_runner.py "
             f"check --run-dir {relative_run_dir} --mode {mode}` passed.",
         ]
-        if include_backlog_check:
-            validation_lines.append("- `python scripts/check_backlog.py` passed.")
         validation = "\n".join(validation_lines) + "\n"
 
         report_path = run_dir / "SCOUT_REPORT.md"
@@ -282,10 +274,12 @@ class ScoutRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(runner.RunnerError, "inside repo"):
             runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
 
-    def test_malformed_backlog_is_rejected(self) -> None:
-        (self.root / "docs/backlog.yml").write_text("version: 1\nitems: [\n", encoding="utf-8")
+    def test_retired_backlog_path_is_rejected(self) -> None:
+        data = self.overlay()
+        data["repo_context"]["backlog_path"] = "docs/backlog.yml"
+        self.write_overlay(data)
 
-        with self.assertRaisesRegex(runner.RunnerError, "backlog YAML parse failed"):
+        with self.assertRaisesRegex(runner.RunnerError, "backlog_path is retired"):
             runner.validate_overlay(self.root, self.root / ".agent-protocols/scout.yml")
 
     def test_setup_and_check_report_artifacts(self) -> None:
@@ -316,7 +310,10 @@ class ScoutRunnerTests(unittest.TestCase):
         self.assertIn("Closed:", manifest)
         self.assertIn("## Artifacts", manifest)
         self.assertIn("`SCOUT_REPORT.md`", manifest)
-        self.assertIn("Backlog baseline sha256:", manifest)
+        self.assertIn("Dry-run runs open, edit, or comment on no todo-tracker items.", manifest)
+        self.assertNotIn("Opened tracker items:", manifest)
+        report = (run_dir / "SCOUT_REPORT.md").read_text(encoding="utf-8")
+        self.assertIn("## Proposed Todo Changes", report)
         self.add_validation_provenance(run_dir, mode="dry-run")
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(runner.cmd_check(check_args), 0)
@@ -366,61 +363,6 @@ class ScoutRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(runner.RunnerError, "code-reachability subsection"):
             runner.cmd_check(args)
 
-    def test_check_rejects_dry_run_backlog_change(self) -> None:
-        self.test_setup_and_check_report_artifacts()
-        (self.root / "docs/backlog.yml").write_text(
-            "version: 1\nrepo: example/repo\nid_prefix: EX-BL\nkinds: [debt]\nitems: []\n# changed\n",
-            encoding="utf-8",
-        )
-
-        args = SimpleNamespace(
-            repo_root=self.root,
-            overlay=".agent-protocols/scout.yml",
-            run_dir="docs/agent_plans/outputs/2026-06-06_scout_run",
-            mode="dry-run",
-        )
-        with self.assertRaisesRegex(runner.RunnerError, "dry-run"):
-            runner.cmd_check(args)
-
-    def test_dry_run_allows_backlog_dirty_before_setup_when_unchanged(self) -> None:
-        (self.root / "docs/backlog.yml").write_text(
-            "version: 1\nrepo: example/repo\nid_prefix: EX-BL\nkinds: [debt]\nitems:\n"
-            "  - id: EX-BL-0001\n"
-            "    status: candidate\n"
-            "    priority: P2\n"
-            "    kind: debt\n"
-            "    title: Existing candidate\n"
-            "    why: >\n"
-            "      Existing human-approved candidate before this dry-run.\n"
-            "    next: >\n"
-            "      Review later.\n"
-            "    done_when: >\n"
-            "      Reviewed.\n"
-            "    refs:\n"
-            "      - docs/agent_plans/outputs/previous/SCOUT_REPORT.md#candidate-proposal-001\n",
-            encoding="utf-8",
-        )
-
-        setup_args = SimpleNamespace(
-            repo_root=self.root,
-            overlay=".agent-protocols/scout.yml",
-            mode="dry-run",
-            date="2026-06-06",
-            slug="scout_run",
-        )
-        with contextlib.redirect_stdout(io.StringIO()):
-            runner.cmd_setup(setup_args)
-        self.add_validation_provenance(self.root / "docs/agent_plans/outputs/2026-06-06_scout_run", mode="dry-run")
-
-        args = SimpleNamespace(
-            repo_root=self.root,
-            overlay=".agent-protocols/scout.yml",
-            run_dir="docs/agent_plans/outputs/2026-06-06_scout_run",
-            mode="dry-run",
-        )
-        with contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(runner.cmd_check(args), 0)
-
     def test_write_enabled_manifest_declares_write_mode(self) -> None:
         args = SimpleNamespace(
             repo_root=self.root,
@@ -434,9 +376,9 @@ class ScoutRunnerTests(unittest.TestCase):
 
         run_dir = self.root / "docs/agent_plans/outputs/2026-06-06_scout_write"
         manifest = (run_dir / "MANIFEST.md").read_text(encoding="utf-8")
-        self.assertIn("Write-enabled runs may modify backlog YAML.", manifest)
-        self.assertNotIn("Backlog baseline sha256:", manifest)
-        self.add_validation_provenance(run_dir, mode="write-enabled", include_backlog_check=True)
+        self.assertIn("Write-enabled runs may open todo-tracker items", manifest)
+        self.assertIn("- Opened tracker items: None.", manifest)
+        self.add_validation_provenance(run_dir, mode="write-enabled")
 
         check_args = SimpleNamespace(
             repo_root=self.root,
@@ -447,7 +389,7 @@ class ScoutRunnerTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(runner.cmd_check(check_args), 0)
 
-    def test_write_enabled_requires_backlog_checker_provenance(self) -> None:
+    def test_write_enabled_requires_opened_items_record(self) -> None:
         args = SimpleNamespace(
             repo_root=self.root,
             overlay=".agent-protocols/scout.yml",
@@ -459,33 +401,10 @@ class ScoutRunnerTests(unittest.TestCase):
             runner.cmd_setup(args)
 
         run_dir = self.root / "docs/agent_plans/outputs/2026-06-06_scout_write"
-        self.add_validation_provenance(run_dir, mode="write-enabled", include_backlog_check=False)
-
-        check_args = SimpleNamespace(
-            repo_root=self.root,
-            overlay=".agent-protocols/scout.yml",
-            run_dir="docs/agent_plans/outputs/2026-06-06_scout_write",
-            mode="write-enabled",
-        )
-        with self.assertRaisesRegex(runner.RunnerError, "backlog checker"):
-            runner.cmd_check(check_args)
-
-    def test_write_enabled_requires_manifest_backlog_checker_provenance(self) -> None:
-        args = SimpleNamespace(
-            repo_root=self.root,
-            overlay=".agent-protocols/scout.yml",
-            mode="write-enabled",
-            date="2026-06-06",
-            slug="scout_write",
-        )
-        with contextlib.redirect_stdout(io.StringIO()):
-            runner.cmd_setup(args)
-
-        run_dir = self.root / "docs/agent_plans/outputs/2026-06-06_scout_write"
-        self.add_validation_provenance(run_dir, mode="write-enabled", include_backlog_check=True)
+        self.add_validation_provenance(run_dir, mode="write-enabled")
         manifest_path = run_dir / "MANIFEST.md"
         manifest = manifest_path.read_text(encoding="utf-8")
-        manifest = manifest.replace("- `python scripts/check_backlog.py` passed.\n", "", 1)
+        manifest = manifest.replace("- Opened tracker items: None.\n", "", 1)
         manifest_path.write_text(manifest, encoding="utf-8")
 
         check_args = SimpleNamespace(
@@ -494,7 +413,7 @@ class ScoutRunnerTests(unittest.TestCase):
             run_dir="docs/agent_plans/outputs/2026-06-06_scout_write",
             mode="write-enabled",
         )
-        with self.assertRaisesRegex(runner.RunnerError, "MANIFEST.md.*backlog checker"):
+        with self.assertRaisesRegex(runner.RunnerError, "Opened tracker items"):
             runner.cmd_check(check_args)
 
     def test_vulture_config_is_canonical_and_outside_repo(self) -> None:

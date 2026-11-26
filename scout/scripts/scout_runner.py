@@ -34,14 +34,14 @@ REPORT_HEADINGS = (
     "# Scout Report",
     "## Run Metadata",
     "## Executive Summary",
-    "## Proposed Backlog Changes",
+    "## Proposed Todo Changes",
     "## Human Review Queue",
     "## Subskill Results",
     "## Tool Commands",
     "## Runner Validation",
 )
 RUNNER_CHECK_PROVENANCE_TOKENS = ("scout_runner.py", "check")
-WRITE_ENABLED_BACKLOG_PROVENANCE_TOKEN = "backlog"
+OPENED_ITEMS_LINE = "- Opened tracker items:"
 SUBSKILL_SUBHEADINGS = (
     "#### Context And Tools Used",
     "#### Candidate Proposals",
@@ -179,8 +179,10 @@ def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
 
     repo_context = require_mapping(data["repo_context"], "repo_context")
     require_string_list(repo_context.get("entry_files"), "repo_context.entry_files")
-    backlog_path = require_string(repo_context.get("backlog_path"), "repo_context.backlog_path")
-    repo_path(repo_root, backlog_path, "repo_context.backlog_path")
+    if "backlog_path" in repo_context:
+        raise RunnerError(
+            "repo_context.backlog_path is retired: Scout proposes items for the project's todo tracker; remove the key"
+        )
     require_string_list(repo_context.get("active_docs"), "repo_context.active_docs")
     require_string_list(repo_context.get("archive_paths"), "repo_context.archive_paths")
 
@@ -254,11 +256,6 @@ def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
             )
         if "repo_notes" in structure:
             require_string(structure["repo_notes"], "subskills.code-structure.repo_notes")
-
-    backlog = repo_path(repo_root, repo_context["backlog_path"], "repo_context.backlog_path")
-    if not backlog.exists():
-        raise RunnerError(f"configured backlog is missing: {repo_context['backlog_path']}")
-    load_yaml(backlog, label="backlog YAML")
     return data
 
 
@@ -292,7 +289,6 @@ def report_skeleton(data: dict[str, Any], repo_root: Path, overlay: Path, run_di
         f"- Mode: {mode}",
         f"- Overlay: {overlay.as_posix()}",
         f"- Enabled subskills: {', '.join(enabled)}",
-        f"- Backlog path: {data['repo_context']['backlog_path']}",
         f"- Report output dir: {run_dir.as_posix()}",
         "",
         "## Executive Summary",
@@ -303,7 +299,7 @@ def report_skeleton(data: dict[str, Any], repo_root: Path, overlay: Path, run_di
         "- Inconclusive count: 0",
         "- Summary: None.",
         "",
-        "## Proposed Backlog Changes",
+        "## Proposed Todo Changes",
         "",
         "### Candidate Proposals",
         "None.",
@@ -333,23 +329,16 @@ def report_skeleton(data: dict[str, Any], repo_root: Path, overlay: Path, run_di
     return "\n".join(lines) + "\n"
 
 
-def file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def manifest_skeleton(mode: str, backlog_sha256: str) -> str:
+def manifest_skeleton(mode: str) -> str:
     if mode == "dry-run":
-        backlog_lines = [
-            "- Dry-run reports do not modify backlog YAML.",
-            f"- Backlog baseline sha256: {backlog_sha256}",
-        ]
-        note = "- Candidate proposals require explicit human approval before backlog writes."
+        write_lines = ["- Dry-run runs open, edit, or comment on no todo-tracker items."]
+        note = "- Candidate proposals require explicit human approval before they become todo-tracker items."
     else:
-        backlog_lines = [
-            "- Write-enabled runs may modify backlog YAML.",
-            "- Backlog/report changes must be validated and committed separately per subskill.",
+        write_lines = [
+            "- Write-enabled runs may open todo-tracker items and comment on existing ones.",
+            f"{OPENED_ITEMS_LINE} None.",
         ]
-        note = "- Candidate proposals/refinements written to backlog must follow backlog-maintenance."
+        note = "- List every tracker item this run opened or commented on, with its link and report anchor."
 
     return "\n".join(
         [
@@ -370,7 +359,7 @@ def manifest_skeleton(mode: str, backlog_sha256: str) -> str:
             "| Path | Type | Keep / delete / archive policy | Owner | Referenced by | Notes |",
             "| --- | --- | --- | --- | --- | --- |",
             "| `MANIFEST.md` | manifest | Keep permanently with this Scout output folder. | Scout run driver | output-manifest check | Owns the lifecycle of artifacts in this folder. |",
-            "| `SCOUT_REPORT.md` | Scout report | Keep permanently as repo-safe Scout discovery evidence. | Scout run driver | backlog candidates / closeout | Records subskill findings, commands, validation, and backlog write behavior. |",
+            "| `SCOUT_REPORT.md` | Scout report | Keep permanently as repo-safe Scout discovery evidence. | Scout run driver | todo-tracker proposals / closeout | Records subskill findings, commands, validation, and tracker write behavior. |",
             "",
             "## Lifecycle Rules",
             "",
@@ -381,21 +370,21 @@ def manifest_skeleton(mode: str, backlog_sha256: str) -> str:
             "",
             "## Human Acceptance",
             "",
-            "- Human review is required before promoted Scout candidates become accepted backlog work.",
+            "- Human review is required before Scout candidates become accepted todo-tracker work.",
             "",
-            "## Next / Backlog",
+            "## Next",
             "",
-            "- Review candidate proposals/refinements in `SCOUT_REPORT.md` and update backlog state according to the owning repo's backlog protocol.",
+            "- Review candidate proposals/refinements in `SCOUT_REPORT.md` and triage the matching todo-tracker items.",
             "",
             "## Validation",
             "",
             "- Report skeleton created by Scout runner.",
             "- Overlay parsed by Scout runner.",
             "",
-            "## Backlog Write Mode",
+            "## Tracker Write Mode",
             "",
             f"- Mode: {mode}",
-            *backlog_lines,
+            *write_lines,
             "",
             "## Notes",
             "",
@@ -412,9 +401,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
     run_date = args.date or datetime.now(UTC).date().isoformat()
     run_dir = next_run_dir(output_root, run_date, args.slug)
     run_dir.mkdir(parents=True)
-    backlog_sha256 = file_sha256(repo_root / data["repo_context"]["backlog_path"])
     (run_dir / "SCOUT_REPORT.md").write_text(report_skeleton(data, repo_root, Path(args.overlay), run_dir.relative_to(repo_root), args.mode), encoding="utf-8")
-    (run_dir / "MANIFEST.md").write_text(manifest_skeleton(args.mode, backlog_sha256), encoding="utf-8")
+    (run_dir / "MANIFEST.md").write_text(manifest_skeleton(args.mode), encoding="utf-8")
     print(run_dir.relative_to(repo_root).as_posix())
     return 0
 
@@ -434,29 +422,18 @@ def section_text(text: str, heading: str, next_level_prefix: str, *, artifact: s
     return text[match.end() : match.end() + next_heading.start()]
 
 
-def manifest_backlog_baseline(manifest: str) -> str | None:
-    match = re.search(r"^- Backlog baseline sha256: ([0-9a-f]{64})\s*$", manifest, re.MULTILINE)
-    return match.group(1) if match else None
-
-
 def contains_all_tokens(text: str, tokens: tuple[str, ...]) -> bool:
     lowered = text.lower()
     return all(token.lower() in lowered for token in tokens)
 
 
-def require_validation_provenance(report: str, manifest: str, mode: str) -> None:
+def require_validation_provenance(report: str, manifest: str) -> None:
     report_validation = section_text(report, "## Runner Validation", "##")
     manifest_validation = section_text(manifest, "## Validation", "##", artifact="MANIFEST.md")
     if not contains_all_tokens(report_validation, RUNNER_CHECK_PROVENANCE_TOKENS):
         raise RunnerError("SCOUT_REPORT.md Runner Validation must record the scout_runner.py check command")
     if not contains_all_tokens(manifest_validation, RUNNER_CHECK_PROVENANCE_TOKENS):
         raise RunnerError("MANIFEST.md Validation must record the scout_runner.py check command")
-    if mode == "write-enabled":
-        backlog_tokens = (WRITE_ENABLED_BACKLOG_PROVENANCE_TOKEN,)
-        if not contains_all_tokens(report_validation, backlog_tokens):
-            raise RunnerError("SCOUT_REPORT.md Runner Validation must record repo backlog checker provenance in write-enabled mode")
-        if not contains_all_tokens(manifest_validation, backlog_tokens):
-            raise RunnerError("MANIFEST.md Validation must record repo backlog checker provenance in write-enabled mode")
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -484,17 +461,13 @@ def cmd_check(args: argparse.Namespace) -> int:
                 raise RunnerError(f"SCOUT_REPORT.md missing {subskill} subsection: {heading}")
     if re.search(r"\bTODO\b", report) or re.search(r"\bTODO\b", manifest):
         raise RunnerError("report artifacts contain TODO placeholders")
-    for heading in ("# Scout Run Output Manifest", "## Primary Plans", "## Artifacts", "## Lifecycle Rules", "## Human Acceptance", "## Next / Backlog", "## Validation", "## Backlog Write Mode"):
+    for heading in ("# Scout Run Output Manifest", "## Primary Plans", "## Artifacts", "## Lifecycle Rules", "## Human Acceptance", "## Next", "## Validation", "## Tracker Write Mode"):
         if not contains_heading(manifest, heading):
             raise RunnerError(f"MANIFEST.md missing heading: {heading}")
-    require_validation_provenance(report, manifest, args.mode)
-    if args.mode == "dry-run":
-        baseline = manifest_backlog_baseline(manifest)
-        if baseline is None:
-            raise RunnerError("MANIFEST.md missing backlog baseline sha256")
-        current = file_sha256(repo_root / data["repo_context"]["backlog_path"])
-        if current != baseline:
-            raise RunnerError("dry-run mode must not modify backlog YAML")
+    require_validation_provenance(report, manifest)
+    write_mode = section_text(manifest, "## Tracker Write Mode", "##", artifact="MANIFEST.md")
+    if args.mode == "write-enabled" and OPENED_ITEMS_LINE not in write_mode:
+        raise RunnerError(f"MANIFEST.md Tracker Write Mode must record '{OPENED_ITEMS_LINE}' in write-enabled mode")
     print("ok")
     return 0
 

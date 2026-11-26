@@ -24,7 +24,7 @@ is in `agents/`.
 
 1. Read the repo entrypoint (`AGENTS.md`) and its routing for your task.
 2. **List the decisions already made** that touch your task, each with its
-   source (decision docs, business rules, backlog, PR history, the brief).
+   source (decision docs, business rules, the todo tracker, PR history, the brief).
    Treat memory notes as leads, not facts: check the record. If your planned
    approach conflicts with a decision, stop and report.
 3. If your line was started before (a worktree or branch exists), read its git

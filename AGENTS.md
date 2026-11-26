@@ -46,9 +46,8 @@ and committed skill mounts, not through this checkout's path; see
 
 - Use `docs/README.md` for document placement and lifecycle rules.
 - Use `docs/CURRENT.md` for the current source-of-truth map.
-- Use `docs/backlog.yml` for this repo's protocol-development backlog.
-- Use `backlog-maintenance/SKILL.md` before adding, updating, closing, or
-  querying backlog items in this repo.
+- Record deferred protocol-development work as an issue in this repo's
+  GitHub issue tracker; there is no in-repo backlog file.
 - Do not commit local user-home absolute paths, secrets, credentials, private
   account details, or generated private run outputs.
 

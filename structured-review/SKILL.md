@@ -224,7 +224,7 @@ rule, reject that overlay instruction and say why.
 - Do the long-term correct fix by default, wherever in the system it belongs;
   do not patch one symptom away. The only exception is an explicit, temporary
   emergency permission from the human: record the patch as temporary and track
-  the long-term fix, for example as a backlog item.
+  the long-term fix, for example as an item in the project's todo tracker.
 - Before fixing a finding, check its premise: is the cause in this change, or
   in an assumption elsewhere - an upstream caller, another layer, or the
   question's own framing? If the correct fix is outside this change's scope,

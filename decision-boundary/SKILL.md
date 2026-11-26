@@ -98,7 +98,7 @@ Without any ledger entry, in every project:
 - someone else's fix candidate (another agent, another session): review it
   against `fix-triage` before adopting; never accept by default;
 - a confirmed error with evidence and a known fix: fix it through the normal
-  gates instead of filing a backlog item and asking;
+  gates instead of filing a todo item and asking;
 - edits to process text and SOPs: change, then report;
 - killing a process proven dead (no parent, its run finished, serving no
   traffic), and one rerun of a failed job judged flaky.
