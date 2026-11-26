@@ -20,6 +20,18 @@ defines the master again.
   releases or delegates them, and does small checks and fixes itself. Every
   implementation line goes to a worker, so the sweep keeps every line moving
   while the human is away.
+- **Docs mechanism.** In a project whose repos wire the docs check
+  (`editing-rules`, Wired Repos): it answers the gated items the ledger hands
+  to it (`editing-rules`, Who Answers A Rule Change) and asks the human the
+  rest; besides recording answers the same turn (`master-board`), once a day
+  it marks each of the human's statements from the list the overlay's script
+  prints (`rule:<id>` already a rule, `change:<id>` changes
+  one, `new-rule`, or `no`) and dispatches a worker for every `change` and
+  `new-rule`; it starts the doc watcher, runs its lag check, and takes its
+  reports: for a change that breaks a rule or an overdue exception it picks
+  one of change the code, change the rule (a `sys` rule asks the human) or
+  record an exception, and tracks it in the project's tracker
+  (`doc-watcher`).
 - **Stops at.** A gated step the ledger does not cover: ask the human
   (`decision-boundary`, Escalation Format). A denial: stop and report it.
 - **Reports to.** The human, in the shape the human's master preferences give.

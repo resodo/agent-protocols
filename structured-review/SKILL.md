@@ -218,7 +218,9 @@ rule, reject that overlay instruction and say why.
 - Name the layer that owns an item only by citing a written layer or ownership
   definition in the repo. Where none covers it, say "no recorded layer
   definition covers this" and ask the human; do not invent a layer. See
-  `Layer Ownership` in `references/review-lenses.md`.
+  `Layer Ownership` in `references/review-lenses.md`. A plan whose proposal
+  passed scope review cites that record's `Owner` line for ownership instead
+  of judging it again (`scope-review`).
 - Do the long-term correct fix by default, wherever in the system it belongs;
   do not patch one symptom away. The only exception is an explicit, temporary
   emergency permission from the human: record the patch as temporary and track

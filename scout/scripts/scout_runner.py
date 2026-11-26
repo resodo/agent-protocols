@@ -22,8 +22,6 @@ except ImportError as exc:  # pragma: no cover - exercised by environment, not l
 SUBSKILL_REFERENCES = {
     "script-lifecycle": Path("references/script-lifecycle.md"),
     "code-reachability": Path("references/code-reachability-backend-python.md"),
-    "document-structure": Path("references/document-structure.md"),
-    "document-lifecycle-drift": Path("references/document-lifecycle-drift.md"),
     "code-structure": Path("references/code-structure.md"),
 }
 CORE_FIELDS = (
@@ -51,11 +49,6 @@ SUBSKILL_SUBHEADINGS = (
     "#### Report-Only Observations",
     "#### Ignored Noise",
     "#### Inconclusive Items",
-)
-DOCUMENT_STRUCTURE_THRESHOLDS = (
-    "index_review_lines",
-    "doc_review_lines",
-    "doc_large_lines",
 )
 CODE_STRUCTURE_ADAPTERS = ("python", "typescript_react")
 CODE_STRUCTURE_THRESHOLDS = {
@@ -243,36 +236,6 @@ def validate_overlay(repo_root: Path, overlay_path: Path) -> dict[str, Any]:
                 require_string_list(vulture["ignore_decorators"], "subskills.code-reachability.python.vulture.ignore_decorators")
             if "ignore_names" in vulture:
                 require_string_list(vulture["ignore_names"], "subskills.code-reachability.python.vulture.ignore_names")
-
-    if "document-structure" in enabled:
-        document = require_mapping(subskills["document-structure"], "subskills.document-structure")
-        require_string_list(document.get("entry_docs"), "subskills.document-structure.entry_docs", non_empty=True)
-        require_string_list(document.get("index_docs"), "subskills.document-structure.index_docs")
-        require_string_list(document.get("doc_roots"), "subskills.document-structure.doc_roots", non_empty=True)
-        if "archive_paths" in document:
-            require_string_list(document["archive_paths"], "subskills.document-structure.archive_paths")
-        if "thresholds" in document:
-            validate_known_thresholds(
-                document["thresholds"],
-                "subskills.document-structure.thresholds",
-                DOCUMENT_STRUCTURE_THRESHOLDS,
-            )
-        if "repo_notes" in document:
-            require_string(document["repo_notes"], "subskills.document-structure.repo_notes")
-
-    if "document-lifecycle-drift" in enabled:
-        drift = require_mapping(subskills["document-lifecycle-drift"], "subskills.document-lifecycle-drift")
-        require_string_list(drift.get("entry_docs"), "subskills.document-lifecycle-drift.entry_docs", non_empty=True)
-        require_string_list(drift.get("current_docs"), "subskills.document-lifecycle-drift.current_docs", non_empty=True)
-        require_string_list(drift.get("doc_roots"), "subskills.document-lifecycle-drift.doc_roots", non_empty=True)
-        if "archive_paths" in drift:
-            require_string_list(drift["archive_paths"], "subskills.document-lifecycle-drift.archive_paths")
-        if "status_sources" in drift:
-            require_string_list(drift["status_sources"], "subskills.document-lifecycle-drift.status_sources")
-        if "runbook_roots" in drift:
-            require_string_list(drift["runbook_roots"], "subskills.document-lifecycle-drift.runbook_roots")
-        if "repo_notes" in drift:
-            require_string(drift["repo_notes"], "subskills.document-lifecycle-drift.repo_notes")
 
     if "code-structure" in enabled:
         structure = require_mapping(subskills["code-structure"], "subskills.code-structure")

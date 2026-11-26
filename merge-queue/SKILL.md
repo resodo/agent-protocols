@@ -48,7 +48,12 @@ line after checking the gated surfaces. Archive merged lines daily.
 3. Gated surfaces, checked mechanically against the diff, not from the PR
    description: contract paths from the overlay (any change -> stop and
    report to the master, even nullable or additive); migrations; a vendored
-   submodule pointer that moved backwards (sync the author's branch first).
+   submodule pointer that moved backwards (sync the author's branch first);
+   and every item the overlay's gated command lists (in a repo that wires the
+   docs check, `docs_check.py gated --log <run log>`). Each listed item needs
+   its answer in the queue line (the human's dated words or the ledger entry);
+   a scope-review record missing from the runner's log goes back to the
+   author.
 4. Run the related tests and light checks locally; read the full result
    (count, failures, exit code), never only the tail.
 5. Run the expensive CI once, right before merging, with the overlay's
@@ -63,5 +68,6 @@ line after checking the gated surfaces. Archive merged lines daily.
 
 - Do not merge without the permission the queue line names
   (`decision-boundary`, Delegated Execution).
-- Do not merge past a gated-surface diff without the human's answer.
+- Do not merge past a gated-surface diff without the human's answer, or an
+  active ledger entry that covers it.
 - Do not report "green" without reading every check.

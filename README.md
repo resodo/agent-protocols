@@ -33,6 +33,7 @@ Dispatched agents:
 - `line-worker/` - how every dispatched agent works and hands back; the extra limits for implementation workers.
 - `merge-queue/` - one merger, one PR at a time.
 - `release/` - production changes (release, configuration, ops action): permission, preconditions, baseline, official command, staged checks, failure policy.
+- `doc-watcher/` - the standing agent that follows merges and keeps rules and docs from going stale.
 - `visual-qa/` - independent review of user-visible changes before the human sees them; bundles the Vercel Web Interface Guidelines.
 
 Authors, drivers and reviewers:
@@ -45,6 +46,8 @@ Authors, drivers and reviewers:
 - `retrospective/` - evidence-based learning after an incident or closeout.
 - `backlog-maintenance/` - the YAML backlog of deferred work.
 - `scout/` - judgment-heavy repository discovery that proposes backlog candidates.
+- `editing-rules/` - read before changing any `AGENTS.md`: placement, rule and exception lines, the three questions, wording, refactors, layers, who answers.
+- `scope-review/` - the scope reviewer's proposal, record, verdicts and prompt, required when the docs check asks.
 - `ci-practice/` - CI triggers in two tiers, the release gate on the exact SHA, runners chosen by measurement, caching, flaky tests, cost tracking.
 
 Repo maintainers:

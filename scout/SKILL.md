@@ -1,6 +1,6 @@
 ---
 name: scout
-description: "[scout executor] Use when a repo should be manually or periodically inspected for lifecycle, reachability, documentation, coverage, process, or maintainability issues and high-signal discoveries should be proposed as backlog candidates without treating judgment-heavy discovery as CI."
+description: "[scout executor] Use when a repo should be manually or periodically inspected for lifecycle, reachability, coverage, process, or maintainability issues and high-signal discoveries should be proposed as backlog candidates without treating judgment-heavy discovery as CI."
 ---
 
 # Scout
@@ -155,10 +155,11 @@ Read only the references for enabled subskills:
 - `script-lifecycle`: see `references/script-lifecycle.md`.
 - `code-reachability` backend/Python Slice 1: see
   `references/code-reachability-backend-python.md`.
-- `document-structure`: see `references/document-structure.md`.
-- `document-lifecycle-drift`: see
-  `references/document-lifecycle-drift.md`.
 - `code-structure`: see `references/code-structure.md`.
+
+Scout has no documentation subskills. In a repo that wires the docs check,
+the doc watcher reads each merge for rules and docs it made wrong
+(`doc-watcher`); other document discovery is retired.
 
 Subskills define domain scope, overlay fields, useful tools, evidence loops,
 granularity, admission rules, and report/ignore rules. They do not define a
@@ -179,8 +180,7 @@ The runner stabilizes mechanics:
 - check report/manifest headings, final validation provenance, and dry-run
   backlog protection.
 
-In v1, the runner does not execute `document-structure`,
-`document-lifecycle-drift`, or `code-structure` scans. The driver runs
+In v1, the runner does not execute `code-structure` scans. The driver runs
 project-appropriate commands, records them in `SCOUT_REPORT.md`, and owns
 interpretation.
 

@@ -32,7 +32,7 @@ Overlays are loaded only when this protocol is loaded. Unknown overlay files are
 ## Workflow
 
 1. Confirm the current worktree, branch, and task context before editing files.
-2. Read the repo entrypoint docs and active plan/backlog required by the local overlay. Name the layer that owns the work only by citing a written layer or ownership definition in the repo; if none covers it, write "no recorded layer definition covers this" and ask the human instead of inventing a layer.
+2. Read the repo entrypoint docs and active plan/backlog required by the local overlay. Name the layer that owns the work only by citing a written layer or ownership definition in the repo; if none covers it, write "no recorded layer definition covers this" and ask the human instead of inventing a layer. In a repo that wires the docs check (`editing-rules`, Wired Repos), a plan starts as a proposal with five sections in `docs/agent_plans/changes/<name>/proposal.md`, and gets a scope review whenever `docs_check.py scope` requires one, before implementation (`scope-review`); `docs_check.py rules-for <path>` lists the rules that govern each path.
 3. Scan recent decisions before asking the human to decide something again.
 4. State the current phase of work: brainstorming, discussion, plan writing, review, implementation, hotfix, or closeout.
 5. If the phase is brainstorming or discussion, do not write an executable plan yet. Build shared understanding first: list the open questions, explain the current mechanism or source-of-truth evidence, and converge one decision at a time until the human explicitly asks to write the plan.
@@ -40,7 +40,7 @@ Overlays are loaded only when this protocol is loaded. Unknown overlay files are
 7. Recommend one option when there is a clear recommendation, and explain the reason.
 8. Before freezing a plan, identify the few uncertainties that could change its architecture, scope, safety, cost, or acceptance. Reduce those uncertainties with the cheapest faithful evidence available: inspect the current path first, then use a bounded prototype, representative query, rendered sketch, or provider call only when it will change a decision. Record what the evidence establishes and what remains unknown.
 9. Do not turn this into a requirement to write tests or run production for every small change. A routine, reversible change with a well-understood mechanism may proceed from code inspection and existing evidence; keep experiments scoped and respect explicit cost and environment boundaries.
-10. Record accepted decisions in the plan or backlog, not only in chat.
+10. Record accepted decisions, not only in chat. In a repo that wires the docs check, a decision that binds others goes only into the owning `AGENTS.md`, in the same PR (`editing-rules`); other decisions and progress go to the project's tracker that the overlay names. Elsewhere, record them in the plan or backlog.
 11. Define validation and human acceptance before implementation starts. Separate low-cost planning evidence from the post-implementation core-path evidence that will prove the chosen solution.
 12. If scope expands materially, update the plan and decide whether another review is needed before continuing.
 
@@ -54,6 +54,16 @@ Overlays are loaded only when this protocol is loaded. Unknown overlay files are
 - Do not put secrets, credentials, provider balances, private account details, host keys, or raw private production data into repo artifacts.
 - Do not edit the main/default worktree for feature or follow-up work unless the human explicitly asked for that location.
 - A project may record in its authority ledger (`decision-boundary/SKILL.md`, Authority Ledger) that a named class of change, such as fixes found during an iteration round, skips the separate plan-review step before implementation. That exemption covers only that review step: scope, worktree, review path for the remaining gates, and acceptance must still be explicit before the work starts.
+
+## How Rules Move
+
+In a repo that wires the docs check (`editing-rules`, Wired Repos), a
+refactor that moves, splits or merges directories says in its plan where
+each rule of the old directories goes: rename with `git mv` so `AGENTS.md`
+moves along; on a split each rule follows the code it governs and a rule both
+halves keep moves up to their parent; on a merge ids stay and duplicates are
+dropped and named in the commit message. Steps and checks:
+`editing-rules`, How Rules Move In A Refactor.
 
 ## Option Discipline
 
