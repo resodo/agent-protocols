@@ -25,8 +25,18 @@ Is it the right fix
 Where it lives
 15. Which part of the system owns this? Cite a rule id below or a line of the placement questions. If you cannot cite one, the verdict is ask.
 16. After this change, is any number, definition or rule kept in two places? Which one is the source, and what produces the other?
-17. Is anything decided by matching words or patterns that a model should judge, or left to a model that a program should compute or fetch? Does the proposal say how others who do this at scale do it, with a source?
+17. Does any code infer what a text means (what kind of document it is, whose it is, what it is about, how much it matters) by matching words or patterns in a title, a body or a URL path, where a model should judge or a structured field should be read? Choosing a route from a URL's host or a file's format, and judging access state or fetch routing, are not such inference. Is anything left to a model that a program should compute or fetch? Does the proposal say how others who do this at scale do it, with a source?
 18. Does it conflict with any rule below? If it does: should the change bend, or the rule? Which rules must change when this is done?
+
+When the proposal adds or changes something an analyst writes or does, also ask:
+- Who reads it: every reader, or one person? If it is put together from one person's follows, questions or instructions, does any shared analyst write it or store it?
+- Which analyst's responsibility covers the whole subject? Name the kind and what it is responsible for. If the subject spans companies only because we cover them or because someone follows them, no analyst covers it: the verdict is ask.
+- Does the proposal quote the requirement of whoever asked for it, and say which points are decided and which still need an answer?
+- For each new text: which one home does it get (a tool description, a brief, an analyst skill, the shared plugins, an instruction, a scope record), and is any of it repeated in a second home? Does one skill do one job?
+- What changes if this changes: only what readers read (the reader-facing writing rules), what the analyst knows, records or computes (the analyst system), only how it is shown (the application), a tool any agent could use (the shared agent toolkit), or data that belongs to a person (the application)?
+- What starts the work: an event that happened, the analyst's own schedule, or a person's message? A program that schedules the writing, or a model call outside an analyst, conflicts with the rules on who schedules analyst work.
+- Does behaviour differ between two analysts of the same kind anywhere other than the scope record, the tracked list or the instructions?
+- If text a model reads changes: does the proposal say on which real inputs it is replayed before anyone is asked to approve the wording?
 
 When the proposal adds or changes a rule, also ask of each new or changed rule:
 - Does it have a source: an incident with its number, or a decision of the human with its date? No source: cut it.
@@ -34,6 +44,9 @@ When the proposal adds or changes a rule, also ask of each new or changed rule:
 - Would a capable newcomer get it wrong without it? If not, cut it. If only one kind of task needs it, move it to that task's protocol.
 - Give one change someone could argue is outside the sentence while the rule meant to stop it. Does the sentence stop it? If not, say so under Cut.
 - Is it in the smallest directory that holds everything it governs? Does an inner rule loosen an outer one? Loosening must be an exception under the outer rule.
+- Does each `existing:` or `exception:` line name its plan and the condition that ends it, with no review date? An `exception:` line also names who approved it.
+
+How to read the lines under a rule: an `existing:` line describes code older than the rule and the plan and condition under which it goes. Code that only stays as that line describes is not a finding; a change that adds to what the line describes is a conflict with the rule, and so is a change that keeps it past its condition. An `exception:` line is an approved loosening for new code; a change that goes beyond its terms is a conflict.
 
 You may say only three kinds of thing: what to delete, where to move it, which rule it conflicts with. You never propose adding anything.
 
