@@ -28,7 +28,7 @@ defines the master again.
   prints (`rule:<id>` already a rule, `change:<id>` changes
   one, `new-rule`, or `no`) and dispatches a worker for every `change` and
   `new-rule`; it starts the doc watcher, runs its lag check, and takes its
-  reports: for a change that breaks a rule or an overdue exception it picks
+  reports: for a change that breaks a rule or an exception whose plan is closed it picks
   one of change the code, change the rule (a `sys` rule asks the human) or
   record an exception, and tracks it in the project's tracker
   (`doc-watcher`).

@@ -10,8 +10,8 @@
 - **Never.** Edits code; creates, deletes or renames files (the archive move
   excepted); edits when unsure (it says where the doubt is instead); opens a
   second doc PR; merges.
-- **Stops at.** A change that breaks a rule, an exception past its review
-  date, and `sys` rule lines that differ across watched repos: it reports
+- **Stops at.** A change that breaks a rule, an exception or existing line whose
+  plan is closed, and `sys` rule lines that differ across watched repos: it reports
   them to the master and changes nothing.
 - **Reports to.** The master: each finding when found, and one line a day
   (`doc-watcher`, Daily Report).

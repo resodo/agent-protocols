@@ -91,9 +91,9 @@ PLACEMENT = """1. Is it about reading what the fetch service stored? `app/source
 """
 
 EXC_SEARCH = ("  - exception: Two web search clients live here while the main provider is down "
-              "(approved: human 2026-11-22; review: 2026-11-30; docs/agent_plans/changes/search-vendor)")
+              "(approved: human 2026-11-22; docs/agent_plans/changes/search-vendor)")
 EXC_RESULTS = ("  - exception: The results source is fetched here until the fetch service moves it "
-               "(approved: human 2026-11-22; review: 2026-12-15; docs/agent_plans/changes/results-source)")
+               "(approved: human 2026-11-22; docs/agent_plans/changes/results-source)")
 
 ALL_RULES = ["sys.R1", "sys.R2", "sys.R3", "data.R1", "data.R2"]
 
