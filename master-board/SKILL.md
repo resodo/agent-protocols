@@ -5,9 +5,11 @@ description: "[master] A master procedure (role: agents/master.md). Use when sta
 
 # Master Board
 
-The master keeps two local markdown files. They are the source of truth for
-"where is everything"; any delivery page is a copy (see
-`agent-readiness/capabilities.md`).
+The master keeps a board and a queue of items waiting on the human. They are
+the source of truth for "where is everything"; any delivery page is a copy
+(see `agent-readiness/capabilities.md`). The overlay says where they live: two
+local markdown files, or a project tracker (one issue per line of work) plus
+the master's running log. If it names nothing, use the two templates below.
 
 - **Board** (`templates/BOARD.md`): the goal, the route, one table of current
   work lines, settled decisions (newest first), one production line.
@@ -17,10 +19,10 @@ The master keeps two local markdown files. They are the source of truth for
 ## Local Overlay
 
 1. Read `.agent-protocols/context.md` if present.
-2. Read `.agent-protocols/master-board.md` if present: file locations, daily
+2. Read `.agent-protocols/master-board.md` if present: where the board, queue and running log live, daily
    fixed actions, project items every report must carry.
 
-## Keeping The Files
+## Keeping The Board And Queue
 
 - Update the board when something changes, in the same turn, not at the end of
   the session.

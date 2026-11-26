@@ -43,17 +43,19 @@ later" path.
    directory when all of them are merged).
 2. **Intent**: what is broken today, with one real incident or number.
 3. **Scope**: the smallest version that fixes it.
-4. **Paths**: the files or directories it will touch.
+4. **Touches** (heading `## Touches`; the runner parses it): the files or directories it will touch.
 5. **Rule changes**: which rules or exceptions it adds, changes or moves, or
    "none". A refactor adds "How rules move" (`editing-rules`).
 
 ## Running It
 
 ```text
-scope-review/run_scope_review.py docs/agent_plans/changes/<name>/proposal.md
+scope-review/run_scope_review.py <name>
 ```
 
-The runner starts a fresh model session with no tools and a clean
+`<name>` is the change directory's name, not a file path; the runner reads
+`<name>/proposal.md` under the repo's changes directory and exits with an error
+if it is missing. It starts a fresh model session with no tools and a clean
 configuration, and gives it four things: `reviewer_prompt.md`, the
 proposal, the rules that govern the proposal's paths (from
 `docs_check.py rules-for`, with their rows from `docs_check.py report`), and
