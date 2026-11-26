@@ -171,7 +171,9 @@ The runner stabilizes mechanics:
 - generate deterministic temporary tool adapters;
 - reject the retired `repo_context.backlog_path` overlay key;
 - check report/manifest headings, final validation provenance, and, in
-  write-enabled mode, that the manifest records the opened tracker items.
+  write-enabled mode, that the manifest has the `Opened tracker items:` line.
+  The runner does not check that line's contents; the driver checks that it
+  lists every item the run opened or commented on.
 
 In v1, the runner does not execute `code-structure` scans. The driver runs
 project-appropriate commands, records them in `SCOUT_REPORT.md`, and owns

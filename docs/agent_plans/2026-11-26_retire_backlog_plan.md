@@ -42,8 +42,9 @@ fallback.
      manifest headings `Next / Backlog` and `Backlog Write Mode` become `Next`
      and `Tracker Write Mode`;
    - dry-run promises no tracker writes (the runner cannot see the tracker, so
-     this is the driver's promise); write-enabled runs must record an
-     `- Opened tracker items:` line in the manifest, which `check` enforces;
+     this is the driver's promise); write-enabled runs must have an
+     `- Opened tracker items:` line in the manifest; `check` enforces only
+     that the line exists, and the driver checks that it lists every item;
    - `scout/SKILL.md`, `scout/references/code-structure.md` and
      `scout/tests/test_scout_runner.py` match.
 
@@ -53,9 +54,14 @@ fallback.
   `.claude/skills/backlog-maintenance` (and any other mount of it).
 - In `.agent-protocols/scout.yml`, delete `repo_context.backlog_path`. No key
   is added; the tracker is the one named in `.agent-protocols/context.md`.
+- Move still-live items from the consumer's `docs/backlog.yml` to the
+  tracker, then delete `docs/backlog.yml` (and any `docs/backlog.md`).
 - Remove any `.agent-protocols/backlog-maintenance.md` overlay, any local
-  backlog checker and its CI step, after moving still-live items to the
-  tracker.
+  backlog checker and its CI step.
+- Reword the consumer's live instructions and indexes that point to the
+  backlog file or `backlog-maintenance` (its `AGENTS.md`, docs indexes,
+  overlays) to the tracker named in `.agent-protocols/context.md`; dated
+  history stays frozen.
 
 ## Validation
 
@@ -64,4 +70,8 @@ fallback.
 - `git grep -n -i backlog`, excluding `docs/agent_plans/`, leaves only the
   retired-key guard and its test, and one line in `AGENTS.md` stating there is
   no in-repo backlog file.
-- One structured `impl` review (Codex, normal tier).
+- One structured `impl` review (Codex, normal tier, `gpt-6-sol`), print-review
+  mode. Pass 1 raised two blocking findings, both accepted and fixed: the
+  consumer list now includes deleting the consumer's `docs/backlog.yml` and
+  rewording its live pointers; the Scout skill and this plan now say `check`
+  only verifies that the `Opened tracker items:` line exists.
