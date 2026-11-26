@@ -67,10 +67,10 @@ For each candidate-worthy module or coherent module cluster:
 3. Collect line counts and top offenders.
 4. Run language-aware structure scans where feasible.
 5. Inspect dependency categories and entrypoint/internal boundaries.
-6. Search tests, docs, active contract sources, and backlog for references to
+6. Search tests, docs, active contract sources, and todo-tracker items for references to
    the module or cluster.
 7. Inspect recent git churn for top candidates.
-8. Compare candidate-worthy findings with existing backlog items.
+8. Compare candidate-worthy findings with existing todo-tracker items.
 9. Record commands and skipped evidence with reasons.
 
 Useful tools are ordinary repo tools such as `git ls-files`, `rg`, `git log`,
@@ -90,7 +90,7 @@ For Python roots, collect evidence such as:
   parsers, and `if __name__ == "__main__"`;
 - dependency-category hints from imports or direct reads, such as DB, HTTP/API,
   filesystem, metrics, provider/LLM, subprocess, and CLI boundaries;
-- tests/docs/backlog references;
+- tests/docs/todo-tracker references;
 - recent git churn for top candidates.
 
 ## TypeScript/React Adapter Evidence
@@ -132,10 +132,10 @@ Propose a candidate only when all are true:
 
 - the module or cluster is active code under declared roots;
 - a mechanical signal exists, such as size, dependency breadth, many
-  entrypoints, high churn, mixed runtime roles, or test/doc/backlog friction;
+  entrypoints, high churn, mixed runtime roles, or test/doc/todo-tracker friction;
 - agent inspection proves a concrete maintenance risk;
 - there is a clear restructuring next action;
-- no existing backlog item semantically covers the same decision.
+- no existing todo-tracker item semantically covers the same decision.
 
 Apply the Scout active feature suppression rule before proposing cleanup or
 split candidates. In this reference, `active code` means maintained/in-use code;
@@ -184,8 +184,8 @@ Each candidate proposal should cite:
 - adapter evidence gathered;
 - mechanical signals used only as candidate-pool evidence;
 - active-code evidence;
-- tests/docs/backlog reference check;
+- tests/docs/todo-tracker reference check;
 - recent churn evidence when relevant;
 - concrete maintenance risk;
-- existing backlog overlap check;
+- existing todo-tracker overlap check;
 - clear next decision/action.

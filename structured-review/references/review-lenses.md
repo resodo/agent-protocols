@@ -247,7 +247,7 @@ Always verify or ask for:
 - review-thread status, including unresolved blocking threads;
 - validation provenance: CI-backed, reviewer-rerun, driver-reported, or human
   acceptance;
-- deferred work owner and backlog/plan link.
+- deferred work owner and todo-tracker/plan link.
 
 Do not treat a pushed commit as equivalent to branch closeout when the repo
 requires PR, CI, review, or human acceptance.

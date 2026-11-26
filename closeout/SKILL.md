@@ -253,7 +253,7 @@ known to be merge-clean or rebase-clean against the target branch. At that point
 the current worktree represents the post-merge file state. Do not wait until
 after merge to discover stale lifecycle language.
 
-Scan current source-of-truth docs, active plan indexes, backlog/status docs, and
+Scan current source-of-truth docs, active plan indexes, status docs, and
 the closing plan for stale terms such as `active`, `in_progress`, `awaiting`,
 `ready for review`, `ready for merge`, `merge gated`, `next step`, and
 `current driver`. For every hit, decide whether the wording is still true after

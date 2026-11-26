@@ -44,8 +44,7 @@ Authors, drivers and reviewers:
 - `readable-brief/` - turns a final, reviewed document into the human's brief; required for decision docs.
 - `fix-triage/` - whether something is wrong, attribution, and the smallest systemic fix.
 - `retrospective/` - evidence-based learning after an incident or closeout.
-- `backlog-maintenance/` - the YAML backlog of deferred work.
-- `scout/` - judgment-heavy repository discovery that proposes backlog candidates.
+- `scout/` - judgment-heavy repository discovery that proposes todo items for the adopting project's tracker.
 - `editing-rules/` - read before changing any `AGENTS.md`: placement, rule and exception lines, the three questions, wording, refactors, layers, who answers.
 - `scope-review/` - the scope reviewer's proposal, record, verdicts and prompt, required when the docs check asks.
 - `ci-practice/` - CI triggers in two tiers, the release gate on the exact SHA, runners chosen by measurement, caching, flaky tests, cost tracking.
@@ -59,7 +58,6 @@ Repo maintainers:
 
 - `docs/agent_plans/` - dated plans, review-thread artifacts, and closeout
   evidence for protocol changes.
-- `docs/backlog.yml` - this repo's protocol-development backlog.
 - `docs/shared-development-practice.md` - the development practice shared by
   the Skynet infra and product teams (agreed 2026-11-10); each consumer repo's
   `AGENTS.md` points to it in one line.

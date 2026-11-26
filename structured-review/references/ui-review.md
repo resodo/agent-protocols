@@ -47,7 +47,7 @@ actively look for visible defects:
 
 Do not mark visual acceptance as complete if the screenshot itself visibly shows
 one of these defects. If a defect is accepted as a tradeoff, the artifact must
-name it as a known compromise or backlog item rather than treating it as passed.
+name it as a known compromise or todo-tracker item rather than treating it as passed.
 
 ## Screenshot Evidence
 

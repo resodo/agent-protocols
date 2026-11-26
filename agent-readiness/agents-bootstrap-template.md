@@ -48,7 +48,7 @@ given a concrete task:
 9. Stop and wait for the concrete task.
 
 Do not infer a feature task, open a plan, start implementation, load every
-backlog or historical document, or expose private access details in chat.
+todo item or historical document, or expose private access details in chat.
 ```
 
 The repo `AGENTS.md` also embeds the decision-boundary resident core between

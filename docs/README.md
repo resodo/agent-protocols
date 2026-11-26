@@ -11,9 +11,6 @@ placement and naming.
   and current maintenance notes.
 - `agent_plans/` - dated plans, review-thread artifacts, implementation
   records, and closeout evidence for protocol changes.
-- `backlog.yml` - this repo's protocol-development backlog. Use
-  `backlog-maintenance/SKILL.md` before adding, updating, closing, or querying
-  items.
 - `shared-development-practice.md` - the development practice shared by the
   Skynet infra and product teams; long-lived and changed by PR, read by
   consumer repos through their `AGENTS.md` pointer.
@@ -34,7 +31,6 @@ Exceptions:
 
 - `README.md`;
 - `CURRENT.md`;
-- `backlog.yml`;
 - `shared-development-practice.md`;
 - long-lived protocol files such as `SKILL.md`, `references/*.md`, templates,
   scripts, and tests.
@@ -62,7 +58,6 @@ When protocols are added, renamed, retired, or moved, update:
 - root `AGENTS.md` if agent routing changes;
 - `docs/CURRENT.md`;
 - this file when placement or lifecycle rules change;
-- `docs/agent_plans/README.md` when plan/artifact handling changes;
-- `docs/backlog.yml` when backlog ownership changes.
+- `docs/agent_plans/README.md` when plan/artifact handling changes.
 
 These index checks are part of closeout documentation consistency.
