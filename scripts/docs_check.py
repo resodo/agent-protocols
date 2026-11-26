@@ -85,7 +85,7 @@ RULE = re.compile(
 RULE_LIKE = re.compile(r"^- (?P<id>[a-z][a-z0-9_]*\.R\d+)\b")
 EXC = re.compile(
     r"^\s+- exception: (?P<what>.+?) \(approved: (?P<who>\S+) (?P<on>\d{4}-\d\d-\d\d); "
-    r"(?P<ref>(?!review:)[^)]+)\)\s*$"
+    r"(?P<ref>(?!.*\breview:)[^)]+)\)\s*$"
 )
 EXC_LIKE = re.compile(r"^\s+- exception:")
 EXISTING = re.compile(r"^\s+- existing: (?P<what>\S.*?)\s*$")

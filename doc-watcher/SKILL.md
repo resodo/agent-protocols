@@ -1,13 +1,13 @@
 ---
 name: doc-watcher
-description: "[doc watcher, master] Preloaded by the doc watcher, the standing agent the master session runs to follow merges in repos that wire the docs check. Its four steps after each merge (overdue exceptions, finished plan directories, the numbers table, rules and docs a merged change made wrong), its prompt, its outputs, its daily report to the master, and the master's lag check."
+description: "[doc watcher, master] Preloaded by the doc watcher, the standing agent the master session runs to follow merges in repos that wire the docs check. Its four steps after each merge (exceptions and existing lines, finished plan directories, the numbers table, rules and docs a merged change made wrong), its prompt, its outputs, its daily report to the master, and the master's lag check."
 ---
 
 # Doc Watcher
 
 After merges, rules and docs go stale in ways no pre-merge check sees: a
 change breaks a `[review]` rule while its author writes "n/a", an exception
-passes its review date, a doc describes code that moved. The doc watcher
+keeps standing after its plan is closed, a doc describes code that moved. The doc watcher
 reads every merge afterwards and catches what it can. Role: `agents/doc-watcher.md`.
 
 ## Local Overlay

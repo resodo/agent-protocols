@@ -343,6 +343,12 @@ class Exceptions(DocsCheckCase):
         self.f.commit("exception with a review date")
         self.assertIn("with no review date", self.fails("tags"))
 
+    def test_a_review_date_after_the_plan_is_rejected(self) -> None:
+        old = EXC_SEARCH[:-1] + "; review: 2026-11-30)"
+        self.f.insert_after("AGENTS.md", "- sys.R1", old)
+        self.f.commit("review date after the plan")
+        self.assertIn("with no review date", self.fails("tags"))
+
     def test_an_exception_needs_a_plan_or_issue(self) -> None:
         self.f.insert_after("AGENTS.md", "- sys.R1", "  - exception: results stay here (approved: human 2026-11-22)")
         self.f.commit("exception without a plan")
