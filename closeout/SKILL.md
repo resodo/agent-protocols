@@ -213,7 +213,8 @@ For repos with a docs index:
 - read the repo's single agent entry file, such as `AGENTS.md`;
 - read `docs/README.md`;
 - confirm new docs are in the right folder;
-- confirm dated docs use `YYYY-MM-DD_topic.md`;
+- confirm dated docs use `YYYY-MM-DD_topic.md` (plan directories under
+  `docs/agent_plans/changes/` and `archive/` in a wired repo excepted);
 - when the repo keeps phase output folders, confirm phase outputs are in the
   matching one;
 - update phase status, next expected output, and acceptance notes;
@@ -224,8 +225,14 @@ For repos with a docs index:
 
 ### 4.1 Doc Lifecycle Check
 
-When the repo defines document lifecycle states, use them during closeout rather
-than leaving docs to drift.
+In a repo that wires the docs check (`editing-rules`, Wired Repos), the
+doc-status part of this check is one item: the docs check passes. Rules and
+docs a merge made wrong, overdue exceptions and finished plan directories are
+the doc watcher's after merge (`doc-watcher`). Skip to the submodule-pointer
+and output-folder parts below.
+
+In other repos, when the repo defines document lifecycle states, use them
+during closeout rather than leaving docs to drift.
 
 Check:
 

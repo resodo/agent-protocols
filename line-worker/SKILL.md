@@ -86,6 +86,17 @@ follows its own brief and `references/read-only-research.md` instead.
 - Send no requests of any kind to production: no page checks, smoke tests or
   load tests against it. Test against local or development servers; checks on
   production belong to the production operator inside its plan.
+- In a repo that wires the docs check (`editing-rules`, Wired Repos):
+  - read `editing-rules` before changing any `AGENTS.md`;
+  - when `docs_check.py scope` says the change needs a scope review, write
+    the proposal and get the review (`scope-review`) before going on;
+  - a commit message on the branch carries a `Rules-read:` block (the check
+    reads every commit in base..HEAD, so the squashed delivered commit
+    keeps it) with one line for every `[review]` rule that governs a touched
+    path (the check lists them): `- <id>: applies; <how the change keeps it>` or
+    `- <id>: n/a; <why>`. A number that goes up needs
+    `Raises: <name> <old> -> <new> - <reason>`; a rule deleted on purpose
+    needs `Rules-removed: <id> - <reason>`.
 - Do not change a contract (API, schema/DDL), make paid calls (reviews
   excepted), or add a standing mechanism, unless your brief names that exact
   change with its recorded permission (the resident-core exception). Otherwise

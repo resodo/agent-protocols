@@ -21,6 +21,8 @@ nothing.
 | merge agent | dispatched agent | the master | `merge-queue.md` |
 | production operator | dispatched agent | the master (check results to a coordinator that dispatched the checks) | `release.md` |
 | visual QA | dispatched agent | whoever dispatched it | `visual-qa.md` |
+| scope reviewer | none (a runner-started session with no tools) | no one; its record is committed with the change | `scope-reviewer.md` |
+| doc watcher | dispatched agent | the master | `doc-watcher.md` |
 
 Each role file states who the role is, what it owns, what it may decide,
 where it stops, whom it reports to, and what it preloads.

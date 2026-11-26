@@ -1,7 +1,7 @@
 # Current Protocol Map
 
 Status: active source-of-truth map
-Last updated: 2026-11-10
+Last updated: 2026-11-26
 
 This file points humans and agents to the active protocol entrypoints. It does
 not replace root `AGENTS.md`; agents should start there, then use this map to
@@ -48,6 +48,11 @@ in its description who reads it.
 - `backlog-maintenance/SKILL.md` - YAML backlog; this repo dogfoods it
   through `docs/backlog.yml`.
 - `scout/SKILL.md` - repository discovery that proposes backlog candidates.
+- `editing-rules/SKILL.md` - rules in `AGENTS.md`: placement, formats, the
+  three questions, refactors, layers, who answers; defines a wired repo.
+- `scope-review/SKILL.md` - scope review before work (scope reviewer).
+- `doc-watcher/SKILL.md` - after-merge rule and doc upkeep (doc watcher,
+  master).
 - `ci-practice/SKILL.md` - CI triggers, release gate, runner choice by
   measurement, caching, flaky tests, cost tracking (repo maintainers).
 - `agent-readiness/` - worktree guard contract, bootstrap template,
@@ -72,10 +77,11 @@ in its description who reads it.
   `scout/scripts/scout_runner.py`
 - Scout references:
   `scout/references/script-lifecycle.md`,
-  `scout/references/code-reachability-backend-python.md`,
-  `scout/references/document-structure.md`,
-  `scout/references/document-lifecycle-drift.md`, and
+  `scout/references/code-reachability-backend-python.md`, and
   `scout/references/code-structure.md`
+- Docs check (separate PR): `scripts/docs_check.py`; scope-review runner:
+  `scope-review/run_scope_review.py`; settings:
+  `.agent-protocols/docs-check.json` in each consumer
 
 The UI review reference is conditional. It is not part of the runner-loaded
 required reference set unless a future accepted plan changes runner loading.

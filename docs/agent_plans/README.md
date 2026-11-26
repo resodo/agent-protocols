@@ -70,3 +70,6 @@ responses, and closeout evidence for changes to this repo's protocols.
 
 - `2026-09-06_review_resume_plan.md` - model/time-limit upgrade, driver stop,
   session recovery, independent reviews, and live dogfood evidence.
+- `2026-11-26_doc_mechanism_protocols_plan.md` - development-docs mechanism:
+  `editing-rules`, `scope-review`, `doc-watcher`, two roles, and the retirement
+  of the two document Scout subskills.
