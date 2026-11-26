@@ -51,7 +51,7 @@ class DocsCheckCase(unittest.TestCase):
 
 class StructuralChecks(DocsCheckCase):
     def test_base_passes_every_check(self) -> None:
-        self.assertIn("tags: ok (5 rules, 0 exceptions)", self.ok("tags"))
+        self.assertIn("tags: ok (5 rules, 0 exceptions, 0 existing lines)", self.ok("tags"))
         self.assertIn("paths: ok", self.ok("paths"))
         self.assertIn("claude-md: ok", self.ok("claude-md"))
         self.assertIn("routes: ok (1 rows, 1 current docs)", self.ok("routes"))
@@ -75,17 +75,17 @@ class StructuralChecks(DocsCheckCase):
         out = self.fails("tags")
         self.assertIn("app/sources/AGENTS.md:4 data.R3: a rule line needs `[lint: <check>]` or `[review]`, then `(source)`", out)
         self.assertIn("app/sources/AGENTS.md:5 data.R1: the same id is already at app/sources/AGENTS.md:3; one rule, one place", out)
-        self.assertIn("AGENTS.md:6: an exception line reads `- exception: <what> (approved: <who> <date>; review: <date>; <PR or plan>)`", out)
+        self.assertIn("AGENTS.md:6: an exception line reads `- exception: <what> (approved: <who> <date>; <plan or issue that ends it>)`, with no review date", out)
 
     def test_exception_without_a_rule_above(self) -> None:
         self.f.append("app/sources/AGENTS.md", "\n## Notes\n" + EXC_SEARCH + "\n")
         self.f.commit("stray exception")
-        self.assertIn("an exception sits under the rule it opens", self.fails("tags"))
+        self.assertIn("an exception line sits under the rule it belongs to; no rule line above this one", self.fails("tags"))
 
     def test_exception_after_an_unrelated_bullet(self) -> None:
         self.f.append("app/sources/AGENTS.md", "- a plain note, not a rule\n" + EXC_SEARCH + "\n")
         self.f.commit("exception under a note")
-        self.assertIn("app/sources/AGENTS.md:5: an exception sits under the rule it opens", self.fails("tags"))
+        self.assertIn("app/sources/AGENTS.md:5: an exception line sits under the rule it belongs to", self.fails("tags"))
 
     def test_dropped_lint_check(self) -> None:
         self.f.replace("pyproject.toml", 'id = "layers"', 'id = "layering"')
@@ -99,7 +99,7 @@ class StructuralChecks(DocsCheckCase):
                       "- data.R4 The API reads only the interface. [lint: importlinter:api-only] (#6)\n"
                       "- data.R5 Numbers here only go down. [lint: docs-check:ratchet] (#7)\n")
         self.f.commit("more lint rules")
-        self.assertIn("tags: ok (8 rules, 0 exceptions)", self.ok("tags"))
+        self.assertIn("tags: ok (8 rules, 0 exceptions, 0 existing lines)", self.ok("tags"))
 
     def test_paths_after_a_directory_rename(self) -> None:
         self.f.git("mv", "app/sources", "app/readers")
@@ -152,7 +152,7 @@ class RulesFor(DocsCheckCase):
         self.assertTrue(lines[1].startswith("sys.R1    Outbound fetching lives in the fetch service"))
         self.assertTrue(lines[1].endswith("[review] (decided 2026-11-09, data plan)   <- AGENTS.md"))
         self.assertIn("exception: The results source is fetched here until the fetch service moves it "
-                      "(approved: human 2026-11-22; review: 2026-12-15; docs/agent_plans/changes/results-source)", lines[2])
+                      "(approved: human 2026-11-22; docs/agent_plans/changes/results-source)", lines[2])
         self.assertEqual([l.split()[0] for l in lines[3:]], ["sys.R2", "sys.R3", "data.R1", "data.R2"])
         self.assertTrue(lines[-1].endswith("<- app/sources/vendor_files/AGENTS.md"))
 
@@ -300,25 +300,25 @@ class Exceptions(DocsCheckCase):
     def test_opening_exceptions_under_a_sys_rule(self) -> None:
         self.f.insert_after("AGENTS.md", "- sys.R1", EXC_RESULTS, EXC_SEARCH)
         self.f.commit("sys.R1: two exceptions")
-        self.assertIn("tags: ok (5 rules, 2 exceptions)", self.ok("tags"))
+        self.assertIn("tags: ok (5 rules, 2 exceptions, 0 existing lines)", self.ok("tags"))
         out = self.fails("scope")
         self.assertIn("  - a rule or an exception changed (sys.R1)", out)
         self.assertIn("  - root_agents_md_lines goes up (13 -> 15)", out)
         out = self.ok("gated")
         self.assertIn(f"rule sys.R1 or an exception under it changed -> {HUMAN}", out)
         self.assertIn(f"root_agents_md_lines goes up 13 -> 15 -> {MASTER}", out)
-        out = self.ok("exceptions", "--today", "2026-12-01")
+        out = self.ok("exceptions")
         lines = out.splitlines()
-        self.assertTrue(lines[0].startswith("OVERDUE review 2026-11-30  sys.R1   Two web search clients"), out)
-        self.assertTrue(lines[0].endswith("<- AGENTS.md:7"), out)
-        self.assertTrue(lines[1].startswith("        review 2026-12-15  sys.R1   The results source"), out)
-        self.assertEqual(lines[2], "exceptions: 2 open, 1 past their review date as of 2026-12-01")
+        self.assertTrue(lines[0].startswith("exception sys.R1   The results source"), out)
+        self.assertTrue(lines[1].startswith("exception sys.R1   Two web search clients"), out)
+        self.assertTrue(lines[1].endswith("<- AGENTS.md:7"), out)
+        self.assertEqual(lines[2], "exceptions: 2 open, existing lines: 0")
 
     def test_ending_an_exception_stops_nothing(self) -> None:
         self.with_exceptions_on_main()
         self.f.write("AGENTS.md", "".join(l for l in self.f.read("AGENTS.md").splitlines(True) if "web search" not in l))
         self.f.commit("sys.R1: the search exception ended")
-        self.assertIn("tags: ok (5 rules, 1 exceptions)", self.ok("tags"))
+        self.assertIn("tags: ok (5 rules, 1 exceptions, 0 existing lines)", self.ok("tags"))
         self.assertIn("root_agents_md_lines: 15 at origin/main, 14 now.", self.ok("numbers"))
         self.assertIn("scope: no trigger, no record needed", self.ok("scope"))
         out = self.ok("gated")
@@ -327,15 +327,78 @@ class Exceptions(DocsCheckCase):
 
     def test_extending_an_exception_needs_the_human(self) -> None:
         self.with_exceptions_on_main()
-        self.f.replace("AGENTS.md", "review: 2026-11-30", "review: 2027-01-31")
+        self.f.replace("AGENTS.md", "changes/search-vendor", "changes/search-vendor-2")
         self.f.commit("sys.R1: keep the search exception longer")
         self.assertIn("  - a rule or an exception changed (sys.R1)", self.fails("scope"))
         out = self.ok("gated")
         self.assertIn(f"rule sys.R1 or an exception under it changed -> {HUMAN}", out)
         self.assertNotIn("an exception ended", out)
 
-    def test_exceptions_today_defaults(self) -> None:
-        self.assertIn("exceptions: 0 open, 0 past their review date as of", self.ok("exceptions"))
+    def test_exceptions_none_open(self) -> None:
+        self.assertIn("exceptions: 0 open, existing lines: 0", self.ok("exceptions"))
+
+    def test_an_exception_with_a_review_date_is_rejected(self) -> None:
+        old = EXC_SEARCH.replace("approved: human 2026-11-22; ", "approved: human 2026-11-22; review: 2026-11-30; ")
+        self.f.insert_after("AGENTS.md", "- sys.R1", old)
+        self.f.commit("exception with a review date")
+        self.assertIn("with no review date", self.fails("tags"))
+
+    def test_an_exception_needs_a_plan_or_issue(self) -> None:
+        self.f.insert_after("AGENTS.md", "- sys.R1", "  - exception: results stay here (approved: human 2026-11-22)")
+        self.f.commit("exception without a plan")
+        self.assertIn("with no review date", self.fails("tags"))
+
+
+EXISTING = ("  - existing: the old fetch code is held by the fetch plan (#12) and is gone when the fetch service "
+            "serves every source")
+
+
+class ExistingLines(DocsCheckCase):
+    def with_existing_on_main(self) -> None:
+        self.f.insert_after("AGENTS.md", "- sys.R1", EXISTING)
+        self.f.commit("sys.R1: existing line")
+        self.f.mark_main()
+
+    def test_an_existing_line_is_well_formed_and_counted(self) -> None:
+        self.f.insert_after("AGENTS.md", "- sys.R1", EXISTING)
+        self.f.commit("sys.R1: existing line")
+        self.assertIn("tags: ok (5 rules, 0 exceptions, 1 existing lines)", self.ok("tags"))
+        out = self.ok("exceptions")
+        self.assertIn("existing  sys.R1   the old fetch code is held by the fetch plan (#12)", out)
+        self.assertIn("exceptions: 0 open, existing lines: 1", out)
+
+    def test_an_empty_existing_line_is_rejected(self) -> None:
+        self.f.insert_after("AGENTS.md", "- sys.R1", "  - existing:")
+        self.f.commit("empty existing")
+        self.assertIn("an existing line reads `- existing: <the plan and the condition on which the older code is gone>`", self.fails("tags"))
+
+    def test_an_existing_line_without_a_rule_above(self) -> None:
+        self.f.append("app/sources/AGENTS.md", "\n## Notes\n" + EXISTING + "\n")
+        self.f.commit("stray existing")
+        self.assertIn("an existing line sits under the rule it belongs to; no rule line above this one", self.fails("tags"))
+
+    def test_the_reviewer_is_given_the_existing_line_with_the_rule(self) -> None:
+        self.f.insert_after("AGENTS.md", "- sys.R1", EXC_RESULTS, EXISTING)
+        self.f.commit("both kinds under one rule")
+        lines = self.ok("rules-for", INCIDENT).splitlines()
+        self.assertTrue(lines[1].startswith("sys.R1 "))
+        self.assertTrue(lines[2].lstrip().startswith("exception: The results source"), lines[2])
+        self.assertTrue(lines[3].lstrip().startswith("existing: the old fetch code"), lines[3])
+
+    def test_adding_an_existing_line_is_a_rule_change(self) -> None:
+        self.f.insert_after("AGENTS.md", "- sys.R1", EXISTING)
+        self.f.commit("sys.R1: existing line")
+        self.assertIn("  - a rule or an exception changed (sys.R1)", self.fails("scope"))
+        self.assertIn(f"rule sys.R1 or an exception under it changed -> {HUMAN}", self.ok("gated"))
+
+    def test_ending_an_existing_line_stops_nothing(self) -> None:
+        self.with_existing_on_main()
+        self.f.write("AGENTS.md", "".join(l for l in self.f.read("AGENTS.md").splitlines(True) if "old fetch code" not in l))
+        self.f.commit("sys.R1: the old code is gone")
+        self.assertIn("scope: no trigger, no record needed", self.ok("scope"))
+        out = self.ok("gated")
+        self.assertIn("note, no stop: an existing line ended (sys.R1: the old fetch code", out)
+        self.assertIn("gated: nothing to stop on", out)
 
 
 class Gated(DocsCheckCase):

@@ -227,7 +227,7 @@ For repos with a docs index:
 
 In a repo that wires the docs check (`editing-rules`, Wired Repos), the
 doc-status part of this check is one item: the docs check passes. Rules and
-docs a merge made wrong, overdue exceptions and finished plan directories are
+docs a merge made wrong, exceptions whose plan is closed and finished plan directories are
 the doc watcher's after merge (`doc-watcher`). Skip to the submodule-pointer
 and output-folder parts below.
 

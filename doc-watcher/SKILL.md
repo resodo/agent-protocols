@@ -24,8 +24,9 @@ merge from the log and process every merge after it, oldest first; several
 merges that arrived together are one run. Record the last merge processed in
 the log at the end, so a restart resumes without gaps.
 
-1. **Overdue exceptions.** `docs_check.py exceptions`. Report each exception
-   past its review date to the master. No model call.
+1. **Exceptions and existing lines.** `docs_check.py exceptions`. Report each
+   one whose plan or issue is closed to the master: its condition may be met
+   and the line due for deletion. No model call.
 2. **Finished plan directories.** For each directory under
    `docs/agent_plans/changes/`, read the proposal's branches and ask the code host
    for their PRs (`gh pr list --head <branch> --state all`); when all are
@@ -33,7 +34,7 @@ the log at the end, so a restart resumes without gaps.
    Move a finished directory to `docs/agent_plans/archive/<date>-<name>/` only
    inside a doc-only PR it is opening anyway; never open a PR just to archive.
 3. **Numbers.** `docs_check.py report` over the processed range: the rules
-   table, the numbers that may only go down, open and overdue exceptions,
+   table, the numbers that may only go down, open exceptions and existing lines,
    finished-but-unmoved directories. Write it to the log.
 4. **Read the merged changes** with the prompt below: the commit messages and
    diffs, every rule that governs the paths they touch, and the docs that name
@@ -77,15 +78,15 @@ why: <why this breaks the rule>
   leave the edit for the next run (an author never pushes to a queued PR). The
   PR goes through the normal merge queue with the project's small-change
   review. An edit to a rule line is a gated change (`editing-rules`).
-- `REPORT` and overdue exceptions go to the master as a message. The master
+- `REPORT` and exceptions whose plan is closed go to the master as a message. The master
   picks one of three: change the code, change the rule (a `sys` rule asks the
   human), or record an exception; and tracks it in the project's tracker.
 
 ## Daily Report
 
 One line to the master per day, from the log: merges processed, last merge
-processed, NOOP/EDIT/REPORT counts, open doc PR and its age, open and overdue
-exceptions, finished directories not yet moved, `sys` lines that differ across
+processed, NOOP/EDIT/REPORT counts, open doc PR and its age, open exceptions and
+existing lines, finished directories not yet moved, `sys` lines that differ across
 repos.
 
 ## Lag Check (Master)

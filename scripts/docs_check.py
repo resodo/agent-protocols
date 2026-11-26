@@ -6,9 +6,13 @@ Rule line (one line in an AGENTS.md):
 
     - <area>.R<n> <one sentence: where, what must hold> [lint: <check>] | [review] (<source>)
 
-Exception line (indented, directly under the rule it opens):
+Two kinds of line may hang under a rule (indented, directly under it). Neither
+carries a review date:
 
-      - exception: <what> (approved: <who> <YYYY-MM-DD>; review: <YYYY-MM-DD>; <PR or plan>)
+      - existing: <the plan that holds the code older than the rule, and the condition on which it is gone>
+      - exception: <what> (approved: <who> <YYYY-MM-DD>; <plan or issue that ends it>)
+
+An `existing:` line covers no new code; the scope reviewer reads it with the rule.
 
 Commit-message lines (read from every commit in <base>..HEAD):
 
@@ -33,14 +37,13 @@ Subcommands:
   scope                a change that hits a trigger carries a matching scope-review record
   gated [--log FILE]   what the merge agent must stop on, and whose answer it needs
                        (log default: SCOPE_REVIEW_LOG, then scope_review.log in the config)
-  exceptions [--today DATE]  open exceptions; those past their review date are marked
+  exceptions           open exception lines and existing lines
   report --range A..B  the numbers of the measuring table
   rules-for PATH...    every rule that governs PATH (root down to the nearest AGENTS.md)
 """
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import fnmatch
 import hashlib
 import json
@@ -82,9 +85,11 @@ RULE = re.compile(
 RULE_LIKE = re.compile(r"^- (?P<id>[a-z][a-z0-9_]*\.R\d+)\b")
 EXC = re.compile(
     r"^\s+- exception: (?P<what>.+?) \(approved: (?P<who>\S+) (?P<on>\d{4}-\d\d-\d\d); "
-    r"review: (?P<review>\d{4}-\d\d-\d\d); (?P<ref>[^)]+)\)\s*$"
+    r"(?P<ref>(?!review:)[^)]+)\)\s*$"
 )
 EXC_LIKE = re.compile(r"^\s+- exception:")
+EXISTING = re.compile(r"^\s+- existing: (?P<what>\S.*?)\s*$")
+EXISTING_LIKE = re.compile(r"^\s+- existing:")
 RULE_ID = r"[a-z][a-z0-9_]*\.R\d+"
 MASTER = "the master (ledger entry) or the human"
 HUMAN = "the human"
@@ -219,7 +224,11 @@ class Repo:
                 if EXC_LIKE.match(line):
                     e = EXC.match(line)
                     fields = e.groupdict() if e else {"bad": line.strip()}
-                    exceptions.append({"file": name, "line": no, "rule": last, **fields})
+                    exceptions.append({"file": name, "line": no, "rule": last, "kind": "exception", **fields})
+                elif EXISTING_LIKE.match(line):
+                    e = EXISTING.match(line)
+                    fields = e.groupdict() if e else {"bad": line.strip()}
+                    exceptions.append({"file": name, "line": no, "rule": last, "kind": "existing", **fields})
                 else:
                     last = None  # an exception sits directly under its rule or another exception
         return rules, exceptions
@@ -270,8 +279,11 @@ class Repo:
                     lines.append(f"{r['id']:9} {r['text']} {r['tag']} ({r['source']})   <- {name}")
                     for e in es:
                         if e["rule"] == r["id"] and "bad" not in e:
-                            lines.append(f"{'':9}   exception: {e['what']} (approved: {e['who']} {e['on']}; "
-                                         f"review: {e['review']}; {e['ref']})")
+                            if e["kind"] == "existing":
+                                lines.append(f"{'':9}   existing: {e['what']}")
+                            else:
+                                lines.append(f"{'':9}   exception: {e['what']} (approved: {e['who']} {e['on']}; "
+                                             f"{e['ref']})")
             out.append((path, lines))
         return out
 
@@ -335,8 +347,8 @@ class Repo:
     # rule changes -----------------------------------------------------------
     def rule_changes(self) -> list[str]:
         """Ids whose rule line was added, removed or reworded, or under which an exception
-        was added or changed (a later review date included). An exception that is only
-        deleted (it ended) is not a change: the rule is back to what was decided."""
+        or an `existing:` line was added or changed. An exception or existing line that is
+        only deleted (it ended) is not a change: the rule is back to what was decided."""
         if "rule_changes" in self._cache:
             return self._cache["rule_changes"]
         r0, e0 = self.parse(self.agents_files(self.base))
@@ -346,7 +358,7 @@ class Repo:
         t0, t1 = {r["id"]: line(r) for r in r0}, {r["id"]: line(r) for r in r1}
         ids = {i for i in set(t0) | set(t1) if t0.get(i) != t1.get(i)}
         def key(e: dict) -> tuple:
-            return (e["rule"], e.get("what", e.get("bad")), e.get("who"), e.get("on"), e.get("review"), e.get("ref"))
+            return (e["rule"], e["kind"], e.get("what", e.get("bad")), e.get("who"), e.get("on"), e.get("ref"))
         old = {key(e) for e in e0}
         ids |= {e["rule"] for e in e1 if e["rule"] and key(e) not in old}
         self._cache["rule_changes"] = sorted(ids)
@@ -375,9 +387,16 @@ class Repo:
     def ended_exceptions(self) -> list[str]:
         e0 = self.parse(self.agents_files(self.base))[1]
         e1 = self.parse(self.agents_files(None))[1]
-        now = {(e["rule"], e.get("what", e.get("bad"))) for e in e1}
+        now = {(e["rule"], e["kind"], e.get("what", e.get("bad"))) for e in e1}
         return sorted(f"{e['rule']}: {e.get('what', e.get('bad'))}" for e in e0
-                      if (e["rule"], e.get("what", e.get("bad"))) not in now)
+                      if e["kind"] == "exception" and (e["rule"], e["kind"], e.get("what", e.get("bad"))) not in now)
+
+    def ended_existing(self) -> list[str]:
+        e0 = self.parse(self.agents_files(self.base))[1]
+        e1 = self.parse(self.agents_files(None))[1]
+        now = {(e["rule"], e["kind"], e.get("what", e.get("bad"))) for e in e1}
+        return sorted(f"{e['rule']}: {e.get('what', e.get('bad'))[:80]}" for e in e0
+                      if e["kind"] == "existing" and (e["rule"], e["kind"], e.get("what", e.get("bad"))) not in now)
 
     # scope ------------------------------------------------------------------
     def changes_prefix(self) -> str:
@@ -476,12 +495,15 @@ def cmd_tags(repo: Repo) -> int:
                            f"(looked in {sources}, and the docs check's own checks). "
                            "Restore the check, or retag the rule [review], or delete the rule.")
     for e in es:
+        label = e["kind"]
         if "bad" in e:
-            bad.append(f"{e['file']}:{e['line']}: an exception line reads "
-                       "`- exception: <what> (approved: <who> <date>; review: <date>; <PR or plan>)`")
+            reads = ("`- exception: <what> (approved: <who> <date>; <plan or issue that ends it>)`, with no review date"
+                     if label == "exception" else "`- existing: <the plan and the condition on which the older code is gone>`")
+            bad.append(f"{e['file']}:{e['line']}: an {label} line reads {reads}")
         elif e["rule"] is None:
-            bad.append(f"{e['file']}:{e['line']}: an exception sits under the rule it opens; no rule line above this one")
-    return emit(bad, f"tags: ok ({len(seen)} rules, {len(es)} exceptions)")
+            bad.append(f"{e['file']}:{e['line']}: an {label} line sits under the rule it belongs to; no rule line above this one")
+    n_exc = sum(1 for e in es if e["kind"] == "exception")
+    return emit(bad, f"tags: ok ({len(seen)} rules, {n_exc} exceptions, {len(es) - n_exc} existing lines)")
 
 
 def cmd_paths(repo: Repo) -> int:
@@ -662,6 +684,8 @@ def cmd_gated(repo: Repo, log: str | None) -> int:
                              "by the scope-review runner -> send back to the author")
     for e in repo.ended_exceptions():
         print(f"note, no stop: an exception ended ({e})")
+    for e in repo.ended_existing():
+        print(f"note, no stop: an existing line ended ({e})")
     if items:
         print("gated:\n" + "\n".join(f"  - {i}" if not i.startswith("    ") else f"  {i}" for i in items))
     else:
@@ -669,17 +693,16 @@ def cmd_gated(repo: Repo, log: str | None) -> int:
     return 0
 
 
-def cmd_exceptions(repo: Repo, today: str | None) -> int:
-    today = today or dt.datetime.now(dt.timezone.utc).date().isoformat()
-    es = sorted((e for e in repo.parse(repo.agents_files(None))[1] if "bad" not in e), key=lambda e: e["review"])
-    due = 0
+def cmd_exceptions(repo: Repo) -> int:
+    es = [e for e in repo.parse(repo.agents_files(None))[1] if "bad" not in e]
     for e in es:
-        overdue = e["review"] <= today
-        due += overdue
-        mark = "OVERDUE" if overdue else "       "
-        print(f"{mark} review {e['review']}  {e['rule']!s:8} {e['what']}  (approved {e['who']} {e['on']}; "
-              f"{e['ref']})  <- {e['file']}:{e['line']}")
-    print(f"exceptions: {len(es)} open, {due} past their review date as of {today}")
+        where = f"<- {e['file']}:{e['line']}"
+        if e["kind"] == "existing":
+            print(f"existing  {e['rule']!s:8} {e['what']}  {where}")
+        else:
+            print(f"exception {e['rule']!s:8} {e['what']}  (approved {e['who']} {e['on']}; {e['ref']})  {where}")
+    n_exc = sum(1 for e in es if e["kind"] == "exception")
+    print(f"exceptions: {n_exc} open, existing lines: {len(es) - n_exc}")
     return 0
 
 
@@ -722,7 +745,7 @@ def build_parser() -> argparse.ArgumentParser:
     for name in ("tags", "paths", "claude-md", "routes", "rule-ids", "rules-read", "numbers", "scope"):
         sub.add_parser(name, parents=[common])
     sub.add_parser("gated", parents=[common]).add_argument("--log", help="the scope-review runner's log of record shas")
-    sub.add_parser("exceptions", parents=[common]).add_argument("--today", help="YYYY-MM-DD (default: today, UTC)")
+    sub.add_parser("exceptions", parents=[common])
     sub.add_parser("report", parents=[common]).add_argument("--range", required=True, help="a git range, A..B")
     sub.add_parser("rules-for", parents=[common]).add_argument("paths", nargs="+")
     return parser
@@ -743,7 +766,7 @@ def main(argv: list[str] | None = None) -> int:
             "numbers": lambda: cmd_numbers(repo),
             "scope": lambda: cmd_scope(repo),
             "gated": lambda: cmd_gated(repo, args.log),
-            "exceptions": lambda: cmd_exceptions(repo, args.today),
+            "exceptions": lambda: cmd_exceptions(repo),
             "report": lambda: cmd_report(repo, args.range),
             "rules-for": lambda: cmd_rules_for(repo, args.paths),
         }

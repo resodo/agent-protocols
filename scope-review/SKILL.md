@@ -25,11 +25,11 @@ Wired Repos).
 The program decides (`docs_check.py scope`), from four signals:
 
 1. a new proposal under `docs/agent_plans/changes/`;
-2. any rule or exception changed, or a rule moved to another file;
+2. any rule, exception or `existing:` line changed, or a rule moved to another file;
 3. a number that may only go down goes up (`Raises:` in a commit message);
 4. a change under a directory marked incident-fixes-only.
 
-Ending an exception, renaming a directory whose `AGENTS.md` moves whole, and a
+Ending an exception or an `existing:` line, renaming a directory whose `AGENTS.md` moves whole, and a
 number going down do not trigger it. A change with no plan directory that the
 check stops writes the proposal then; it is no longer a small change. A real
 live-incident fix still gets the review; there is no "ship first, review

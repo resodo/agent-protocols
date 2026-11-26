@@ -58,13 +58,26 @@ A rule line, parts in this order:
 - Source: the incident (PR, issue or commit) or the human's decision (date).
   An inner rule that tightens an outer one names it: `(refines sys.R1; ...)`.
 
-An exception line, indented two spaces directly under the rule it breaks:
+Two kinds of line may hang under a rule, indented two spaces directly under it.
+Neither carries a review date.
+
+An `existing:` line names the plan that holds the code older than the rule and
+the condition on which that code is gone. It covers no new code: a change that
+adds to what it describes breaks the rule. The line is deleted when its
+condition is met:
 
 ```text
-  - exception: <what it breaks> (approved: <who> <date>; review: <date>; <PR or plan>)
+  - existing: <the plan that holds the older code, and the condition on which it is gone>
 ```
 
-The approver sets the review date for that exception when approving it.
+An exception line is a loosening for new code. It names who approved it and
+the plan or issue that ends it:
+
+```text
+  - exception: <what it breaks> (approved: <who> <date>; <plan or issue that ends it>)
+```
+
+The exception ends when that plan or issue is done; the line is then deleted.
 
 ## The Three Questions
 
@@ -126,7 +139,7 @@ wins.
 Waits for the human:
 
 - the text of a `sys` rule, or an exception under one (adding it, changing
-  it, moving its review date later, deleting the rule);
+  it, deleting the rule);
 - a scope review that answers `ask` and names a conflict with a `sys` rule;
 - the decision-boundary file and the authority ledger, wherever they live (the
   overlay names them): the master only records the human's words there.
