@@ -12,7 +12,7 @@ merges collide. So exactly one merger merges, one PR at a time.
 ## Local Overlay
 
 1. Read `.agent-protocols/context.md` if present.
-2. Read `.agent-protocols/merge-queue.md` if present: the queue file location,
+2. Read `.agent-protocols/merge-queue.md` if present: where the queue lives,
    the pre-merge command, which local checks to run, the contract paths to
    diff, required checks for special kinds of change.
 
@@ -24,7 +24,7 @@ merges collide. So exactly one merger merges, one PR at a time.
   too; if another session is already running a pre-merge job, pause until it
   finishes.
 - Permission and who executes a merge: `decision-boundary/SKILL.md`,
-  Delegated Execution. The master writes the permission into the queue line
+  Delegated Execution. The master writes the permission into the queue entry
   when it queues a PR; the merge agent merges only PRs whose line names it,
   verifies a cited ledger entry right before merging as that section says, and
   never uses the ledger to find permission.
@@ -33,9 +33,15 @@ merges collide. So exactly one merger merges, one PR at a time.
 
 ## Queue File
 
-Use `templates/MERGE_QUEUE.md`. States: `[ ]` waiting, `[~]` in progress,
-`[x]` merged, `[!]` returned to the author with the reason. The master adds a
-line after checking the gated surfaces. Archive merged lines daily.
+The overlay says where the queue lives: a queue file, or ready rows in the
+master's running log (the project's decision ledger). If it names nothing, use
+`templates/MERGE_QUEUE.md`. Whatever the place, a queued item carries the PR,
+the head it was prepared at, the check evidence and the permission, and a later
+entry for the same PR (new head, hold, superseded) replaces the earlier one.
+With the file, states are `[ ]` waiting, `[~]` in progress, `[x]` merged, `[!]`
+returned to the author with the reason, and merged lines are archived daily.
+The master queues a PR after checking the gated surfaces; the merger records
+its result (merged at which head, or stopped and why) in the same place.
 
 ## For Each PR, In Order
 
@@ -51,7 +57,7 @@ line after checking the gated surfaces. Archive merged lines daily.
    submodule pointer that moved backwards (sync the author's branch first);
    and every item the overlay's gated command lists (in a repo that wires the
    docs check, `docs_check.py gated --log <run log>`). Each listed item needs
-   its answer in the queue line (the human's dated words or the ledger entry);
+   its answer in the queue entry (the human's dated words or the ledger entry);
    a scope-review record missing from the runner's log goes back to the
    author.
 4. Run the related tests and light checks locally; read the full result
@@ -66,7 +72,7 @@ line after checking the gated surfaces. Archive merged lines daily.
 
 ## SAFETY Rules
 
-- Do not merge without the permission the queue line names
+- Do not merge without the permission the queue entry names
   (`decision-boundary`, Delegated Execution).
 - Do not merge past a gated-surface diff without the human's answer, or an
   active ledger entry that covers it.

@@ -50,10 +50,12 @@ later" path.
 ## Running It
 
 ```text
-scope-review/run_scope_review.py docs/agent_plans/changes/<name>/proposal.md
+scope-review/run_scope_review.py <name>
 ```
 
-The runner starts a fresh model session with no tools and a clean
+`<name>` is the change directory's name, not a file path; the runner reads
+`<name>/proposal.md` under the repo's changes directory and exits with an error
+if it is missing. It starts a fresh model session with no tools and a clean
 configuration, and gives it four things: `reviewer_prompt.md`, the
 proposal, the rules that govern the proposal's paths (from
 `docs_check.py rules-for`, with their rows from `docs_check.py report`), and
