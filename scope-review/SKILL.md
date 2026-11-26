@@ -43,7 +43,7 @@ later" path.
    directory when all of them are merged).
 2. **Intent**: what is broken today, with one real incident or number.
 3. **Scope**: the smallest version that fixes it.
-4. **Paths**: the files or directories it will touch.
+4. **Touches** (heading `## Touches`; the runner parses it): the files or directories it will touch.
 5. **Rule changes**: which rules or exceptions it adds, changes or moves, or
    "none". A refactor adds "How rules move" (`editing-rules`).
 
