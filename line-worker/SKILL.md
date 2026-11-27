@@ -30,7 +30,11 @@ is in `agents/`.
 3. If your line was started before (a worktree or branch exists), read its git
    log, status and diff and continue from there. Do not restart, do not drop
    existing changes.
-4. Resuming old work: write "premise then vs state now" first; if the premise
+4. A new worktree starts from the local `main`, which may be behind. Run
+   `git fetch origin` first and update local `main` before `wt switch --create`,
+   or `git rebase origin/main` right after it, before the first edit. A branch
+   cut from an old main is how a later squash reverts other PRs.
+5. Resuming old work: write "premise then vs state now" first; if the premise
    changed, report before continuing.
 
 ### While Working
@@ -101,6 +105,32 @@ follows its own brief and `references/read-only-research.md` instead.
   excepted), or add a standing mechanism, unless your brief names that exact
   change with its recorded permission (the resident-core exception). Otherwise
   stop and report.
+
+## Squashing a Branch
+
+This is the only place the squash recipe lives; overlays and briefs point here.
+Squash before reporting a PR ready, so the merge queue replays one commit.
+
+```
+git fetch origin
+git rebase origin/main                         # resolve conflicts here, once
+git reset --soft "$(git merge-base origin/main HEAD)"
+git commit                                     # one commit; keep required trailers
+git push --force-with-lease
+```
+
+After the rebase, `merge-base origin/main HEAD` is the tip of `origin/main`,
+and the soft reset keeps the tree you just rebased. Then check that the PR
+touches only your files: `git diff --stat origin/main...HEAD` lists exactly
+the files you meant to change.
+
+Never run `git reset --soft origin/main` (or `git reset --soft <any newer main
+commit>`) on a branch whose tree was cut from an older main. It moves the
+pointer but leaves the old files in the working tree, so the next commit
+silently reverts every file main changed since the branch was cut. 2026-11-27:
+a two-file docs PR became a 19-file commit that would have undone two merged
+PRs; the project's light checks did not see it until a revert guard was added.
+Run the project's checks on the final head, after the squash.
 
 ## SAFETY Rules
 
