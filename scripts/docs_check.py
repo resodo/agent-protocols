@@ -28,7 +28,9 @@ repo on a committed tree; `--base` defaults to `origin/main`.
 
 Subcommands:
   tags                 rule and exception lines are well formed; ids unique; [lint: X] resolves
-  paths                every backquoted path in a rule, exception or routing row exists
+  paths                every backquoted path in a rule, exception or routing row exists (a URL
+                       route such as `/v1/items`, and a path right after a repo name that
+                       `repo_name_pattern` matches, are not paths of this repo and are skipped)
   claude-md            every CLAUDE.md is a link to, or the one-line import of, its AGENTS.md
   routes               every doc under the current-docs dir is in the root routing table
   rule-ids             no rule id at base is missing now, unless `Rules-removed:` says so
@@ -36,7 +38,10 @@ Subcommands:
   numbers              ratchet numbers do not exceed their value at base, unless `Raises:` says so
   scope                a change that hits a trigger carries a matching scope-review record
   gated [--log FILE]   what the merge agent must stop on, and whose answer it needs
-                       (log default: SCOPE_REVIEW_LOG, then scope_review.log in the config)
+                       (log default: SCOPE_REVIEW_LOG, then scope_review.log in the config);
+                       a decision-boundary or ledger path ending in `/` covers the files under
+                       it, and one inside a submodule counts when the pointer move changes it
+                       (or when the submodule's history is not here to tell)
   exceptions           open exception lines and existing lines
   report --range A..B  the numbers of the measuring table
   rules-for PATH...    every rule that governs PATH (root down to the nearest AGENTS.md)
@@ -74,6 +79,8 @@ DEFAULTS: dict[str, Any] = {
     "ledger_paths": [],
     "placement_questions": None,
     "scope_review": {},
+    # A regex for a repo name: "<repo> `path`" names a path in that repo, not checked here.
+    "repo_name_pattern": None,
 }
 RATCHET_KINDS = {"file_lines", "glob_count", "regex_lines", "dirs_without_agents_md"}
 VERDICTS = ("go", "cut", "ask", "no")
@@ -309,6 +316,34 @@ class Repo:
                     names.add(prefix + (found if isinstance(found, str) else found[0]))
         return names
 
+    def gitlink(self, ref: str, path: str) -> str | None:
+        """The commit a submodule at PATH points to at REF, or None when PATH is no submodule there."""
+        out = subprocess.run(["git", "ls-tree", ref, "--", path], cwd=self.root, capture_output=True, text=True)
+        fields = out.stdout.split()
+        return fields[2] if out.returncode == 0 and len(fields) >= 3 and fields[0] == "160000" else None
+
+    def path_changed(self, path: str, touched: list[str] | set[str]) -> bool:
+        """Whether the change touches PATH: the file itself, any file under it when it ends in
+        `/`, or, when PATH lies inside a submodule whose pointer moved, any file under PATH
+        between the two pointers. A submodule whose history is not here counts as changed."""
+        if path in touched or (path.endswith("/") and any(t.startswith(path) for t in touched)):
+            return True
+        for sub in touched:
+            if not path.startswith(sub.rstrip("/") + "/"):
+                continue
+            fork = self.git("merge-base", self.base, "HEAD").strip()
+            old, new = self.gitlink(fork, sub), self.gitlink("HEAD", sub)
+            if old is None and new is None:
+                continue
+            if old is None or new is None:
+                return True
+            rel = path[len(sub.rstrip("/")) + 1:]
+            out = subprocess.run(["git", "-C", sub, "diff", "--name-only", old, new, "--", rel or "."],
+                                 cwd=self.root, capture_output=True, text=True)
+            if out.returncode != 0 or out.stdout.strip():
+                return True
+        return False
+
     # numbers ----------------------------------------------------------------
     def measure(self, ref: str | None) -> dict[str, int]:
         files = self.tracked(ref)
@@ -510,13 +545,18 @@ def cmd_paths(repo: Repo) -> int:
     files = set(repo.tracked(None))
     known = files | {str(p) for f in files for p in PurePosixPath(f).parents}
     bad = []
+    pattern = repo.cfg.get("repo_name_pattern")
+    other_repo = re.compile(rf"(?:^|[\s(])(?:{pattern}) $") if pattern else None
     for name, text in repo.agents_files(None).items():
         here = PurePosixPath(name).parent
         for no, line in enumerate(text.splitlines(), 1):
             if not (RULE_LIKE.match(line) or EXC_LIKE.match(line) or line.lstrip().startswith("| `")):
                 continue
-            for quoted in re.findall(r"`([^`\s]+/[^`\s]*)`", line):
-                if "://" in quoted or any(c in quoted for c in "*<>{}"):
+            for m in re.finditer(r"`([^`\s]+/[^`\s]*)`", line):
+                quoted = m[1]
+                if "://" in quoted or quoted.startswith("/") or any(c in quoted for c in "*<>{}"):
+                    continue
+                if other_repo and other_repo.search(line[:m.start()]):
                     continue
                 p = quoted.strip("/")
                 local = os.path.normpath(str(here / p))
@@ -655,7 +695,7 @@ def cmd_gated(repo: Repo, log: str | None) -> int:
     touched = set(repo.changed_any_side())
     for label, key in (("the decision-boundary file", "decision_boundary_paths"), ("the authority ledger", "ledger_paths")):
         for path in repo.cfg[key]:
-            if path in touched:
+            if repo.path_changed(path, touched):
                 items.append(f"{path}: {label} changed -> needs the answer of {HUMAN}")
     log = log or os.environ.get("SCOPE_REVIEW_LOG") or (repo.cfg.get("scope_review") or {}).get("log")
     logged: set[str] | None = None
