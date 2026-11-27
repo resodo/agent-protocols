@@ -30,7 +30,11 @@ is in `agents/`.
 3. If your line was started before (a worktree or branch exists), read its git
    log, status and diff and continue from there. Do not restart, do not drop
    existing changes.
-4. Resuming old work: write "premise then vs state now" first; if the premise
+4. A new worktree starts from the local `main`, which may be behind. Run
+   `git fetch origin` first and update local `main` before `wt switch --create`,
+   or `git rebase origin/main` right after it, before the first edit. A branch
+   cut from an old main is how a later squash reverts other PRs.
+5. Resuming old work: write "premise then vs state now" first; if the premise
    changed, report before continuing.
 
 ### While Working
