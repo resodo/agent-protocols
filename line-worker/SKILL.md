@@ -102,6 +102,32 @@ follows its own brief and `references/read-only-research.md` instead.
   change with its recorded permission (the resident-core exception). Otherwise
   stop and report.
 
+## Squashing a Branch
+
+This is the only place the squash recipe lives; overlays and briefs point here.
+Squash before reporting a PR ready, so the merge queue replays one commit.
+
+```
+git fetch origin
+git rebase origin/main                         # resolve conflicts here, once
+git reset --soft "$(git merge-base origin/main HEAD)"
+git commit                                     # one commit; keep required trailers
+git push --force-with-lease
+```
+
+After the rebase, `merge-base origin/main HEAD` is the tip of `origin/main`,
+and the soft reset keeps the tree you just rebased. Then check that the PR
+touches only your files: `git diff --stat origin/main...HEAD` lists exactly
+the files you meant to change.
+
+Never run `git reset --soft origin/main` (or `git reset --soft <any newer main
+commit>`) on a branch whose tree was cut from an older main. It moves the
+pointer but leaves the old files in the working tree, so the next commit
+silently reverts every file main changed since the branch was cut. 2026-11-27:
+a two-file docs PR became a 19-file commit that would have undone two merged
+PRs; the project's light checks did not see it until a revert guard was added.
+Run the project's checks on the final head, after the squash.
+
 ## SAFETY Rules
 
 - Never contact the human directly.
