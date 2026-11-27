@@ -651,6 +651,13 @@ class PathsAndGatedMatching(DocsCheckCase):
         self.assertIn(f"external/protocols/decision-boundary/: the decision-boundary file changed -> {HUMAN}",
                       self.ok("gated"))
 
+    def test_submodule_bump_without_its_history_needs_the_human(self) -> None:
+        sub, run = self.make_submodule()
+        self.bump(sub, run, "other.md")
+        self.f.git("submodule", "deinit", "-q", "-f", "external/protocols")
+        self.assertIn(f"external/protocols/decision-boundary/: the decision-boundary file changed -> {HUMAN}",
+                      self.ok("gated"))
+
 
 if __name__ == "__main__":
     unittest.main()
