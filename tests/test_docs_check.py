@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -579,6 +581,75 @@ class Report(DocsCheckCase):
         self.assertEqual(rows["data.R1"], ["1", "0", "1"])
         self.assertIn("scope-review verdicts: {'go': 1}", out)
         self.assertIn("measured numbers now: {", out)
+
+
+class PathsAndGatedMatching(DocsCheckCase):
+    def set_config(self, **changes) -> None:
+        cfg = json.loads(self.f.read(".agent-protocols/docs-check.json"))
+        cfg.update(changes)
+        self.f.write(".agent-protocols/docs-check.json", json.dumps(cfg, indent=2) + "\n")
+
+    def test_url_route_is_not_a_path(self) -> None:
+        self.f.append("app/sources/AGENTS.md", "- data.R3 Within `/v1` the API only adds fields. [review] (#5)\n")
+        self.f.commit("route")
+        self.assertIn("paths: ok", self.ok("paths"))
+
+    def test_path_after_a_repo_name_is_not_checked_here(self) -> None:
+        line = "- data.R3 Ids are parsed only in example-other `infra/ids`. [review] (#5)\n"
+        self.f.append("app/sources/AGENTS.md", line)
+        self.f.commit("other repo path")
+        self.assertIn("`infra/ids` is named here and is not in the repo", self.fails("paths"))
+        self.set_config(repo_name_pattern="example-[a-z]+")
+        self.f.commit("repo names")
+        self.assertIn("paths: ok", self.ok("paths"))
+        self.f.append("app/sources/AGENTS.md", "- data.R4 Readers live in `app/missing/`. [review] (#6)\n")
+        self.f.commit("a real missing path")
+        self.assertIn("`app/missing/` is named here and is not in the repo", self.fails("paths"))
+
+    def test_directory_path_covers_the_files_under_it(self) -> None:
+        self.f.write("policy/boundary/rules.md", "# rules\n")
+        self.set_config(decision_boundary_paths=["policy/boundary/"])
+        self.f.commit("boundary dir")
+        self.f.mark_main()
+        self.f.append("policy/boundary/rules.md", "- one more\n")
+        self.f.commit("edit inside the boundary dir")
+        self.assertIn(f"policy/boundary/: the decision-boundary file changed -> {HUMAN}", self.ok("gated"))
+
+    def make_submodule(self) -> tuple[Path, str]:
+        sub = self.f.tmp / "protocols"
+        sub.mkdir()
+        run = lambda *a: subprocess.run(["git", *a], cwd=sub, env=self.f.env, check=True,  # noqa: E731
+                                        capture_output=True, text=True).stdout
+        run("init", "-q", "-b", "main")
+        (sub / "decision-boundary").mkdir()
+        (sub / "decision-boundary" / "SKILL.md").write_text("# boundary\n", encoding="utf-8")
+        (sub / "other.md").write_text("# other\n", encoding="utf-8")
+        run("add", "-A")
+        run("commit", "-q", "-m", "one")
+        self.f.git("-c", "protocol.file.allow=always", "submodule", "add", "-q", str(sub), "external/protocols")
+        self.set_config(decision_boundary_paths=["external/protocols/decision-boundary/"])
+        self.f.commit("add the protocols submodule")
+        self.f.mark_main()
+        return sub, run
+
+    def bump(self, sub: Path, run, rel: str) -> None:
+        (sub / rel).write_text((sub / rel).read_text(encoding="utf-8") + "- more\n", encoding="utf-8")
+        run("commit", "-q", "-am", f"edit {rel}")
+        inner = self.f.root / "external/protocols"
+        subprocess.run(["git", "-c", "protocol.file.allow=always", "pull", "-q", "origin", "main"], cwd=inner,
+                       env=self.f.env, check=True, capture_output=True)
+        self.f.commit(f"bump protocols ({rel})")
+
+    def test_submodule_bump_outside_the_path_stops_nothing(self) -> None:
+        sub, run = self.make_submodule()
+        self.bump(sub, run, "other.md")
+        self.assertIn("gated: nothing to stop on", self.ok("gated"))
+
+    def test_submodule_bump_that_changes_the_path_needs_the_human(self) -> None:
+        sub, run = self.make_submodule()
+        self.bump(sub, run, "decision-boundary/SKILL.md")
+        self.assertIn(f"external/protocols/decision-boundary/: the decision-boundary file changed -> {HUMAN}",
+                      self.ok("gated"))
 
 
 if __name__ == "__main__":
