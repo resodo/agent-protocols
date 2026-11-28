@@ -507,6 +507,28 @@ class Scope(DocsCheckCase):
         self.f.commit("short record")
         self.assertIn(f"{rec}: no line for ['data.R1']", self.fails("scope"))
 
+    def with_nodes_rule_on_main(self) -> None:
+        self.f.write("app/nodes/AGENTS.md", "# nodes\n\n- nodes.R1 A node writes no reader text. [review] (#7)\n")
+        self.f.commit("nodes rule")
+        self.f.mark_main()
+
+    def test_batch_record_answers_only_its_own_commits(self) -> None:
+        self.with_nodes_rule_on_main()
+        self.incident_change()
+        rec = self.f.record("ir-fix")
+        self.f.commit("PR A: IR fix with its record")
+        self.f.write("app/nodes/step.py", "pass\n")
+        self.f.commit("PR B: a node step, no scope trigger")
+        self.assertIn(f"record {rec}", self.ok("scope"))
+
+    def test_record_answers_every_path_of_its_own_commit(self) -> None:
+        self.with_nodes_rule_on_main()
+        self.incident_change()
+        self.f.write("app/nodes/step.py", "pass\n")
+        rec = self.f.record("ir-fix")
+        self.f.commit("IR fix that also adds a node step")
+        self.assertIn(f"{rec}: no line for ['nodes.R1']", self.fails("scope"))
+
     def test_ask_conflicting_with_a_sys_rule_needs_the_human(self) -> None:
         self.f.replace("pyproject.toml", "ignore_imports = [\n", 'ignore_imports = [\n  "app.nodes.x -> app.api.y",\n')
         self.f.write("app/nodes/registration.py", "pass\n")

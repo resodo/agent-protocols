@@ -100,7 +100,9 @@ Before merge, `docs_check.py scope`:
 2. the verdict passes (above);
 3. the proposal has not changed since the review (`proposal_sha`);
 4. every rule that governs a path the PR actually touches has a line, so a
-   change that grows into new directories needs a new review;
+   change that grows into new directories needs a new review (the PR is the
+   commits that add or change the record; in a pre-merge batch the other
+   PRs' paths are not this record's);
 5. the proposal sits next to the record.
 
 At merge, `docs_check.py gated --log <run log>` lists each gated item and who

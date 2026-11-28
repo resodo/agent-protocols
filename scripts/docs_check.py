@@ -36,7 +36,9 @@ Subcommands:
   rule-ids             no rule id at base is missing now, unless `Rules-removed:` says so
   rules-read           the commit messages account for every [review] rule on the touched paths
   numbers              ratchet numbers do not exceed their value at base, unless `Raises:` says so
-  scope                a change that hits a trigger carries a matching scope-review record
+  scope                a change that hits a trigger carries a matching scope-review record; a
+                       record answers the rules of the paths its own commits change (in a
+                       pre-merge batch, not the other PRs' paths)
   gated [--log FILE]   what the merge agent must stop on, and whose answer it needs
                        (log default: SCOPE_REVIEW_LOG, then scope_review.log in the config);
                        a decision-boundary or ledger path ending in `/` covers the files under
@@ -461,6 +463,23 @@ class Repo:
                     break
         return hits
 
+    def record_governing(self, rec: str) -> dict[str, str]:
+        """Rules that a scope-review record must answer: those governing the paths changed by the
+        commits in base..HEAD that add or change the record (the PR that carries it), at HEAD
+        and at base. Other changes in the range (more PRs in a pre-merge batch) are not this
+        record's business. Without such a commit, the whole change counts."""
+        commits = [c for c in self.git("log", "--format=%H", f"{self.base}..HEAD", "--", rec).split() if c]
+        if not commits:
+            return self.touched_governing()
+        paths: set[str] = set()
+        for c in commits:
+            paths.update(p for p in self.git("diff-tree", "--no-commit-id", "--name-only", "--no-renames",
+                                             "-r", "-m", "--root", c).splitlines() if p)
+        out = self.governing(sorted(paths))
+        for rid, name in self.governing(sorted(paths), ref=self.base).items():
+            out.setdefault(rid, f"{name} at {self.base}")
+        return out
+
     def records(self) -> list[tuple[str, dict[str, str], str]]:
         out = []
         prefix = self.changes_prefix()
@@ -652,8 +671,8 @@ def cmd_scope(repo: Repo) -> int:
               "(it writes scope-review.md next to it) and commit both.")
         return 1
     bad = []
-    need = set(repo.touched_governing())
     for rec, head, text in recs:
+        need = set(repo.record_governing(rec))
         proposal = (repo.root / rec).with_name("proposal.md")
         verdict = head.get("verdict")
         if verdict == "cut":
